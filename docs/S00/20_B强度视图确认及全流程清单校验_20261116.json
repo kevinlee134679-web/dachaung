@@ -1,0 +1,102 @@
+{
+  "time": "2026-11-16 19:22:41 +08:00",
+  "timezone": "Asia/Shanghai",
+  "record_id": "R0015",
+  "start_commit": "9218ee95bc75c848cce6f3ed418ada8d275949d9",
+  "confirmed_contract": "B-v0.3",
+  "confirmed_decisions": [
+    "IM01",
+    "IM02",
+    "IM03",
+    "IM04",
+    "IM05"
+  ],
+  "git_precheck": {
+    "fetch_succeeded": true,
+    "remote_develop": "bb5ea93003679fc23779271624e20e724344d204",
+    "left_right": [
+      5,
+      0
+    ],
+    "planned_push_attempts": 1
+  },
+  "validation": {
+    "F05_json": 3,
+    "StrategyView_fields": 9,
+    "IntensityMappingView_fields": 8,
+    "UIState_fields": 10,
+    "F06_original_FQ_rows": 18,
+    "F06_business_changes": 0,
+    "original_tracked_blobs_verified": 47,
+    "application_tests_run": false,
+    "paid_calls": 0
+  },
+  "prefix_checks": [
+    {
+      "path": "docs/S00/F00_全流程范围与待确认事项_draft01.md",
+      "before_bytes": 14218,
+      "before_sha256": "dfebe78685eef508a9cf4815d689b85cc26a7be3684537779a3247f2ee5d3bd6",
+      "after_bytes": 15464,
+      "after_sha256": "cdee088d6fc280828e4bc1abf047d58a6d75d1324dfedd65cfa2668288e03f00",
+      "prefix_sha256": "dfebe78685eef508a9cf4815d689b85cc26a7be3684537779a3247f2ee5d3bd6",
+      "prefix_bytes_equal": true,
+      "include_in_commit": false
+    },
+    {
+      "path": "README.md",
+      "before_bytes": 10333,
+      "before_sha256": "bb2fa84b0204c6240899ec9661fb09cc9c0ae176584b40d3df57241b1da70be4",
+      "after_bytes": 11345,
+      "after_sha256": "f39ae47f7bf8c97163219198afce35508419a26bec18abaeb2907210db62d099",
+      "prefix_sha256": "bb2fa84b0204c6240899ec9661fb09cc9c0ae176584b40d3df57241b1da70be4",
+      "prefix_bytes_equal": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/版本登记.md",
+      "before_bytes": 12087,
+      "before_sha256": "38229610f74970b9861c4e08a4bb7f185be5d2746dfe599a5933647d382af662",
+      "after_bytes": 13420,
+      "after_sha256": "6f2726f00bef66b81c53e3c39201bb313275c613110f45ad4ee42e9de54200ff",
+      "prefix_sha256": "38229610f74970b9861c4e08a4bb7f185be5d2746dfe599a5933647d382af662",
+      "prefix_bytes_equal": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/工作记录.md",
+      "before_bytes": 90953,
+      "before_sha256": "49cab2824df4cab07b86c6b7af6bc22ae7f288a5d00ffbcf84a3fc4d69901a9e",
+      "after_bytes": 98529,
+      "after_sha256": "1d6f0b9d44715b082ccb283111d8dc6f182888133e572d4b8355d2dda51d9122",
+      "prefix_sha256": "49cab2824df4cab07b86c6b7af6bc22ae7f288a5d00ffbcf84a3fc4d69901a9e",
+      "prefix_bytes_equal": true,
+      "include_in_commit": true
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/S00/F05_支持强度可用状态接口增量_draft01.md",
+      "bytes": 13515,
+      "sha256": "d120e0897021b31ce06018734933855a184a5246b90ea753ab222da6e6378f8f",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/B_v0.3_支持强度可用状态增量.md",
+      "bytes": 5691,
+      "sha256": "1a0471c1f96972eacdffb0b813cb978933d29ef59600f58648cadb6dde6e7025",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F06_剩余全流程集中确认清单_draft01.md",
+      "bytes": 12727,
+      "sha256": "42e1b6755de0345508398ecaad9815b375ff5e3da554d49c5f5507b3e8ff7cb1",
+      "include_in_commit": false
+    },
+    {
+      "path": "docs/S00/F06_剩余全流程集中确认清单_draft02.md",
+      "bytes": 13056,
+      "sha256": "1aaaabf19986ca96f8c9bc59ad7c6e2e958f6953d511a3a5ffeb48b27076970a",
+      "include_in_commit": false
+    }
+  ]
+}
