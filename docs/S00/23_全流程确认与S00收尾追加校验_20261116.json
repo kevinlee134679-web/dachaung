@@ -1,0 +1,191 @@
+{
+  "time": "2026-11-16 19:50:50 +08:00",
+  "timezone": "Asia/Shanghai",
+  "record_id": "R0017",
+  "start_commit": "f2a04c27b87268100307c64f6ea06454a29ec42b",
+  "local_contract_and_preparation_complete": true,
+  "S01_started": false,
+  "contracts": [
+    "flow-v0.1",
+    "public-o-v0.5",
+    "A-v0.4",
+    "B-v0.4",
+    "C-v0.2",
+    "deferred-v0.1"
+  ],
+  "git_precheck": {
+    "fetch_exit_code": 128,
+    "reason": "Failed to connect to github.com:443 after 21062 ms",
+    "latest_remote_verified": false,
+    "cached_origin_develop": "bb5ea93003679fc23779271624e20e724344d204",
+    "cached_left_right": [
+      7,
+      0
+    ],
+    "local_author_and_gcm_present": true,
+    "planned_push_attempts": 1
+  },
+  "environment": {
+    "python": "3.14.10",
+    "sqlite": "3.50.4",
+    "pydantic": "2.14.3",
+    "fastapi": null,
+    "uvicorn": null,
+    "compatibility_verified": false
+  },
+  "validation": {
+    "routes": 154,
+    "unique_routes": 154,
+    "owners": {
+      "A": 43,
+      "O": 33,
+      "B": 39,
+      "C": 39
+    },
+    "json_examples": 314,
+    "response_envelopes": 313,
+    "request_examples": 1,
+    "FQ": 18,
+    "FT_planned": 36,
+    "IT_planned": 8,
+    "application_cases_run": 0,
+    "paid_calls": 0,
+    "original_tracked_blobs_verified": 51,
+    "helper_utf8_path_decoding_corrected": true
+  },
+  "prefix_checks": [
+    {
+      "path": "README.md",
+      "before_bytes": 11794,
+      "before_sha256": "7447efe4ca2b3ae8e74490551763ff6aa351421f0ce3d32d418ecf129b9390f0",
+      "after_bytes": 13007,
+      "after_sha256": "28521dd18bca97ff16cd4f4aba9ed9d4d88b0dbd76b6cb5670367ada566c8c90",
+      "prefix_sha256": "7447efe4ca2b3ae8e74490551763ff6aa351421f0ce3d32d418ecf129b9390f0",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/版本登记.md",
+      "before_bytes": 13838,
+      "before_sha256": "b1ac47491699d0cb214e86e604a5fc1cba142e065c20868a2b169d9cf7b02374",
+      "after_bytes": 15655,
+      "after_sha256": "86fecad0618e88680c5c539d9f03443aaf310e920382ccd42304e342e09c59f4",
+      "prefix_sha256": "b1ac47491699d0cb214e86e604a5fc1cba142e065c20868a2b169d9cf7b02374",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/工作记录.md",
+      "before_bytes": 103412,
+      "before_sha256": "12c50c529d5c56756346475f1d741b45f3aabb8b4b8e83597565b9468e79ae09",
+      "after_bytes": 113421,
+      "after_sha256": "f2d6ce09def742a739513b8d5537ec5285cbbf37ec6885fe6aa681c3785267f9",
+      "prefix_sha256": "12c50c529d5c56756346475f1d741b45f3aabb8b4b8e83597565b9468e79ae09",
+      "prefix_bytes_equal": true
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/S00/F00_全流程范围与待确认事项_draft01.md",
+      "bytes": 15464,
+      "sha256": "cdee088d6fc280828e4bc1abf047d58a6d75d1324dfedd65cfa2668288e03f00",
+      "archive": true,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F01_跨模块时序与事务_draft01.md",
+      "bytes": 17161,
+      "sha256": "039b45553cc109ec3b6eeb82008ce896c63b1960eecfcdc17465dffa189a319e",
+      "archive": true,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F02_接口权限与状态索引_draft01.md",
+      "bytes": 36474,
+      "sha256": "dcf2c0a4305b16fd44725a47a0ce1ff0c77822fe8409f5364e6bdb7387478999",
+      "archive": true,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F03_增量字段接口与验收_draft01.md",
+      "bytes": 24213,
+      "sha256": "ca3871e22e1918b54101b9519411d94e79479628797c2f32f1d5487b73912bd8",
+      "archive": true,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F06_剩余全流程集中确认清单_draft01.md",
+      "bytes": 12727,
+      "sha256": "42e1b6755de0345508398ecaad9815b375ff5e3da554d49c5f5507b3e8ff7cb1",
+      "archive": true,
+      "normative": false,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/F06_剩余全流程集中确认清单_draft02.md",
+      "bytes": 13056,
+      "sha256": "1aaaabf19986ca96f8c9bc59ad7c6e2e958f6953d511a3a5ffeb48b27076970a",
+      "archive": true,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/全流程_v0.1_确认清单.md",
+      "bytes": 15518,
+      "sha256": "d678770b1614dfc12535207a8b5e3d1b337649fe3fc4d580f64f297d6e86e881",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/公共基础与O_v0.5_全流程衔接增量.md",
+      "bytes": 4732,
+      "sha256": "29281ea6ef46f700be992380af793e984edb541ede0dc83a0587eaf8b93aa712",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/A_v0.4_全流程执行与快照增量.md",
+      "bytes": 5307,
+      "sha256": "c659cc4c39daec6a0e510078438c7ecda3a8ed832784a67a122370ac333d3b77",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/B_v0.4_到期投影与全流程增量.md",
+      "bytes": 4106,
+      "sha256": "b891e6eb407b7a4c7702649d108092b859dcabc9d21b6961cb10214d38c32095",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/C_v0.2_全流程一致性增量.md",
+      "bytes": 4715,
+      "sha256": "0573ed4dee0a861498e6f488766c2a2bea1f616b3c40659d489763a7dbcad9a3",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/contracts/全平台接口目录_v0.1.md",
+      "bytes": 39167,
+      "sha256": "064afda237c79b61adc4c54766873dd7161b066e74853215b435ddaa688bc30c",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/22_S00收尾与S01交接_20261116.md",
+      "bytes": 8945,
+      "sha256": "68da1f658b712e448400da5df06e8d83b87854b179ae51d4f3a10cfa4d6a25b2",
+      "archive": false,
+      "normative": true,
+      "include_in_commit": true
+    }
+  ]
+}
