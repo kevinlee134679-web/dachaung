@@ -1,0 +1,6 @@
+# Web/API, ASGI server, typed local environment configuration.
+fastapi
+uvicorn
+pydantic-settings
+# In-process HTTP verification only; never calls a model/provider.
+httpx2
