@@ -23,3 +23,6 @@ private/
 data/real/
 data/uploads/
 test-output/
+
+# Protected uploaded content beside a custom database path.
+files-demo/

@@ -19,10 +19,12 @@ from medplatform.config import ROOT, Settings, ConfigurationError, load_settings
 from medplatform.database import Database
 from medplatform.errors import AppError, SchemaError
 from medplatform.journal import append_record, initialize, snapshot
-from medplatform.migrations import DIRECTORY, migrate, status
+from medplatform.migrations import DIRECTORY, catalog, migrate, status
 from medplatform.registry import ModuleRegistry
 from medplatform.storage import SourceReader
 from medplatform.web import create_app
+
+LATEST = len(catalog())
 
 
 def event(conn, event_id, patient="pa", *, kind="medication", source="manual", subject="aa", source_id=None, payload=None):
@@ -71,12 +73,12 @@ class MigrationTests(Sandbox):
         with self.db.transaction() as c:
             event(c, "e1")
             event(c, "e2", patient="pb", subject="ab", source_id="e1")
-        self.assertEqual(migrate(self.db), 2)
-        self.assertEqual(status(self.db), 2)
+        self.assertEqual(migrate(self.db), LATEST)
+        self.assertEqual(status(self.db), LATEST)
         with self.db.connection(readonly=True) as c:
             self.assertEqual(c.execute("SELECT count(*) FROM source_events").fetchone()[0], 2)
             self.assertEqual(c.execute("SELECT count(*) FROM event_revisions").fetchone()[0], 2)
-        self.assertEqual(migrate(self.db, initialize=True), 2)
+        self.assertEqual(migrate(self.db, initialize=True), LATEST)
         with self.assertRaises(SchemaError):
             migrate(self.db, target=1)
 
@@ -107,13 +109,13 @@ class MigrationTests(Sandbox):
             event(c, "keep")
         copied = self.path / "migrations"
         shutil.copytree(DIRECTORY, copied)
-        (copied / "0003_failure.sql").write_text(
+        (copied / f"{LATEST+1:04d}_failure.sql").write_text(
             "CREATE TABLE rollback_probe(value TEXT);\nINSERT INTO rollback_probe VALUES ('x');\nINVALID SQL;\n", encoding="utf-8")
         with self.assertRaises(sqlite3.Error):
             migrate(self.db, directory=copied)
         with self.db.connection(readonly=True) as c:
             self.assertIsNone(c.execute("SELECT name FROM sqlite_master WHERE name='rollback_probe'").fetchone())
-            self.assertEqual(c.execute("SELECT max(version) FROM schema_migrations").fetchone()[0], 2)
+            self.assertEqual(c.execute("SELECT max(version) FROM schema_migrations").fetchone()[0], LATEST)
             self.assertEqual(c.execute("SELECT event_id FROM source_events").fetchone()[0], "keep")
 
     def test_source_dedup_and_transaction_rollback(self):
@@ -237,7 +239,7 @@ class WebTests(Sandbox):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["readiness"], "ready")
         self.assertEqual(response.headers["X-Request-ID"], response.json()["request_id"])
-        for url in ("/api/v1/patients", "/api/v1/unknown", "/docs", "/openapi.json"):
+        for url in ("/api/v1/statistics", "/api/v1/unknown", "/docs", "/openapi.json"):
             r = client.get(url)
             self.assertEqual(r.status_code, 404)
             self.assertEqual(r.headers["content-type"], "application/json")
@@ -264,7 +266,7 @@ class WebTests(Sandbox):
             self.assertEqual(r.json()["data"]["model_connectivity"], "unverified")
             self.assertNotIn("private.invalid", r.text)
             self.assertNotIn(str(self.db.path), r.text)
-            self.assertFalse(next(c for c in r.json()["data"]["capabilities"] if c["code"] == "demo_login")["available"])
+        self.assertTrue(next(c for c in r.json()["data"]["capabilities"] if c["code"] == "demo_login")["available"])
 
     def test_csrf_origin_and_idempotency_header_guard(self):
         auth = DemoAuthority([Account("aa", "pa")])
@@ -304,7 +306,7 @@ class WebTests(Sandbox):
         r = client.get("/")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.text.count("data-page="), 5)
-        for path in ("/static/app.js", "/static/style.css"):
+        for path in ("/static/s02.js", "/static/platform.css"):
             self.assertEqual(client.get(path).status_code, 200)
         self.assertNotIn("unsafe-inline", r.headers["content-security-policy"])
 

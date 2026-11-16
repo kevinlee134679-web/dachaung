@@ -57,6 +57,9 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not {"schema_migrations", "operation_audit", "source_events", "dose_slots", "event_revisions", "evidence_slot_links"} <= tables:
             raise SchemaError("必要数据表缺失")
+        if current>=3 and not {'o_accounts','o_sessions','o_binding_codes','s02_documents','s02_document_history',
+                               's02_source_keys','idempotency_receipts','receipt_responses','change_notices','o_schedule_windows','o_revocation_audit'} <= tables:
+            raise SchemaError('S02必要数据表缺失')
         return current
 
 

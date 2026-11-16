@@ -16,6 +16,7 @@ import uvicorn
 
 from medplatform.config import ROOT, Settings
 from medplatform.web import create_app
+from medplatform.migrations import catalog
 
 
 class HttpLifecycleTests(unittest.TestCase):
@@ -64,15 +65,15 @@ class HttpLifecycleTests(unittest.TestCase):
                     opener.open(base + '/api/v1/health', timeout=3)
                 self.assertEqual(old.exception.code, 503)
                 old.exception.close()
-                self.assertEqual(cli('migrate')['schema_version'], '0002')
-                self.assertEqual(cli('db-status')['schema_version'], '0002')
+                self.assertEqual(cli('migrate')['schema_version'], f'{len(catalog()):04d}')
+                self.assertEqual(cli('db-status')['schema_version'], f'{len(catalog()):04d}')
                 with opener.open(base + '/api/v1/health', timeout=3) as response:
                     data = json.load(response)
                     self.assertEqual(response.status, 200)
                     self.assertEqual(data['data']['readiness'], 'ready')
                     self.assertEqual(data['request_id'], response.headers['X-Request-ID'])
                 with opener.open(base + '/', timeout=3) as response:
-                    self.assertIn(b'/static/app.js', response.read())
+                    self.assertIn(b'/static/s02.js', response.read())
             finally:
                 server.should_exit = True
                 worker.join(10)

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('serve', 'init-db', 'migrate', 'db-status')]
+    [ValidateSet('serve', 'init-db', 'migrate', 'db-status', 'seed-demo')]
     [string]$Command = 'serve'
 )
 $ErrorActionPreference = 'Stop'

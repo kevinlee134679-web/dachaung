@@ -28,14 +28,19 @@ def envelope(request: Request, data=None, *, code=None, message=None):
             "data": None if code else data, "error": {"code": code, "message": message} if code else None}
 
 
-def create_app(settings: Settings | None = None, authority: DemoAuthority | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, authority: DemoAuthority | None = None, *, clock=None) -> FastAPI:
     settings = settings or load_settings()
-    authority = authority if authority is not None else DemoAuthority()
     db = Database(settings.database_path)
+    from .s02_service import S02Service
+    from .documents import now
+    from .s02_api import router as s02_router
+    service = S02Service(db,clock or now)
+    authority = authority if authority is not None else service.auth
     app = FastAPI(title="Medication platform foundation", version=__version__,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings, app.state.db, app.state.authority = settings, db, authority
     app.state.registry = ModuleRegistry()
+    app.state.s02 = service
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -47,15 +52,33 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
             if request.headers.get("host") not in settings.allowed_hosts:
                 raise AppError(403, "HOST_REJECTED", "仅允许已配置的本地服务地址")
             if request.url.path.startswith("/api/") and request.method not in {"GET", "HEAD", "OPTIONS"}:
-                principal = authority.resolve(request.cookies.get("session"))
-                authority.require_write(principal, request.headers.get("X-CSRF-Token"),
-                                        request.headers.get("origin"), settings.allowed_origins)
+                if request.url.path == '/api/v1/auth/demo-session':
+                    if request.headers.get('origin') not in settings.allowed_origins:
+                        raise AppError(403,'CSRF_REJECTED','演示登录需要同源操作')
+                elif request.url.path == '/api/v1/auth/logout' and authority is service.auth:
+                    principal=authority.resolve(request.cookies.get('session'),logout_receipt=True)
+                    authority.require_write(principal,request.headers.get('X-CSRF-Token'),request.headers.get('origin'),settings.allowed_origins,logout_receipt=True)
+                else:
+                    principal = authority.resolve(request.cookies.get("session"))
+                    authority.require_write(principal, request.headers.get("X-CSRF-Token"),
+                                            request.headers.get("origin"), settings.allowed_origins)
                 key = request.headers.get("Idempotency-Key", "")
                 if not 16 <= len(key) <= 128:
                     raise AppError(422, "VALIDATION_ERROR", "写操作需要有效幂等键")
+                # Bounded transport parsing, including chunked multipart requests.
+                raw=bytearray()
+                async for chunk in request.stream():
+                    raw.extend(chunk)
+                    if len(raw)>10485760+65536:
+                        raise AppError(413,'REQUEST_TOO_LARGE','请求超过本地服务大小限制')
+                request._body=bytes(raw)
             response = await call_next(request)
         except AppError as exc:
             response = error_response(request, exc)
+            if exc.code=='OPERATION_IN_PROGRESS':
+                response.headers['Retry-After']='1'
+        except (sqlite3.Error, SchemaError):
+            response=error_response(request,AppError(503,'DEPENDENCY_NOT_READY','必要存储依赖未就绪'))
         except Exception:
             # Never log exception text/traceback, body, query, cookies or URL.
             logger.error("request_failed request_id=%s", request.state.request_id)
@@ -70,7 +93,10 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
 
     @app.exception_handler(AppError)
     async def application_error(request, exc):
-        return error_response(request, exc)
+        response=error_response(request, exc)
+        if exc.code=='OPERATION_IN_PROGRESS':
+            response.headers['Retry-After']='1'
+        return response
 
     @app.exception_handler(HTTPException)
     async def http_error(request, exc):
@@ -120,12 +146,14 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
             "model_connectivity": "unverified",
             "capabilities": [{"code": "foundation_storage", "available": True, "reason": None},
                 *[{"code": code, "available": False, "reason": "尚未到对应业务阶段或真实依赖未接入"}
-                  for code in ("demo_login", "dialogue", "in_app_notification", "system_notification", "external_auth", "cas")]],
+                  for code in ("dialogue", "in_app_notification", "system_notification", "external_auth", "cas")],
+                {"code":"demo_login","available":True,"reason":None}],
             "version_refs": [{"kind": "application", "version": __version__},
                              {"kind": "schema", "version": f"{schema:04d}"},
                              {"kind": "contract", "version": "flow-v0.1"}]})
 
     app.state.registry.include_router(app, router)
+    app.state.registry.include_router(app, s02_router(service,envelope))
 
     @app.get("/", include_in_schema=False)
     def index():

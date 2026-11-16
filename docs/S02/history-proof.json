@@ -1,0 +1,395 @@
+{
+  "baseline_commit": "c80d2263ae7f02c05ff8a6779b359af5ea2ec84d",
+  "record_id": "R0019",
+  "version_id": "V0019",
+  "protected_before": {
+    "README.md": {
+      "bytes": 14456,
+      "sha256": "160b363e37e7bdfc66ecb232d3ededbaa0fa836bb1fd2a93fa28e07963cb8f84"
+    },
+    "docs/S00/00_范围与全平台目录_draft01.md": {
+      "bytes": 20328,
+      "sha256": "14e2727e927b1146f4f577324ceb091e0b78692b0503bf2ca48e8ee506591fb4"
+    },
+    "docs/S00/01_公共基础与O字段_draft01.md": {
+      "bytes": 37489,
+      "sha256": "54cecf7c92eb924bdc2f0241bef89d9671403f2793d8c10b17bdc1bb959680c7"
+    },
+    "docs/S00/02_公共基础与O接口卡_draft01.md": {
+      "bytes": 82548,
+      "sha256": "cc67785d158394e70db66e7ae3e6b179d7e706cc0c4b0995cf12fef4c7a9dc8d"
+    },
+    "docs/S00/03_工程与访问核查_20261116.md": {
+      "bytes": 8018,
+      "sha256": "2bb6838d2439a1e0586bae2e0d29ed9248ecef40becaf1d9ffaaf05950a564f7"
+    },
+    "docs/S00/04_文档追加操作校验证据_20261116.json": {
+      "bytes": 1186,
+      "sha256": "a61be03870dba89100fac03a8ff0ed1b84ab77b4d48646a0b30994dde78755eb"
+    },
+    "docs/S00/05_本轮前缀与文件校验证据_20261116.json": {
+      "bytes": 2846,
+      "sha256": "7bcb04974878cff44a9e240f2a1b1f083b88063e86bb9ec5c5428cce836b6e99"
+    },
+    "docs/S00/06_认证恢复追加校验_20261116.json": {
+      "bytes": 2655,
+      "sha256": "f681712c745b9d26dc3572d5a24f5f33c8b579f3dc20a28f7c309dec800e4bf7"
+    },
+    "docs/S00/07_文档字节保护追加校验_20261116.json": {
+      "bytes": 2188,
+      "sha256": "3fc4c18f484a905ded521202bff15ed3af6391746947ce77f0914ca2bfa105fd"
+    },
+    "docs/S00/08_公共O确认及A草案校验_20261116.json": {
+      "bytes": 3531,
+      "sha256": "0bd854dac7202c8e2488d72d51c2a89b3599374feac41857f2c6fd463836fdce"
+    },
+    "docs/S00/09_确认来源格式核查_20261116.json": {
+      "bytes": 1038,
+      "sha256": "8d61d20b59cd0dd94b5a514ab8cdb8d6f222079863644e5b17dff47cc70fdb3c"
+    },
+    "docs/S00/10_A确认及B草案校验_20261116.json": {
+      "bytes": 4785,
+      "sha256": "a0b5fa3fecc63619b16d5969ee9be008c609257c11654abc0d56f4b3687bcd06"
+    },
+    "docs/S00/11_B确认及C草案校验_20261116.json": {
+      "bytes": 4301,
+      "sha256": "3cc23c2dc228695d3ef67a1a87828937f95cfa44691d07db0bcb57cd69cc8c97"
+    },
+    "docs/S00/12_同步失败追加校验_20261116.json": {
+      "bytes": 1857,
+      "sha256": "0c28552ad97e8eb87b785b7e2f0557bf5ca3c46a88b607b7bab112b714b32c16"
+    },
+    "docs/S00/13_C确认及全流程草案校验_20261116.json": {
+      "bytes": 4859,
+      "sha256": "f6b2dc90a234c05e70380cc011225b5ecd854967668cbbb9c6ef00982e6421ad"
+    },
+    "docs/S00/14_同步重试前追加校验_20261116.json": {
+      "bytes": 1778,
+      "sha256": "6b66834e0bce21d77410be1de8a25e5ba83fbd52f1385447369e4182b588ef99"
+    },
+    "docs/S00/15_延期适配规划追加校验_20261116.json": {
+      "bytes": 2625,
+      "sha256": "4e673e90495a8f106faa3b8265219f256b75ae0cb087b86bdeab61a89c4e7c86"
+    },
+    "docs/S00/16_延期适配同步重试校验_20261116.json": {
+      "bytes": 1653,
+      "sha256": "a1439038c21a5d5f0d4b5ae3d44ca159aa455fe9cf8c452566c0de26a18cc7e1"
+    },
+    "docs/S00/17_延期适配最终同步失败校验_20261116.json": {
+      "bytes": 1611,
+      "sha256": "a33c232b4eb3649e4952c097dcdcbd0cbc7f24286c7ec806f16ca0778464c1fc"
+    },
+    "docs/S00/18_延期适配确认及强度视图草案校验_20261116.json": {
+      "bytes": 3363,
+      "sha256": "340363d7c637497698990877a715a8ba9644cf268a2a7b96487581f916528b86"
+    },
+    "docs/S00/19_延期适配确认同步失败追加校验_20261116.json": {
+      "bytes": 1615,
+      "sha256": "40f631219ee25917edbd7ac49c2b50906b27e89bb503aabfde8242b7902b2c80"
+    },
+    "docs/S00/20_B强度视图确认及全流程清单校验_20261116.json": {
+      "bytes": 3537,
+      "sha256": "a42079963173341eae05d6ed0cb56191417241ebfd8421f8af230fdd8ba339d2"
+    },
+    "docs/S00/21_B强度视图确认同步失败校验_20261116.json": {
+      "bytes": 1662,
+      "sha256": "fadbbda8312e831b598f07022567f31b831081234f6a6e4a8b4d8d3f2fb59b32"
+    },
+    "docs/S00/22_S00收尾与S01交接_20261116.md": {
+      "bytes": 8945,
+      "sha256": "68da1f658b712e448400da5df06e8d83b87854b179ae51d4f3a10cfa4d6a25b2"
+    },
+    "docs/S00/23_全流程确认与S00收尾追加校验_20261116.json": {
+      "bytes": 6095,
+      "sha256": "0815f62fb95ddb682e0b22427afd6e4f51e40b220bceda9f89adf149752abce5"
+    },
+    "docs/S00/A00_范围与待确认事项_draft01.md": {
+      "bytes": 10893,
+      "sha256": "4ce9cf840844036e8964d2622190b5c2a08106c18f5314e8a987c050153cc5cb"
+    },
+    "docs/S00/A01_字段_draft01.md": {
+      "bytes": 43921,
+      "sha256": "05e022d01639ab8399042bb80ec3b101d1d7f5568a302c48f139a15131263c43"
+    },
+    "docs/S00/A02_接口卡_draft01.md": {
+      "bytes": 106025,
+      "sha256": "77b3071db4290e92574bb8ee16ec226ac9f6f8f9872444a299862b8334e6823a"
+    },
+    "docs/S00/B00_范围与待确认事项_draft01.md": {
+      "bytes": 12622,
+      "sha256": "f18336e11287e53f1d6926d3dc49ff56f531bc7d57e5fa0ebdf90b7e9e3c2e96"
+    },
+    "docs/S00/B01_字段_draft01.md": {
+      "bytes": 53952,
+      "sha256": "5e6fe105ffa8aa6632ea1d986635eb847cbb32e92a4fb17274dbefab55d75a46"
+    },
+    "docs/S00/B02_接口卡_draft01.md": {
+      "bytes": 96123,
+      "sha256": "346f9929566ebc8e2c3f031ceb23e6f5f255aee27b0f1c094bdd774f3e42ff6a"
+    },
+    "docs/S00/C00_范围与待确认事项_draft01.md": {
+      "bytes": 12130,
+      "sha256": "0d02ea1752385915f99c85d1d009cb1d28c80e437b505f83d5638f82aaee2bb5"
+    },
+    "docs/S00/C01_字段_draft01.md": {
+      "bytes": 50651,
+      "sha256": "5884ba7bb3f60a405de9e1b3a494f31a2a0efc134353ec068b0e374da2e2d9e8"
+    },
+    "docs/S00/C02_接口卡_draft01.md": {
+      "bytes": 108774,
+      "sha256": "462ac5471a9610f452fb336db2b0feef2a8f1e7816b0cfcb4a45dfc82f290ff9"
+    },
+    "docs/S00/F00_全流程范围与待确认事项_draft01.md": {
+      "bytes": 15464,
+      "sha256": "cdee088d6fc280828e4bc1abf047d58a6d75d1324dfedd65cfa2668288e03f00"
+    },
+    "docs/S00/F01_跨模块时序与事务_draft01.md": {
+      "bytes": 17161,
+      "sha256": "039b45553cc109ec3b6eeb82008ce896c63b1960eecfcdc17465dffa189a319e"
+    },
+    "docs/S00/F02_接口权限与状态索引_draft01.md": {
+      "bytes": 36474,
+      "sha256": "dcf2c0a4305b16fd44725a47a0ce1ff0c77822fe8409f5364e6bdb7387478999"
+    },
+    "docs/S00/F03_增量字段接口与验收_draft01.md": {
+      "bytes": 24213,
+      "sha256": "ca3871e22e1918b54101b9519411d94e79479628797c2f32f1d5487b73912bd8"
+    },
+    "docs/S00/F04_CAS与支持强度延期适配方案_draft01.md": {
+      "bytes": 9136,
+      "sha256": "8520da9199dc7fe09be9778e86de875298f1173de322d2cbf63a58a5a7e899d5"
+    },
+    "docs/S00/F05_支持强度可用状态接口增量_draft01.md": {
+      "bytes": 13515,
+      "sha256": "d120e0897021b31ce06018734933855a184a5246b90ea753ab222da6e6378f8f"
+    },
+    "docs/S00/F06_剩余全流程集中确认清单_draft01.md": {
+      "bytes": 12727,
+      "sha256": "42e1b6755de0345508398ecaad9815b375ff5e3da554d49c5f5507b3e8ff7cb1"
+    },
+    "docs/S00/F06_剩余全流程集中确认清单_draft02.md": {
+      "bytes": 13056,
+      "sha256": "1aaaabf19986ca96f8c9bc59ad7c6e2e958f6953d511a3a5ffeb48b27076970a"
+    },
+    "docs/S01/screenshots/dependency-unavailable.jpg": {
+      "bytes": 31010,
+      "sha256": "ae1f7177605935f0b6d52a32b04f6172610405ea5223bd4a9ab6dd2db65a4882"
+    },
+    "docs/S01/screenshots/desktop.jpg": {
+      "bytes": 40242,
+      "sha256": "f3acf90d711c32ec9d629d64a2aa3860da0e21bf4ddd3e31b80db9f104e84c19"
+    },
+    "docs/S01/screenshots/mobile.jpg": {
+      "bytes": 29776,
+      "sha256": "6911c4a346ea48609ca433948b3af9315e9f5041eaca232a0fc5db6d63a60325"
+    },
+    "docs/S01/历史保护.json": {
+      "bytes": 14053,
+      "sha256": "ffa1475a28f1cec2d61c102e95b854d6e5649d3bd32f7ccf49016b61b1d2a495"
+    },
+    "docs/S01/接口与交接.md": {
+      "bytes": 4571,
+      "sha256": "0ac567aa0d9ca0f144d957d971c0d9d29aa6a2525659bbabd809fe5e6f2aa44d"
+    },
+    "docs/S01/自动测试.txt": {
+      "bytes": 6361,
+      "sha256": "c63b996356b6c48d8e2b4e8e8c16df690fe14d5b56e113914e27f6d91f7d41e1"
+    },
+    "docs/S01/验证结果.json": {
+      "bytes": 10502,
+      "sha256": "72204aa047617bc1409a672814f7e1a6a7a8513922e05367baff88efc3e660c0"
+    },
+    "docs/baseline/v1.1/00_全平台分阶段编码汇总Prompt.md": {
+      "bytes": 155075,
+      "sha256": "8334e2b6680b34324af89fc8d29dc8ffcd936f1c1ab372902cfa33f2a9c6fdd6"
+    },
+    "docs/baseline/v1.1/00_汇总Prompt使用说明.md": {
+      "bytes": 11828,
+      "sha256": "1961b7b607a56202e14f409ff62bdc93c4d4da04a96bc244cefbe398c1a306c1"
+    },
+    "docs/contracts/A_v0.1_确认清单.md": {
+      "bytes": 5543,
+      "sha256": "01fbbc9daf5618c4749f782025e6f91e0509f72a30a78025245a97d257628136"
+    },
+    "docs/contracts/A_v0.2_B到期任务增量.md": {
+      "bytes": 1457,
+      "sha256": "e301f4dbae9dc3400ee5ef04d065177a1b489bc5d4fcc25c9243510e6faf31ac"
+    },
+    "docs/contracts/A_v0.3_C任务增量.md": {
+      "bytes": 2473,
+      "sha256": "36e8133e6193dada06d8d962fbebc9a4ae3de2e12ee08efbf2e1508c5641a504"
+    },
+    "docs/contracts/A_v0.4_全流程执行与快照增量.md": {
+      "bytes": 5307,
+      "sha256": "c659cc4c39daec6a0e510078438c7ecda3a8ed832784a67a122370ac333d3b77"
+    },
+    "docs/contracts/B_v0.1_确认清单.md": {
+      "bytes": 5256,
+      "sha256": "8c34367690aa99a6776b25a8833d30ac63738bbea98ee77c168e4572c39cb789"
+    },
+    "docs/contracts/B_v0.2_C服务代理增量.md": {
+      "bytes": 3220,
+      "sha256": "89b8a2b8168624210a95a8f656c07074c9a30e60956b5c73330388fa2e3cb555"
+    },
+    "docs/contracts/B_v0.3_支持强度可用状态增量.md": {
+      "bytes": 5691,
+      "sha256": "1a0471c1f96972eacdffb0b813cb978933d29ef59600f58648cadb6dde6e7025"
+    },
+    "docs/contracts/B_v0.4_到期投影与全流程增量.md": {
+      "bytes": 4106,
+      "sha256": "b891e6eb407b7a4c7702649d108092b859dcabc9d21b6961cb10214d38c32095"
+    },
+    "docs/contracts/C_v0.1_确认清单.md": {
+      "bytes": 6595,
+      "sha256": "4839317ff309fdfcc7898d5bf34d999f060eee693d35ecffc1f81c9d0c0e823f"
+    },
+    "docs/contracts/C_v0.2_全流程一致性增量.md": {
+      "bytes": 4715,
+      "sha256": "0573ed4dee0a861498e6f488766c2a2bea1f616b3c40659d489763a7dbcad9a3"
+    },
+    "docs/contracts/全平台接口目录_v0.1.md": {
+      "bytes": 39167,
+      "sha256": "064afda237c79b61adc4c54766873dd7161b066e74853215b435ddaa688bc30c"
+    },
+    "docs/contracts/全流程_v0.1_确认清单.md": {
+      "bytes": 15518,
+      "sha256": "d678770b1614dfc12535207a8b5e3d1b337649fe3fc4d580f64f297d6e86e881"
+    },
+    "docs/contracts/公共基础与O_v0.1_确认清单.md": {
+      "bytes": 6951,
+      "sha256": "946fedd753ac69173ebdde94cb5d20ebfa4ada78b2eb78116cd25db389ae6311"
+    },
+    "docs/contracts/公共基础与O_v0.2_A衔接增量.md": {
+      "bytes": 2383,
+      "sha256": "98c3c048a87054c264798afa2b6e97701ea92ef12b36facb20c76e97be899667"
+    },
+    "docs/contracts/公共基础与O_v0.3_B权限增量.md": {
+      "bytes": 1280,
+      "sha256": "213d6a3d563e6856213fda6dfa24f254ecf9dbe1465060f705c8e05efa9c205f"
+    },
+    "docs/contracts/公共基础与O_v0.4_C授权与演示增量.md": {
+      "bytes": 2861,
+      "sha256": "4c94fd57f01a3007084e96adc18f211452a58436cf2a666565fd3791bc2f3e5a"
+    },
+    "docs/contracts/公共基础与O_v0.5_全流程衔接增量.md": {
+      "bytes": 4732,
+      "sha256": "29281ea6ef46f700be992380af793e984edb541ede0dc83a0587eaf8b93aa712"
+    },
+    "docs/contracts/延期适配_v0.1_确认清单.md": {
+      "bytes": 5162,
+      "sha256": "88c947fffc73c368304b99e195257528074cc6fabced27046bac38dcc8cde538"
+    },
+    "docs/工作记录.md": {
+      "bytes": 124614,
+      "sha256": "82fc4bc87182ff3f3fb144820e7524675b093d4b6e21e085fd8c372e7cd8e729"
+    },
+    "docs/数据字典.md": {
+      "bytes": 3969,
+      "sha256": "91c40ddb38437ec39b249208c39befd8638f3be6476bd19426498194de36a136"
+    },
+    "docs/版本登记.md": {
+      "bytes": 17187,
+      "sha256": "8fb1f014435fc2aa87f43c95575f507a3443e7f44ae79f5230fe7395f0fabf0d"
+    },
+    "docs/运行说明.md": {
+      "bytes": 6703,
+      "sha256": "c93b27a5867d9818aa325846edf3a9034f2adcac1c563a432bfd3138ec6dcf23"
+    },
+    "migrations/0001_foundation.sql": {
+      "bytes": 2653,
+      "sha256": "17d298d1a0f82e78725fc9ab7613843a3e0a0cb742b7224b353eb8c114e6975b"
+    },
+    "migrations/0002_event_history.sql": {
+      "bytes": 1914,
+      "sha256": "a7a9761e3e906b90afd1c95bb2b721a91e149b55d3b03aa93b8c7e020e8a3846"
+    }
+  },
+  "appended": {
+    ".gitignore": {
+      "before": {
+        "bytes": 232,
+        "sha256": "61ded75c6bbfe001ad9d1e90dc9f09f360e4d014dc59b7023c2e6507716ec0ce"
+      },
+      "after": {
+        "bytes": 305,
+        "sha256": "a052479b65d053bdd68c55ef2dc35d0639f92dd10bb1f673bf6cfa4565d75e3d"
+      },
+      "prefix_sha256": "61ded75c6bbfe001ad9d1e90dc9f09f360e4d014dc59b7023c2e6507716ec0ce",
+      "prefix_bytes_equal": true
+    },
+    "docs/运行说明.md": {
+      "before": {
+        "bytes": 6703,
+        "sha256": "c93b27a5867d9818aa325846edf3a9034f2adcac1c563a432bfd3138ec6dcf23"
+      },
+      "after": {
+        "bytes": 8058,
+        "sha256": "b906880f4b544b0d60246a325a38ba39577aa8391bbc9277595ab7f89101eaa4"
+      },
+      "prefix_sha256": "c93b27a5867d9818aa325846edf3a9034f2adcac1c563a432bfd3138ec6dcf23",
+      "prefix_bytes_equal": true
+    },
+    "docs/数据字典.md": {
+      "before": {
+        "bytes": 3969,
+        "sha256": "91c40ddb38437ec39b249208c39befd8638f3be6476bd19426498194de36a136"
+      },
+      "after": {
+        "bytes": 7852,
+        "sha256": "2eed2c1f4240011e6e843f20075aa492ed60044946cb75533dc1e8e439d704f5"
+      },
+      "prefix_sha256": "91c40ddb38437ec39b249208c39befd8638f3be6476bd19426498194de36a136",
+      "prefix_bytes_equal": true
+    },
+    "README.md": {
+      "before": {
+        "bytes": 14456,
+        "sha256": "160b363e37e7bdfc66ecb232d3ededbaa0fa836bb1fd2a93fa28e07963cb8f84"
+      },
+      "after": {
+        "bytes": 15688,
+        "sha256": "c8606ca01edf85564eceb5103381b07d58c936f691a2ae81e64c5036fa979354"
+      },
+      "prefix_sha256": "160b363e37e7bdfc66ecb232d3ededbaa0fa836bb1fd2a93fa28e07963cb8f84",
+      "prefix_bytes_equal": true
+    },
+    "docs/版本登记.md": {
+      "before": {
+        "bytes": 17187,
+        "sha256": "8fb1f014435fc2aa87f43c95575f507a3443e7f44ae79f5230fe7395f0fabf0d"
+      },
+      "after": {
+        "bytes": 18697,
+        "sha256": "3537f9a101e53f9d4fcd19d86bb201081063b0d598323028b4edc3711b827d3c"
+      },
+      "prefix_sha256": "8fb1f014435fc2aa87f43c95575f507a3443e7f44ae79f5230fe7395f0fabf0d",
+      "prefix_bytes_equal": true
+    },
+    "docs/工作记录.md": {
+      "before": {
+        "bytes": 124614,
+        "sha256": "82fc4bc87182ff3f3fb144820e7524675b093d4b6e21e085fd8c372e7cd8e729"
+      },
+      "after": {
+        "bytes": 138871,
+        "sha256": "ffb4573d9c2997e4c259f52a8d6c4c784d1188bc81749b24fad6f5a13cd4af2e"
+      },
+      "prefix_sha256": "82fc4bc87182ff3f3fb144820e7524675b093d4b6e21e085fd8c372e7cd8e729",
+      "prefix_bytes_equal": true
+    }
+  },
+  "old_document_and_migration_bytes_preserved": true,
+  "new_record_sections_verified": true,
+  "additional_attributes_append": {
+    "before": {
+      "bytes": 556,
+      "sha256": "ecd9f6c807ea3c25cd3a82072df2ae2c4a201b0825a64e32c7a88e791caa5946"
+    },
+    "after": {
+      "bytes": 638,
+      "sha256": "37a278121624967df08703889e5991ac0939695bcf1c87369e3b9992027809a9"
+    },
+    "prefix_sha256": "ecd9f6c807ea3c25cd3a82072df2ae2c4a201b0825a64e32c7a88e791caa5946",
+    "prefix_bytes_equal": true
+  }
+}

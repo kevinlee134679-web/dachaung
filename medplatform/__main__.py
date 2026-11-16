@@ -14,7 +14,7 @@ from .migrations import migrate, status
 
 def main():
     parser = argparse.ArgumentParser(description="S01 shared foundation: explicit lifecycle")
-    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "serve", "journal-snapshot", "journal-append"])
+    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "expire-receipts", "serve", "journal-snapshot", "journal-append"])
     parser.add_argument("--target", type=int)
     parser.add_argument("--journal", type=Path, default=Path("docs/工作记录.md"))
     parser.add_argument("--entry", type=Path)
@@ -38,6 +38,14 @@ def main():
                 print(json.dumps({"schema_version": f"{version:04d}", "outcome": "ready"}))
             elif args.command == "db-status":
                 print(json.dumps({"schema_version": f"{status(db):04d}", "outcome": "ready"}))
+            elif args.command == 'seed-demo':
+                from .s02_service import seed_demo
+                print(json.dumps({'demo_version':seed_demo(db),'outcome':'ready','is_simulated':True}))
+            elif args.command == 'expire-receipts':
+                from .idempotency import expire_receipts
+                from .documents import now
+                status(db)
+                print(json.dumps(expire_receipts(db,now)))
             else:
                 import uvicorn
                 from .web import create_app

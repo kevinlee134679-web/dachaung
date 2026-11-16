@@ -1,0 +1,10 @@
+{
+  "version": "demo-identity-v0.1",
+  "is_simulated": true,
+  "accounts": [
+    {"account_id":"demo-patient-a","display_name":"演示患者甲","self_patient_id":"demo-patient-a-self","is_admin":false},
+    {"account_id":"demo-patient-b","display_name":"演示患者乙","self_patient_id":"demo-patient-b-self","is_admin":false},
+    {"account_id":"demo-family","display_name":"演示家人（也可管理自己）","self_patient_id":"demo-family-self","is_admin":false},
+    {"account_id":"demo-admin","display_name":"演示管理员","self_patient_id":null,"is_admin":true}
+  ]
+}

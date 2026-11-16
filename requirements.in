@@ -2,5 +2,8 @@
 fastapi
 uvicorn
 pydantic-settings
+# Multipart uploads and IANA calendar data on Windows.
+python-multipart
+tzdata
 # In-process HTTP verification only; never calls a model/provider.
 httpx2

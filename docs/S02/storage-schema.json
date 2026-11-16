@@ -1,0 +1,1238 @@
+{
+  "schema_version": "0003",
+  "tables": {
+    "schema_migrations": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "version",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "parent_version",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "name",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "checksum",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "applied_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "app_version",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE schema_migrations (\n                    version INTEGER PRIMARY KEY, parent_version INTEGER,\n                    name TEXT NOT NULL, checksum TEXT NOT NULL,\n                    applied_at TEXT NOT NULL, app_version TEXT NOT NULL) STRICT"
+    },
+    "operation_audit": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "operation_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "account_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "operation",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "outcome",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "occurred_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "data_environment",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE operation_audit (\n    operation_id TEXT PRIMARY KEY,\n    account_id TEXT,\n    patient_id TEXT,\n    operation TEXT NOT NULL,\n    outcome TEXT NOT NULL,\n    occurred_at TEXT NOT NULL,\n    data_environment TEXT NOT NULL CHECK(data_environment IN ('demo','real'))\n) STRICT"
+    },
+    "dose_slots": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "dose_slot_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "data_environment",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "plan_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "plan_version",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "plan_entry_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "medication_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "scheduled_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "status",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "source_rule_version",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "is_simulated",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE dose_slots (\n    dose_slot_id TEXT PRIMARY KEY,\n    patient_id TEXT NOT NULL,\n    data_environment TEXT NOT NULL CHECK(data_environment IN ('demo','real')),\n    plan_id TEXT NOT NULL,\n    plan_version INTEGER NOT NULL CHECK(plan_version > 0),\n    plan_entry_id TEXT NOT NULL,\n    medication_id TEXT NOT NULL,\n    scheduled_at TEXT NOT NULL,\n    status TEXT NOT NULL CHECK(status IN ('active','superseded','cancelled')),\n    source_rule_version TEXT NOT NULL,\n    is_simulated INTEGER NOT NULL CHECK(is_simulated = (data_environment = 'demo')),\n    UNIQUE(patient_id, data_environment, dose_slot_id),\n    UNIQUE(patient_id, data_environment, plan_id, plan_version, plan_entry_id, scheduled_at)\n) STRICT"
+    },
+    "source_events": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "event_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "data_environment",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "event_kind",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "source",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "source_subject_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "source_event_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "evidence_type",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "occurred_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "received_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "reporter_account_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "device_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 12,
+          "name": "original_payload_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 13,
+          "name": "is_simulated",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE source_events (\n    event_id TEXT PRIMARY KEY,\n    patient_id TEXT NOT NULL,\n    data_environment TEXT NOT NULL CHECK(data_environment IN ('demo','real')),\n    event_kind TEXT NOT NULL CHECK(event_kind IN ('medication','measurement')),\n    source TEXT NOT NULL CHECK(source IN ('manual','box','wearable')),\n    source_subject_id TEXT NOT NULL,\n    source_event_id TEXT NOT NULL,\n    evidence_type TEXT,\n    occurred_at TEXT NOT NULL,\n    received_at TEXT NOT NULL,\n    reporter_account_id TEXT,\n    device_id TEXT,\n    original_payload_json TEXT NOT NULL CHECK(json_valid(original_payload_json) AND json_type(original_payload_json)='object'),\n    is_simulated INTEGER NOT NULL CHECK(is_simulated = (data_environment = 'demo')),\n    CHECK((source='manual' AND reporter_account_id IS NOT NULL AND device_id IS NULL)\n       OR (source IN ('box','wearable') AND reporter_account_id IS NULL AND device_id IS NOT NULL)),\n    CHECK(source_subject_id = COALESCE(reporter_account_id, device_id)),\n    CHECK((event_kind='measurement' AND evidence_type IS NULL)\n       OR (event_kind='medication' AND evidence_type IS NOT NULL AND source='manual' AND evidence_type IN ('self_report','family_report'))\n       OR (event_kind='medication' AND evidence_type IS NOT NULL AND source IN ('box','wearable') AND evidence_type IN ('box_opening','device_inference'))),\n    UNIQUE(patient_id, data_environment, event_id),\n    UNIQUE(event_id, is_simulated),\n    UNIQUE(patient_id, data_environment, source, source_subject_id, source_event_id)\n) STRICT"
+    },
+    "event_revisions": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "event_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "revision",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 2
+        },
+        {
+          "cid": 2,
+          "name": "change_kind",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "occurred_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "payload_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "reason",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "replaces_revision",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "actor_account_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "is_simulated",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "event_revisions",
+          "from": "event_id",
+          "to": "event_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 0,
+          "seq": 1,
+          "table": "event_revisions",
+          "from": "replaces_revision",
+          "to": "revision",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "source_events",
+          "from": "event_id",
+          "to": "event_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 1,
+          "table": "source_events",
+          "from": "is_simulated",
+          "to": "is_simulated",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 2,
+          "seq": 0,
+          "table": "source_events",
+          "from": "event_id",
+          "to": "event_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE event_revisions (\n    event_id TEXT NOT NULL REFERENCES source_events(event_id),\n    revision INTEGER NOT NULL CHECK(revision > 0),\n    change_kind TEXT NOT NULL CHECK(change_kind IN ('original','correction','withdrawal')),\n    occurred_at TEXT NOT NULL,\n    payload_json TEXT NOT NULL CHECK(json_valid(payload_json) AND json_type(payload_json)='object'),\n    reason TEXT,\n    replaces_revision INTEGER,\n    actor_account_id TEXT,\n    created_at TEXT NOT NULL,\n    is_simulated INTEGER NOT NULL CHECK(is_simulated IN (0,1)),\n    CHECK((change_kind='original' AND revision=1 AND replaces_revision IS NULL)\n       OR (change_kind IN ('correction','withdrawal') AND revision>1 AND replaces_revision IS NOT NULL AND replaces_revision<revision AND length(trim(reason))>0 AND reason IS NOT NULL)),\n    PRIMARY KEY(event_id, revision),\n    FOREIGN KEY(event_id, is_simulated) REFERENCES source_events(event_id, is_simulated),\n    FOREIGN KEY(event_id, replaces_revision) REFERENCES event_revisions(event_id, revision)\n) STRICT"
+    },
+    "evidence_slot_links": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "event_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "event_revision",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 2
+        },
+        {
+          "cid": 2,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "data_environment",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "dose_slot_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "dose_slots",
+          "from": "patient_id",
+          "to": "patient_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 0,
+          "seq": 1,
+          "table": "dose_slots",
+          "from": "data_environment",
+          "to": "data_environment",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 0,
+          "seq": 2,
+          "table": "dose_slots",
+          "from": "dose_slot_id",
+          "to": "dose_slot_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 0,
+          "table": "source_events",
+          "from": "patient_id",
+          "to": "patient_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 1,
+          "table": "source_events",
+          "from": "data_environment",
+          "to": "data_environment",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 1,
+          "seq": 2,
+          "table": "source_events",
+          "from": "event_id",
+          "to": "event_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 2,
+          "seq": 0,
+          "table": "event_revisions",
+          "from": "event_id",
+          "to": "event_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        },
+        {
+          "id": 2,
+          "seq": 1,
+          "table": "event_revisions",
+          "from": "event_revision",
+          "to": "revision",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE evidence_slot_links (\n    event_id TEXT NOT NULL,\n    event_revision INTEGER NOT NULL,\n    patient_id TEXT NOT NULL,\n    data_environment TEXT NOT NULL,\n    dose_slot_id TEXT NOT NULL,\n    PRIMARY KEY(event_id, event_revision),\n    FOREIGN KEY(event_id, event_revision) REFERENCES event_revisions(event_id, revision),\n    FOREIGN KEY(patient_id, data_environment, event_id) REFERENCES source_events(patient_id, data_environment, event_id),\n    FOREIGN KEY(patient_id, data_environment, dose_slot_id) REFERENCES dose_slots(patient_id, data_environment, dose_slot_id)\n) STRICT"
+    },
+    "o_accounts": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "account_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "display_name",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "self_patient_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "is_admin",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "current_patient_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE o_accounts (\n    account_id TEXT PRIMARY KEY,\n    display_name TEXT NOT NULL,\n    self_patient_id TEXT,\n    is_admin INTEGER NOT NULL CHECK(is_admin IN (0,1)),\n    current_patient_id TEXT\n) STRICT"
+    },
+    "o_sessions": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "session_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "account_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "csrf_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "protected_csrf",
+          "type": "BLOB",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "expires_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "revoked_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "o_accounts",
+          "from": "account_id",
+          "to": "account_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE o_sessions (\n    session_hash TEXT PRIMARY KEY,\n    account_id TEXT NOT NULL REFERENCES o_accounts(account_id),\n    csrf_hash TEXT NOT NULL,\n    protected_csrf BLOB NOT NULL,\n    created_at TEXT NOT NULL,\n    expires_at TEXT NOT NULL,\n    revoked_at TEXT\n) STRICT"
+    },
+    "o_binding_codes": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "code_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "code_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "issuer_session_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "expires_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "consumed_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "o_sessions",
+          "from": "issuer_session_hash",
+          "to": "session_hash",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE o_binding_codes (\n    code_id TEXT PRIMARY KEY,\n    code_hash TEXT NOT NULL UNIQUE,\n    patient_id TEXT NOT NULL,\n    issuer_session_hash TEXT NOT NULL REFERENCES o_sessions(session_hash),\n    expires_at TEXT NOT NULL,\n    consumed_at TEXT\n) STRICT"
+    },
+    "s02_documents": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "resource_key",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "resource_type",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "document_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE s02_documents (\n    resource_key TEXT PRIMARY KEY,\n    resource_type TEXT NOT NULL CHECK(resource_type IN ('Patient','FamilyBinding','Grant','QuestionnaireResponse','Profile','Medication','Draft','PlanVersion','ReminderPreferences','File')),\n    patient_id TEXT NOT NULL,\n    document_json TEXT NOT NULL CHECK(json_valid(document_json) AND json_type(document_json)='object')\n) STRICT"
+    },
+    "s02_document_history": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "resource_key",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "revision",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 2
+        },
+        {
+          "cid": 2,
+          "name": "document_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "s02_documents",
+          "from": "resource_key",
+          "to": "resource_key",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE s02_document_history (\n    resource_key TEXT NOT NULL REFERENCES s02_documents(resource_key),\n    revision INTEGER NOT NULL CHECK(revision>0),\n    document_json TEXT NOT NULL CHECK(json_valid(document_json) AND json_type(document_json)='object'),\n    PRIMARY KEY(resource_key, revision)\n) STRICT"
+    },
+    "s02_source_keys": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "resource_type",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 2
+        },
+        {
+          "cid": 2,
+          "name": "account_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 3
+        },
+        {
+          "cid": 3,
+          "name": "source_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 4
+        },
+        {
+          "cid": 4,
+          "name": "fingerprint",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "resource_key",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "s02_documents",
+          "from": "resource_key",
+          "to": "resource_key",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE s02_source_keys (\n    resource_type TEXT NOT NULL,\n    patient_id TEXT NOT NULL,\n    account_id TEXT NOT NULL,\n    source_id TEXT NOT NULL,\n    fingerprint TEXT NOT NULL,\n    resource_key TEXT NOT NULL REFERENCES s02_documents(resource_key),\n    PRIMARY KEY(resource_type, patient_id, account_id, source_id)\n) STRICT"
+    },
+    "idempotency_receipts": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "receipt_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "scope_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "key_hash",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "request_fingerprint",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "state",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "resource_type",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "resource_id",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "http_status",
+          "type": "INTEGER",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "response_ref",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "protected_response",
+          "type": "BLOB",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 10,
+          "name": "sensitive_until",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 11,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 12,
+          "name": "full_receipt_until",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 13,
+          "name": "completed_at",
+          "type": "TEXT",
+          "notnull": 0,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE idempotency_receipts (\n    receipt_id TEXT PRIMARY KEY,\n    scope_hash TEXT NOT NULL,\n    key_hash TEXT NOT NULL,\n    request_fingerprint TEXT NOT NULL,\n    state TEXT NOT NULL CHECK(state IN ('processing','committed','rejected','expired')),\n    resource_type TEXT,\n    resource_id TEXT,\n    http_status INTEGER CHECK(http_status BETWEEN 100 AND 599),\n    response_ref TEXT,\n    protected_response BLOB,\n    sensitive_until TEXT,\n    created_at TEXT NOT NULL,\n    full_receipt_until TEXT NOT NULL,\n    completed_at TEXT,\n    UNIQUE(scope_hash, key_hash)\n) STRICT"
+    },
+    "receipt_responses": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "response_ref",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "response_json",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE receipt_responses (\n    response_ref TEXT PRIMARY KEY,\n    response_json TEXT NOT NULL CHECK(json_valid(response_json) AND json_type(response_json)='object')\n) STRICT"
+    },
+    "change_notices": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "notice_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "source_module",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "patient_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "data_environment",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 4,
+          "name": "kind",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 5,
+          "name": "source_ref",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 6,
+          "name": "business_key",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 7,
+          "name": "occurred_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 8,
+          "name": "created_at",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 9,
+          "name": "is_simulated",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE change_notices (\n    notice_id TEXT PRIMARY KEY,\n    source_module TEXT NOT NULL CHECK(source_module IN ('O','A','B','C')),\n    patient_id TEXT NOT NULL,\n    data_environment TEXT NOT NULL CHECK(data_environment IN ('demo','real')),\n    kind TEXT NOT NULL CHECK(kind IN ('plan_published','event_revision_changed','statistics_changed','summary_changed','b_intervention_changed','c_service_changed','c_feedback_changed','points_source_changed')),\n    source_ref TEXT NOT NULL CHECK(json_valid(source_ref) AND json_type(source_ref)='object'),\n    business_key TEXT NOT NULL,\n    occurred_at TEXT NOT NULL,\n    created_at TEXT NOT NULL,\n    is_simulated INTEGER NOT NULL CHECK(is_simulated=(data_environment='demo')),\n    UNIQUE(source_module, data_environment, business_key)\n) STRICT"
+    },
+    "o_schedule_windows": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "plan_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "plan_version",
+          "type": "INTEGER",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 2
+        },
+        {
+          "cid": 2,
+          "name": "window_start",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 3
+        },
+        {
+          "cid": 3,
+          "name": "window_end",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 4
+        }
+      ],
+      "foreign_keys": [],
+      "sql": "CREATE TABLE o_schedule_windows (\n    plan_id TEXT NOT NULL,\n    plan_version INTEGER NOT NULL,\n    window_start TEXT NOT NULL,\n    window_end TEXT NOT NULL CHECK(window_end>window_start),\n    PRIMARY KEY(plan_id, plan_version, window_start, window_end)\n) STRICT"
+    },
+    "o_revocation_audit": {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "operation_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 1
+        },
+        {
+          "cid": 1,
+          "name": "resource_type",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 2,
+          "name": "resource_id",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        },
+        {
+          "cid": 3,
+          "name": "reason",
+          "type": "TEXT",
+          "notnull": 1,
+          "dflt_value": null,
+          "pk": 0
+        }
+      ],
+      "foreign_keys": [
+        {
+          "id": 0,
+          "seq": 0,
+          "table": "operation_audit",
+          "from": "operation_id",
+          "to": "operation_id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION",
+          "match": "NONE"
+        }
+      ],
+      "sql": "CREATE TABLE o_revocation_audit (\n    operation_id TEXT PRIMARY KEY REFERENCES operation_audit(operation_id),\n    resource_type TEXT NOT NULL CHECK(resource_type IN ('FamilyBinding','Grant')),\n    resource_id TEXT NOT NULL,\n    reason TEXT NOT NULL\n) STRICT"
+    }
+  }
+}
