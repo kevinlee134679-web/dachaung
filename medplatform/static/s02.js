@@ -53,6 +53,24 @@ const statusLabels = {
 };
 class ViewChanged extends Error {}
 
+function captureView() {
+  return Object.freeze({
+    epoch: state.epoch,
+    accountId: state.context?.account.account_id || null,
+    patientId: state.patient?.patient.patient_id || null,
+    csrfToken: state.context?.csrf_token || null
+  });
+}
+
+function isCurrentView(view) {
+  const current = captureView();
+  return Object.keys(current).every(key => current[key] === view[key]);
+}
+
+function requireCurrentView(view) {
+  if (!isCurrentView(view)) throw new ViewChanged();
+}
+
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -71,11 +89,12 @@ const p = (text, cls = "") => el("p", {
 }, text);
 
 function button(text, fn, cls = "", disabled = false) {
+  const view = captureView();
   return el("button", {
     type: "button",
     class: cls,
     disabled,
-    onclick: event => act(event.currentTarget, fn)
+    onclick: event => act(event.currentTarget, fn, view)
   }, text);
 }
 
@@ -121,14 +140,24 @@ function notice(text, error = false) {
   node.textContent = text;
   node.className = error ? "error" : "success";
 }
-async function act(node, fn) {
-  if (node.disabled) return;
+function actionError(error, view) {
+  notice(error.message || "操作未完成，请核查原结果后重试。", true);
+  const recovery = error.pendingRecovery;
+  if (!recovery || !isCurrentView(view)) return;
+  document.querySelector("#notice").append(document.createTextNode(" "), button("已核对原结果，准备新操作", () => {
+    requireCurrentView(view);
+    if (localStorage.getItem(recovery.key) !== recovery.operation) throw new Error("原操作记录已变化，请重新核对原结果。");
+    localStorage.removeItem(recovery.key);
+    notice("已准备新操作，表单内容已保留。请再次明确选择保存或提交；本次未发送请求。");
+  }));
+}
+async function act(node, fn, view = captureView()) {
+  if (node.disabled || !isCurrentView(view)) return;
   node.disabled = true;
-  const epoch = state.epoch;
   try {
-    await fn();
+    await fn(view);
   } catch (error) {
-    if (!(error instanceof ViewChanged) && epoch === state.epoch) notice(error.message || "操作未完成，请核查原结果后重试。", true);
+    if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view);
   } finally {
     node.disabled = false;
   }
@@ -158,16 +187,16 @@ async function sha(text) {
   const raw = typeof text === "string" ? new TextEncoder().encode(text) : text;
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256", raw))].map(x => x.toString(16).padStart(2, "0")).join("");
 }
-async function api(path, method = "GET", body = null) {
-  const epoch = state.epoch,
-    headers = {},
+async function api(path, method = "GET", body = null, view = captureView()) {
+  requireCurrentView(view);
+  const headers = {},
     options = {
       method,
       headers,
       credentials: "same-origin",
       cache: "no-store"
     };
-  let pending = null;
+  let pending = null, operation = null;
   if (method !== "GET") {
     let semantic;
     if (body instanceof FormData) {
@@ -179,33 +208,43 @@ async function api(path, method = "GET", body = null) {
       options.body = JSON.stringify(body ?? {});
       semantic = options.body;
     }
-    pending = `pending:${state.context?.account.account_id||"anonymous"}:${method}:${path}:${await sha(semantic)}`;
-    let operation = localStorage.getItem(pending);
+    const bodyHash = await sha(semantic);
+    requireCurrentView(view);
+    pending = `pending:${view.accountId||"anonymous"}:${method}:${path}:${bodyHash}`;
+    operation = localStorage.getItem(pending);
     if (!operation) {
       operation = crypto.randomUUID();
       localStorage.setItem(pending, operation);
     }
     headers["Idempotency-Key"] = operation;
-    if (state.context) headers["X-CSRF-Token"] = state.context.csrf_token;
+    if (view.csrfToken) headers["X-CSRF-Token"] = view.csrfToken;
   }
+  requireCurrentView(view); // Preparation may have yielded to a patient/account change.
   const controller = new AbortController();
   options.signal = controller.signal;
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch("/api/v1" + path, options);
     const result = await response.json();
-    if (epoch !== state.epoch) throw new ViewChanged();
+    requireCurrentView(view);
     if (!response.ok || result.status !== "success") {
-      if (pending && response.status < 500 && result.error?.code !== "OPERATION_IN_PROGRESS") localStorage.removeItem(pending);
+      const expired = ["IDEMPOTENCY_EXPIRED", "SENSITIVE_RECEIPT_EXPIRED"].includes(result.error?.code);
+      if (pending && response.status < 500 && result.error?.code !== "OPERATION_IN_PROGRESS" && !expired) localStorage.removeItem(pending);
       if (response.status === 401 && state.context) {
+        state.epoch++;
         state.context = null;
         state.patient = null;
         state.response = null;
         state.draft = null;
         identity();
         await render();
+        notice("当前会话已失效，请重新进入演示。", true);
       }
-      throw new Error(result.error?.message || "操作未完成，请重新检查。");
+      const error = new Error(expired ? "原操作回执已过期。请先核对原资源；已确认结果后，选择“已核对原结果，准备新操作”。" : result.error?.message || "操作未完成，请重新检查。");
+      error.status = response.status;
+      error.code = result.error?.code;
+      if (expired && pending) error.pendingRecovery = Object.freeze({ key: pending, operation });
+      throw error;
     }
     if (pending) localStorage.removeItem(pending);
     return result.data;
@@ -252,15 +291,24 @@ function identity() {
     }, `${item.patient.display_name} · ${item.relationship==="self"?"本人":"家庭协助"}`));
     picker.addEventListener("change", () => act(picker, async () => {
       if (!picker.value) return;
+      const selectedPatient = picker.value;
       state.epoch++;
+      const transition = captureView();
       state.response = null;
       state.draft = null;
-      await api("/auth/current-patient", "PUT", {
-        patient_id: picker.value
-      });
-      await context();
-      await render();
-      notice("已切换对象，旧表单已清除。");
+      main.replaceChildren(p("正在切换管理对象…"));
+      try {
+        await api("/auth/current-patient", "PUT", { patient_id: selectedPatient }, transition);
+        await context();
+        await render();
+        notice("已切换对象，旧表单已清除。");
+      } catch (error) {
+        if (!(error instanceof ViewChanged) && state.epoch === transition.epoch) {
+          identity();
+          await render();
+          if (isCurrentView(transition)) actionError(error, transition);
+        }
+      }
     }));
     area.append(el("label", {}, "正在管理", picker));
   }
@@ -333,7 +381,9 @@ async function render() {
       "aria-label": "当前页面功能"
     });
     for (const [code, label] of tabs) nav.append(button(label, async () => {
+      state.epoch++;
       state.tab = code;
+      notice("");
       await render();
     }, state.tab === code ? "primary" : ""));
     main.append(nav);
@@ -466,11 +516,13 @@ async function fileView() {
       accept: ".pdf,.png,.jpg,.jpeg",
       "aria-label": "选择虚构病历文件"
     });
-    box.append(el("h2", {}, "保存原始资料"), p("支持PDF、PNG、JPEG，最多10MiB。保存不代表已识别医嘱或确认计划。"), field("选择文件", chooser), button("上传资料", async () => {
+    box.append(el("h2", {}, "保存原始资料"), p("支持PDF、PNG、JPEG，最多10MiB。保存不代表已识别医嘱或确认计划。"), field("选择文件", chooser), button("上传资料", async view => {
       const file = chooser.files[0];
       if (!file) throw new Error("请先选择文件。");
-      const hash = await sha(await file.arrayBuffer()),
-        ref = `upload:${referenceKey("file")}:${hash}:${file.name}`;
+      const target = `/patients/${encodeURIComponent(view.patientId)}/files`;
+      const hash = await sha(await file.arrayBuffer());
+      requireCurrentView(view);
+      const ref = `upload:reference:${view.accountId}:${view.patientId}:file:${hash}:${file.name}`;
       let source = localStorage.getItem(ref);
       if (!source) {
         source = crypto.randomUUID();
@@ -479,7 +531,7 @@ async function fileView() {
       const form = new FormData();
       form.append("file", file);
       form.append("source_event_id", source);
-      await api(patientPath("/files"), "POST", form);
+      await api(target, "POST", form, view);
       localStorage.removeItem(ref);
       await render();
       notice("原始资料已保存，尚未识别或确认计划。");
@@ -544,7 +596,8 @@ async function questionnaireView() {
     return;
   }
   state.definition = await api("/questionnaires/initial");
-  const ref = localStorage.getItem(referenceKey("questionnaire"));
+  const refKey = referenceKey("questionnaire");
+  const ref = localStorage.getItem(refKey);
   if (!state.response && ref) {
     try {
       state.response = await api(`/questionnaire-responses/${ref}`);
@@ -552,8 +605,9 @@ async function questionnaireView() {
         const pending = Object.values(state.response.answers).findIndex(a => a.state === "not_answered");
         state.question = pending < 0 ? 7 : pending;
       }
-    } catch {
-      localStorage.removeItem(referenceKey("questionnaire"));
+    } catch (error) {
+      if (error instanceof ViewChanged || error.status !== 404 || error.code !== "RESOURCE_NOT_FOUND") throw error;
+      localStorage.removeItem(refKey);
     }
   }
   if (!state.response) {
@@ -797,6 +851,7 @@ async function profileView() {
   try {
     profile = await api(patientPath("/profiles/current"));
   } catch (error) {
+    if (error instanceof ViewChanged || error.status !== 404 || error.code !== "PROFILE_NOT_AVAILABLE") throw error;
     box.append(p(error.message, "muted"));
   }
   const responseId = localStorage.getItem(referenceKey("questionnaire"));
@@ -853,6 +908,16 @@ async function familyView() {
     if (own() && binding.status === "active") {
       const settings = el("details", {}, el("summary", {}, "编辑精确授权范围")),
         checks = [];
+      const originalDeadline = latest?.valid_until || null;
+      const displayedDeadline = originalDeadline ? new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+      }).format(new Date(originalDeadline)).replace(" ", "T") : "";
+      const [deadlineLabel, deadline] = input("授权截止时间（北京时间，留空表示无预设截止）", displayedDeadline, "datetime-local");
+      let deadlineEdited = false;
+      deadline.addEventListener("input", () => { deadlineEdited = true; });
+      deadline.addEventListener("change", () => { deadlineEdited = true; });
+      settings.append(deadlineLabel);
       for (const [scopeCode, label] of grantOptions) {
         const [node, control] = checkbox(label, latest?.status === "active" && latest.scopes.includes(scopeCode));
         checks.push([scopeCode, control]);
@@ -864,7 +929,7 @@ async function familyView() {
         await api(`/family-bindings/${binding.binding_id}/grant`, "PUT", {
           expected_revision: latest?.meta.revision || 0,
           scopes: [...keep, ...checks.filter(x => x[1].checked).map(x => x[0])],
-          valid_until: null,
+          valid_until: deadlineEdited ? (deadline.value ? new Date(deadline.value + ":00+08:00").toISOString() : null) : originalDeadline,
           confirmed: true
         });
         await context();

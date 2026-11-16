@@ -1,0 +1,27 @@
+{
+  "tests": {
+    "command": [
+      "-X",
+      "utf8",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-v"
+    ],
+    "exit_code": 0,
+    "output": "fresh-tests.txt",
+    "output_sha256": "6014aa7c5db4c1c8e2392f9fb0324a62a02b6cf60f048c1a4c18a5c2aff88191"
+  },
+  "pip_check": {
+    "command": [
+      "-m",
+      "pip",
+      "check"
+    ],
+    "exit_code": 0,
+    "output": "fresh-pip_check.txt",
+    "output_sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09"
+  }
+}

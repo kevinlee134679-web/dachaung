@@ -21,3 +21,6 @@ docs/** -text
 
 # S02 fixture manifests have stable checkout bytes.
 data/demo/*.json text eol=lf
+
+# S02 frontend regression files retain stable checkout bytes.
+*.cjs text eol=lf

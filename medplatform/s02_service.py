@@ -105,7 +105,14 @@ class S02Service:
                 raise AppError(404,'RESOURCE_NOT_FOUND','资源不可访问')
         elif action in ('answers','response','submit_response'):
             own_response=doc['respondent_account_id']==principal.account_id
-            scope='questionnaire:assist' if action!='response' or own_response else 'questionnaire:read'
+            if action=='response':
+                # General read permission also covers one's own submitted work.
+                # Assist alone only permits the author's still-editable draft.
+                scopes=self.auth.scopes(principal,patient,c)
+                scope='questionnaire:assist' if (own_response and doc['status']=='draft'
+                      and 'questionnaire:read' not in scopes) else 'questionnaire:read'
+            else:
+                scope='questionnaire:assist'
             self.auth.require_patient(principal,patient,scope,c)
             if action!='response' and not own_response:
                 raise AppError(403,'RESPONSE_AUTHOR_REQUIRED','请建立自己的作答副本，不能接管另一人的草稿')
@@ -149,6 +156,11 @@ class S02Service:
                 return Result(result)
         subject=principal.account_id if principal else body['demo_account_id']
         scope=['demo','account',subject,patient or '__none__',action,params]
+        if action=='logout':
+            # A logout receipt belongs to exactly one session, not every future
+            # session of this account. Legacy account-only receipts cannot be
+            # safely associated with a session and are not guessed or migrated.
+            scope.append(principal.session_hash)
         canonical={'path':params,'query':query,'body':body}
         result=self.receipts.run(scope,key,canonical,lambda c:self.authorize(c,action,principal,params,body),
                                  lambda c:self.write(c,action,principal,params,body,content),
@@ -271,7 +283,7 @@ class S02Service:
         if action=='logout':
             row=self.auth.session(principal,c,logout_receipt=True)
             if row['revoked_at']:
-                raise AppError(401,'AUTH_REQUIRED','原会话已经退出；只能核查原退出操作键')
+                raise AppError(401,'AUTH_REQUIRED','当前会话已退出，不能创建新的退出操作；历史回执缺少会话绑定时不能安全重放，请核对登录状态')
             c.execute('UPDATE o_sessions SET revoked_at=? WHERE session_hash=?',(at,principal.session_hash))
             operation=uid()
             c.execute('INSERT INTO operation_audit VALUES (?,?,NULL,?,?,?,?)',(operation,principal.account_id,'logout','logged_out',at,'demo'))
@@ -469,10 +481,15 @@ class S02Service:
             entries[-1].update(plan_entry_id=uid(),medication_name_snapshot=med['name'])
             if entry['min_interval_minutes']:
                 occurrences=[]
-                for shift in range(32):
-                    day=first_day+timedelta(days=shift)
-                    if str(day)<entry['start_date'] or (entry['end_date'] and str(day)>entry['end_date']):
-                        continue
+                # Validate the recurrence where this entry actually starts,
+                # independently of the 31-day slot materialization window.
+                # Fifteen local days include two occurrences even when the
+                # first weekly time on the effective day has already passed.
+                inspection_start=max(first_day,date.fromisoformat(entry['start_date']))
+                inspection_end=date.fromisoformat(entry['end_date']) if entry['end_date'] else date.max
+                inspection_days=min(15,max(0,(inspection_end-inspection_start).days+1))
+                for shift in range(inspection_days):
+                    day=inspection_start+timedelta(days=shift)
                     if entry['schedule']['kind']=='weekly' and day.isoweekday() not in entry['schedule']['weekdays']:
                         continue
                     for local in entry['schedule']['times']:
@@ -527,9 +544,9 @@ class S02Service:
                 raise AppError(409,'SOURCE_EVENT_CONFLICT','同一来源编号对应不同文件内容或语义')
             return Result(get(c,'File',claim['resource_key'].split(':',1)[1]),201)
         identifier=uid();new={'file_id':identifier,'patient_id':p,**b,'status':'saved','source':'manual_upload','meta':meta(at,'A-v0.4')}
-        self.file_root.mkdir(parents=True,exist_ok=True)
         temp=self.file_root/(identifier+'.pending');destination=self.file_root/(identifier+'.blob')
         try:
+            self.file_root.mkdir(parents=True,exist_ok=True)
             with temp.open('xb') as stream:
                 stream.write(raw);stream.flush();os.fsync(stream.fileno())
             if fingerprint_bytes(temp.read_bytes())!=b['sha256']:
