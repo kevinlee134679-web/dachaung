@@ -1,0 +1,25 @@
+{
+  "tests": {
+    "exit_code": 0,
+    "command": [
+      "-X",
+      "utf8",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-v"
+    ],
+    "output": "fresh-tests.txt"
+  },
+  "pip-check": {
+    "exit_code": 0,
+    "command": [
+      "-m",
+      "pip",
+      "check"
+    ],
+    "output": "fresh-pip-check.txt"
+  }
+}

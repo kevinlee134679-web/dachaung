@@ -1,0 +1,247 @@
+[
+  {
+    "path": "docs/baseline/v1.1/00_全平台分阶段编码汇总Prompt.md",
+    "bytes": 155075,
+    "sha256": "8334e2b6680b34324af89fc8d29dc8ffcd936f1c1ab372902cfa33f2a9c6fdd6"
+  },
+  {
+    "path": "docs/工作记录.md",
+    "bytes": 149088,
+    "sha256": "bf0ad2f220f717574defb9fc67e353e5be37d1b6e18ea8fd9021e92d100eeba1"
+  },
+  {
+    "path": "docs/版本登记.md",
+    "bytes": 19944,
+    "sha256": "319912136b0d9daef389edf6ab27d54f319719da91fe4f14f14496f65fde607b"
+  },
+  {
+    "path": "docs/contracts/A_v0.1_确认清单.md",
+    "bytes": 5543,
+    "sha256": "01fbbc9daf5618c4749f782025e6f91e0509f72a30a78025245a97d257628136"
+  },
+  {
+    "path": "docs/contracts/A_v0.2_B到期任务增量.md",
+    "bytes": 1457,
+    "sha256": "e301f4dbae9dc3400ee5ef04d065177a1b489bc5d4fcc25c9243510e6faf31ac"
+  },
+  {
+    "path": "docs/contracts/A_v0.3_C任务增量.md",
+    "bytes": 2473,
+    "sha256": "36e8133e6193dada06d8d962fbebc9a4ae3de2e12ee08efbf2e1508c5641a504"
+  },
+  {
+    "path": "docs/contracts/A_v0.4_全流程执行与快照增量.md",
+    "bytes": 5307,
+    "sha256": "c659cc4c39daec6a0e510078438c7ecda3a8ed832784a67a122370ac333d3b77"
+  },
+  {
+    "path": "docs/contracts/B_v0.1_确认清单.md",
+    "bytes": 5256,
+    "sha256": "8c34367690aa99a6776b25a8833d30ac63738bbea98ee77c168e4572c39cb789"
+  },
+  {
+    "path": "docs/contracts/B_v0.2_C服务代理增量.md",
+    "bytes": 3220,
+    "sha256": "89b8a2b8168624210a95a8f656c07074c9a30e60956b5c73330388fa2e3cb555"
+  },
+  {
+    "path": "docs/contracts/B_v0.3_支持强度可用状态增量.md",
+    "bytes": 5691,
+    "sha256": "1a0471c1f96972eacdffb0b813cb978933d29ef59600f58648cadb6dde6e7025"
+  },
+  {
+    "path": "docs/contracts/B_v0.4_到期投影与全流程增量.md",
+    "bytes": 4106,
+    "sha256": "b891e6eb407b7a4c7702649d108092b859dcabc9d21b6961cb10214d38c32095"
+  },
+  {
+    "path": "docs/contracts/C_v0.1_确认清单.md",
+    "bytes": 6595,
+    "sha256": "4839317ff309fdfcc7898d5bf34d999f060eee693d35ecffc1f81c9d0c0e823f"
+  },
+  {
+    "path": "docs/contracts/C_v0.2_全流程一致性增量.md",
+    "bytes": 4715,
+    "sha256": "0573ed4dee0a861498e6f488766c2a2bea1f616b3c40659d489763a7dbcad9a3"
+  },
+  {
+    "path": "docs/contracts/全平台接口目录_v0.1.md",
+    "bytes": 39167,
+    "sha256": "064afda237c79b61adc4c54766873dd7161b066e74853215b435ddaa688bc30c"
+  },
+  {
+    "path": "docs/contracts/全流程_v0.1_确认清单.md",
+    "bytes": 15518,
+    "sha256": "d678770b1614dfc12535207a8b5e3d1b337649fe3fc4d580f64f297d6e86e881"
+  },
+  {
+    "path": "docs/contracts/公共基础与O_v0.1_确认清单.md",
+    "bytes": 6951,
+    "sha256": "946fedd753ac69173ebdde94cb5d20ebfa4ada78b2eb78116cd25db389ae6311"
+  },
+  {
+    "path": "docs/contracts/公共基础与O_v0.2_A衔接增量.md",
+    "bytes": 2383,
+    "sha256": "98c3c048a87054c264798afa2b6e97701ea92ef12b36facb20c76e97be899667"
+  },
+  {
+    "path": "docs/contracts/公共基础与O_v0.3_B权限增量.md",
+    "bytes": 1280,
+    "sha256": "213d6a3d563e6856213fda6dfa24f254ecf9dbe1465060f705c8e05efa9c205f"
+  },
+  {
+    "path": "docs/contracts/公共基础与O_v0.4_C授权与演示增量.md",
+    "bytes": 2861,
+    "sha256": "4c94fd57f01a3007084e96adc18f211452a58436cf2a666565fd3791bc2f3e5a"
+  },
+  {
+    "path": "docs/contracts/公共基础与O_v0.5_全流程衔接增量.md",
+    "bytes": 4732,
+    "sha256": "29281ea6ef46f700be992380af793e984edb541ede0dc83a0587eaf8b93aa712"
+  },
+  {
+    "path": "docs/contracts/延期适配_v0.1_确认清单.md",
+    "bytes": 5162,
+    "sha256": "88c947fffc73c368304b99e195257528074cc6fabced27046bac38dcc8cde538"
+  },
+  {
+    "path": "medplatform/__init__.py",
+    "bytes": 101,
+    "sha256": "f09cc58146038488d6d30453a2d10f3f496e7ceba1c0d7042d63021e18ee38d9"
+  },
+  {
+    "path": "medplatform/__main__.py",
+    "bytes": 3118,
+    "sha256": "9c72867e171671fbb14a62f7540f6da678b8b02172d820a8eebdee81662f9774"
+  },
+  {
+    "path": "medplatform/auth.py",
+    "bytes": 3475,
+    "sha256": "1d0ce75e919ea91070a1c44c83d44762fe39fd6ae1be6164aa112cd0c2a155b9"
+  },
+  {
+    "path": "medplatform/config.py",
+    "bytes": 2471,
+    "sha256": "b3a7d21cc5f39204153cdc8e25f1c7997450fad77e1f0f1a2430cea2df08aae0"
+  },
+  {
+    "path": "medplatform/database.py",
+    "bytes": 992,
+    "sha256": "27cb7c49ac78ecd7706bd1cb92a4d212ce3cc92c4d1cf8e84ac50a12d03382d9"
+  },
+  {
+    "path": "medplatform/documents.py",
+    "bytes": 2197,
+    "sha256": "c263a7284eb4362f75a2e8286956be5eeb0aee8a6d5cfee3cea92e9c5a495653"
+  },
+  {
+    "path": "medplatform/errors.py",
+    "bytes": 299,
+    "sha256": "692539b23c6bdf30287a0dd763362f8308daceb59b8d8941abb45b5a682e0d02"
+  },
+  {
+    "path": "medplatform/idempotency.py",
+    "bytes": 5270,
+    "sha256": "150a6454070848264914962389430e99f8da339455aaf5354c4ca74db4866edc"
+  },
+  {
+    "path": "medplatform/identity.py",
+    "bytes": 5876,
+    "sha256": "1a6ac9dfb801dc472ea45ac6748f4370265f900e319ccc94b20b43e7d5f267fa"
+  },
+  {
+    "path": "medplatform/journal.py",
+    "bytes": 3435,
+    "sha256": "2cea12d45f51e1a6130b7b859fc7fd02d5d55a021cee3d6b646d314dc44768c5"
+  },
+  {
+    "path": "medplatform/migrations.py",
+    "bytes": 4673,
+    "sha256": "c424227fd40c18c0e3aeaaf513a5385ef545746837fbd13606ef0fd486ad2342"
+  },
+  {
+    "path": "medplatform/models.py",
+    "bytes": 1219,
+    "sha256": "0747d1a0aff8f659708fc00179777d6a1576708f4f046cc116b96775abd69afa"
+  },
+  {
+    "path": "medplatform/protection.py",
+    "bytes": 1800,
+    "sha256": "682af90c81bec236b4e1e61a436c8848c82fbf091fb7fb32e42e05c7abfdb2be"
+  },
+  {
+    "path": "medplatform/questionnaire.py",
+    "bytes": 7463,
+    "sha256": "b77e82a680320ce6484edf7634e04b292e38567bda65a677f0eb79f2823000ea"
+  },
+  {
+    "path": "medplatform/registry.py",
+    "bytes": 1851,
+    "sha256": "8324b962d161344c02b7f346f907e972a8d854458465ad0693cf8648da252e1d"
+  },
+  {
+    "path": "medplatform/s02_api.py",
+    "bytes": 9507,
+    "sha256": "ba3b9d6906fdc0cb928add55220f688d6991a5592b0c4cf530d6cb3908039761"
+  },
+  {
+    "path": "medplatform/s02_inputs.py",
+    "bytes": 10004,
+    "sha256": "96927e1d59ab0fa1d8e05e55bd44597867f4990e9d21f4161346cce3452c6cdf"
+  },
+  {
+    "path": "medplatform/s02_service.py",
+    "bytes": 39218,
+    "sha256": "611ada0560c61b357d5078223ee6d36fb68c88796c0e6fd6ee4dcac4f64ab4f2"
+  },
+  {
+    "path": "medplatform/s03_record_inputs.py",
+    "bytes": 4031,
+    "sha256": "921e34b14506400738ea8b8e5c052aa433cf78556e4ff34c6fd7d94ca33bdaf9"
+  },
+  {
+    "path": "medplatform/storage.py",
+    "bytes": 975,
+    "sha256": "fadac7b572d67e7436b92c7a6797ec5854dacd02a3a405c76e6af2769eaa2593"
+  },
+  {
+    "path": "medplatform/web.py",
+    "bytes": 8678,
+    "sha256": "d2d19b1de915e10b9890c9ea233283c8121db5e39f292607d694e2573ed16887"
+  },
+  {
+    "path": "medplatform/static/index.html",
+    "bytes": 1121,
+    "sha256": "d6082c533675b5b8bd83ec13d1176d6b363d682b689d77bb995301c6357b0bce"
+  },
+  {
+    "path": "medplatform/static/platform.css",
+    "bytes": 4813,
+    "sha256": "51da24ff8eb3774d0ab4cf6e5c9e9e8344ce7abef7da62fafc8660a9fd6fbcbb"
+  },
+  {
+    "path": "medplatform/static/s02.js",
+    "bytes": 56467,
+    "sha256": "fafb3832e4621003335e2f0a037e2b721120062cb3c8ad9f53646b083eecfffa"
+  },
+  {
+    "path": "migrations/0001_foundation.sql",
+    "bytes": 2653,
+    "sha256": "17d298d1a0f82e78725fc9ab7613843a3e0a0cb742b7224b353eb8c114e6975b"
+  },
+  {
+    "path": "migrations/0002_event_history.sql",
+    "bytes": 1914,
+    "sha256": "a7a9761e3e906b90afd1c95bb2b721a91e149b55d3b03aa93b8c7e020e8a3846"
+  },
+  {
+    "path": "migrations/0003_identity_and_plans.sql",
+    "bytes": 3952,
+    "sha256": "e744de2e579357bfbffe314b146c6df0c61865c55b3f1c4e94b91bb3ad0fdec9"
+  },
+  {
+    "path": "migrations/0004_records_and_quality.sql",
+    "bytes": 2006,
+    "sha256": "c6acce61909d83cfae3c66d76568838d7c4733a5e853d3c20e2c3dd76b33f1e6"
+  }
+]

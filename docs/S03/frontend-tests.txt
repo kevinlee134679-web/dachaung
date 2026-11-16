@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: async fingerprint preparation never sends with a changed account/patient
+ok 1 - async fingerprint preparation never sends with a changed account/patient
+  ---
+  duration_ms: 3.4997
+  type: 'test'
+  ...
+# Subtest: file preparation retains the initiating patient and cancels after patient switch
+ok 2 - file preparation retains the initiating patient and cancels after patient switch
+  ---
+  duration_ms: 6.1865
+  type: 'test'
+  ...
+# Subtest: a stale form control cannot start another action after view change
+ok 3 - a stale form control cannot start another action after view change
+  ---
+  duration_ms: 1.1844
+  type: 'test'
+  ...
+# Subtest: subpage change invalidates a delayed old medication list
+ok 4 - subpage change invalidates a delayed old medication list
+  ---
+  duration_ms: 2.0274
+  type: 'test'
+  ...
+# Subtest: transient questionnaire restore failure preserves its saved reference
+ok 5 - transient questionnaire restore failure preserves its saved reference
+  ---
+  duration_ms: 1.552
+  type: 'test'
+  ...
+# Subtest: old questionnaire restore cannot delete the newly selected patient reference
+ok 6 - old questionnaire restore cannot delete the newly selected patient reference
+  ---
+  duration_ms: 2.1593
+  type: 'test'
+  ...
+# Subtest: unknown write result retains its original idempotency key for retry
+ok 7 - unknown write result retains its original idempotency key for retry
+  ---
+  duration_ms: 2.3918
+  type: 'test'
+  ...
+# Subtest: IDEMPOTENCY_EXPIRED keeps the original key until explicit recovery and does not resend on recovery
+ok 8 - IDEMPOTENCY_EXPIRED keeps the original key until explicit recovery and does not resend on recovery
+  ---
+  duration_ms: 4.0805
+  type: 'test'
+  ...
+# Subtest: SENSITIVE_RECEIPT_EXPIRED keeps the original key until explicit recovery and does not resend on recovery
+ok 9 - SENSITIVE_RECEIPT_EXPIRED keeps the original key until explicit recovery and does not resend on recovery
+  ---
+  duration_ms: 1.79
+  type: 'test'
+  ...
+# Subtest: expired-operation recovery cannot clear the key after patient/context change
+ok 10 - expired-operation recovery cannot clear the key after patient/context change
+  ---
+  duration_ms: 1.8104
+  type: 'test'
+  ...
+# Subtest: expired-operation recovery cannot clear a replacement operation at the captured key
+ok 11 - expired-operation recovery cannot clear a replacement operation at the captured key
+  ---
+  duration_ms: 1.4667
+  type: 'test'
+  ...
+# Subtest: editing grant scopes keeps its exact current expiration by default
+ok 12 - editing grant scopes keeps its exact current expiration by default
+  ---
+  duration_ms: 15.7755
+  type: 'test'
+  ...
+# Subtest: grant expiration is removed only by an explicit clear
+ok 13 - grant expiration is removed only by an explicit clear
+  ---
+  duration_ms: 4.6665
+  type: 'test'
+  ...
+# Subtest: an explicit grant expiration change is sent with its timezone
+ok 14 - an explicit grant expiration change is sent with its timezone
+  ---
+  duration_ms: 3.3002
+  type: 'test'
+  ...
+# Subtest: report entry only reads; explicit refresh binds statistics and trend to the returned cutoff
+ok 15 - report entry only reads; explicit refresh binds statistics and trend to the returned cutoff
+  ---
+  duration_ms: 38.6098
+  type: 'test'
+  ...
+# Subtest: successful report refresh after a rejected window replaces its old error notice
+ok 16 - successful report refresh after a rejected window replaces its old error notice
+  ---
+  duration_ms: 5.6363
+  type: 'test'
+  ...
+# Subtest: render initial 409 leaves no detached old error after a successful report refresh
+ok 17 - render initial 409 leaves no detached old error after a successful report refresh
+  ---
+  duration_ms: 4.9896
+  type: 'test'
+  ...
+# Subtest: received unusable measurements display unavailable with their actual quality reason
+ok 18 - received unusable measurements display unavailable with their actual quality reason
+  ---
+  duration_ms: 1.8748
+  type: 'test'
+  ...
+# Subtest: slot report retries an unknown result with the same source and idempotency keys
+ok 19 - slot report retries an unknown result with the same source and idempotency keys
+  ---
+  duration_ms: 3.5398
+  type: 'test'
+  ...
+# Subtest: family report controls keep the family boundary and cannot act after patient switch
+ok 20 - family report controls keep the family boundary and cannot act after patient switch
+  ---
+  duration_ms: 1.4263
+  type: 'test'
+  ...
+# Subtest: an unchanged successful report keeps its source identity when the form is submitted again
+ok 21 - an unchanged successful report keeps its source identity when the form is submitted again
+  ---
+  duration_ms: 2.9521
+  type: 'test'
+  ...
+# Subtest: patient switch during source-fingerprint preparation sends no old slot report
+ok 22 - patient switch during source-fingerprint preparation sends no old slot report
+  ---
+  duration_ms: 1.8967
+  type: 'test'
+  ...
+# Subtest: measurement forms preserve zero, explicit missing, and an unknown raw unit
+ok 23 - measurement forms preserve zero, explicit missing, and an unknown raw unit
+  ---
+  duration_ms: 2.2658
+  type: 'test'
+  ...
+# Subtest: unchanged correction time retains exact precision and the current expected revision
+ok 24 - unchanged correction time retains exact precision and the current expected revision
+  ---
+  duration_ms: 2.418
+  type: 'test'
+  ...
+# Subtest: a delayed old record list cannot pollute a new patient page
+ok 25 - a delayed old record list cannot pollute a new patient page
+  ---
+  duration_ms: 1.936
+  type: 'test'
+  ...
+# Subtest: a completed old correction cannot put its success notice onto a new patient after rereading
+ok 26 - a completed old correction cannot put its success notice onto a new patient after rereading
+  ---
+  duration_ms: 1.7889
+  type: 'test'
+  ...
+# Subtest: snooze sends only the original task revision and never creates medication evidence
+ok 27 - snooze sends only the original task revision and never creates medication evidence
+  ---
+  duration_ms: 2.3526
+  type: 'test'
+  ...
+# Subtest: ordinary patient cannot render management actions or execute a task by entering the console page
+ok 28 - ordinary patient cannot render management actions or execute a task by entering the console page
+  ---
+  duration_ms: 1.1666
+  type: 'test'
+  ...
+# Subtest: registered demo administrator can open the console without a transferable management scope
+ok 29 - registered demo administrator can open the console without a transferable management scope
+  ---
+  duration_ms: 1.3954
+  type: 'test'
+  ...
+# Subtest: pending task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+ok 30 - pending task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+  ---
+  duration_ms: 2.0916
+  type: 'test'
+  ...
+# Subtest: pending task with deadline 1 days from now preserves history and projects expiry only for waiting tasks
+ok 31 - pending task with deadline 1 days from now preserves history and projects expiry only for waiting tasks
+  ---
+  duration_ms: 2.4834
+  type: 'test'
+  ...
+# Subtest: succeeded task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+ok 32 - succeeded task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+  ---
+  duration_ms: 1.1848
+  type: 'test'
+  ...
+# Subtest: retry_wait task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+ok 33 - retry_wait task with deadline -7 days from now preserves history and projects expiry only for waiting tasks
+  ---
+  duration_ms: 1.0337
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 158.9889

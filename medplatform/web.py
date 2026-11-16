@@ -34,13 +34,19 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_service import S02Service
     from .documents import now
     from .s02_api import router as s02_router
+    from . import s03_records, s03_analytics, s03_execution
+    from .s03_api import router as s03_router
     service = S02Service(db,clock or now)
+    records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
+    analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
+    execution = s03_execution.S03Execution(db,service.auth,service.receipts,clock or now,analytics=analytics)
     authority = authority if authority is not None else service.auth
     app = FastAPI(title="Medication platform foundation", version=__version__,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings, app.state.db, app.state.authority = settings, db, authority
     app.state.registry = ModuleRegistry()
     app.state.s02 = service
+    app.state.s03_records, app.state.s03_analytics, app.state.s03_execution = records, analytics, execution
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -146,14 +152,17 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
             "model_connectivity": "unverified",
             "capabilities": [{"code": "foundation_storage", "available": True, "reason": None},
                 *[{"code": code, "available": False, "reason": "尚未到对应业务阶段或真实依赖未接入"}
-                  for code in ("dialogue", "in_app_notification", "system_notification", "external_auth", "cas")],
-                {"code":"demo_login","available":True,"reason":None}],
+                  for code in ("dialogue", "system_notification", "external_auth", "cas")],
+                {"code":"demo_login","available":True,"reason":None},
+                {"code":"in_app_notification","available":True,"reason":"仅显式执行的本地模拟提交；不等于送达、展示或响应"},
+                {"code":"s03_data_loop","available":True,"reason":None}],
             "version_refs": [{"kind": "application", "version": __version__},
                              {"kind": "schema", "version": f"{schema:04d}"},
                              {"kind": "contract", "version": "flow-v0.1"}]})
 
     app.state.registry.include_router(app, router)
     app.state.registry.include_router(app, s02_router(service,envelope))
+    app.state.registry.include_router(app, s03_router([(s03_records,records),(s03_analytics,analytics),(s03_execution,execution)],envelope))
 
     @app.get("/", include_in_schema=False)
     def index():

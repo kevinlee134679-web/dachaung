@@ -1,0 +1,98 @@
+{
+  "scenario": "s03-fixed-14-v1",
+  "is_simulated": true,
+  "before_late_report": {
+    "as_of": "2026-11-16T16:29:53.645449+00:00",
+    "data_environment": "demo",
+    "data_status": "ready",
+    "is_simulated": true,
+    "issues": [
+      {
+        "code": "no_record",
+        "dose_slot_id": "a837d7ac-64c6-455a-935d-f194cac2ff8f",
+        "event_ids": [],
+        "message": "暂无有效明确报告或其他证据"
+      },
+      {
+        "code": "no_record",
+        "dose_slot_id": "605a6795-e102-45f7-bf9f-d656eb202cb8",
+        "event_ids": [],
+        "message": "暂无有效明确报告或其他证据"
+      }
+    ],
+    "patient_confirmation_ratio": 0.7142857142857143,
+    "patient_confirmed_count": 10,
+    "patient_id": "demo-patient-a-self",
+    "plan_refs": [
+      {
+        "plan_id": "4b7e5287-c3a5-4bf5-91a0-50238439df54",
+        "plan_version": 1
+      }
+    ],
+    "planned_dose_count": 14,
+    "postponed_count": 0,
+    "reported_not_taken_count": 0,
+    "rule_version": "flow-v0.1-count-v1",
+    "statistics_id": "d3d1ad3d-c682-4d4d-a207-f9d3e1506d87",
+    "timezone": "Asia/Shanghai",
+    "unconfirmed_evidence_count": 2,
+    "unknown_count": 2,
+    "updated_at": "2026-11-16T16:29:53.645449+00:00",
+    "window_end": "2026-11-16T16:00:00.000000+00:00",
+    "window_start": "2026-11-09T16:00:00.000000+00:00"
+  },
+  "after_late_report": {
+    "as_of": "2026-11-16T16:40:05.733217+00:00",
+    "data_environment": "demo",
+    "data_status": "ready",
+    "is_simulated": true,
+    "issues": [
+      {
+        "code": "no_record",
+        "dose_slot_id": "605a6795-e102-45f7-bf9f-d656eb202cb8",
+        "event_ids": [],
+        "message": "暂无有效明确报告或其他证据"
+      }
+    ],
+    "patient_confirmation_ratio": 0.7857142857142857,
+    "patient_confirmed_count": 11,
+    "patient_id": "demo-patient-a-self",
+    "plan_refs": [
+      {
+        "plan_id": "4b7e5287-c3a5-4bf5-91a0-50238439df54",
+        "plan_version": 1
+      }
+    ],
+    "planned_dose_count": 14,
+    "postponed_count": 0,
+    "reported_not_taken_count": 0,
+    "rule_version": "flow-v0.1-count-v1",
+    "statistics_id": "e3112b6d-77ee-49c4-97f7-b508a7fa4075",
+    "timezone": "Asia/Shanghai",
+    "unconfirmed_evidence_count": 2,
+    "unknown_count": 1,
+    "updated_at": "2026-11-16T16:40:05.734759+00:00",
+    "window_end": "2026-11-16T16:00:00.000000+00:00",
+    "window_start": "2026-11-09T16:00:00.000000+00:00"
+  },
+  "mock_execution": {
+    "attempt": 1,
+    "channel": "in_app",
+    "delivered_at": null,
+    "delivery_status": "submitted",
+    "error_code": null,
+    "error_message": null,
+    "execution_id": "907a3c80-591b-4bd6-b128-666c52b1f495",
+    "execution_status": "completed",
+    "finished_at": "2026-11-10T00:00:00.000000+00:00",
+    "intervention_id": null,
+    "is_simulated": true,
+    "patient_id": "demo-patient-a-self",
+    "result_ref": "5852878c-4fde-4930-b5c2-39d27bacde63",
+    "retryable": false,
+    "started_at": "2026-11-10T00:00:00.000000+00:00",
+    "submitted_at": "2026-11-10T00:00:00.000000+00:00",
+    "task_id": "bb5c3c75-637c-41ab-92aa-9da14edd01b8"
+  },
+  "real_delivery_verified": false
+}

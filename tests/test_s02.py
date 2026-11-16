@@ -447,8 +447,10 @@ class S02Tests(unittest.TestCase):
 
     def test_no_later_phase_routes_or_background_tasks(self):
         self.assertEqual(len(ROUTES),40)
-        for path in ('/api/v1/tasks','/api/v1/cases','/api/v1/patients/'+PA+'/statistics','/api/v1/patients/'+PA+'/services'):
+        # S03 now owns the registered /tasks POST; B/C routes remain absent.
+        for path in ('/api/v1/cases','/api/v1/patients/'+PA+'/statistics','/api/v1/patients/'+PA+'/services'):
             self.assertEqual(self.a.get(path).status_code,404)
+        self.assertEqual(self.a.get('/api/v1/tasks').status_code,405)
         self.assertNotIn('Task',{r[0] for r in self.db_connection_table_names()})
 
     def db_connection_table_names(self):

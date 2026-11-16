@@ -1,0 +1,74 @@
+{
+  "README.md": {
+    "before": {
+      "bytes": 16095,
+      "sha256": "fe8a2d01fa20d56b7c32f09e6f7ab955564019214d7d8aa856ce407dcd732c55"
+    },
+    "after": {
+      "bytes": 16628,
+      "sha256": "252c2c7de50eba61a051dd681c2a4b89255d11f58383362b0f7b87a462d907b8"
+    },
+    "prefix_sha256": "fe8a2d01fa20d56b7c32f09e6f7ab955564019214d7d8aa856ce407dcd732c55",
+    "prefix_bytes_equal": true
+  },
+  "docs/运行说明.md": {
+    "before": {
+      "bytes": 8706,
+      "sha256": "1c0f1073c923dededa8bd9914dfec18363e02bb053646bfbe70d13c0de1da248"
+    },
+    "after": {
+      "bytes": 9295,
+      "sha256": "d3fbd725330285e0928ca07583724feaea13e960adbf0304f2cceb9b350da7b5"
+    },
+    "prefix_sha256": "1c0f1073c923dededa8bd9914dfec18363e02bb053646bfbe70d13c0de1da248",
+    "prefix_bytes_equal": true
+  },
+  "docs/接口与状态说明.md": {
+    "before": {
+      "bytes": 4078,
+      "sha256": "99405a9fe7cc2930ac5f4badbfecc6f4fae35e8e8bae8ba7448e96aa6996655a"
+    },
+    "after": {
+      "bytes": 4855,
+      "sha256": "c4355cba2630e4a092c1282fe2fc087bf49cde04287e1116bbe8b33e35ab1488"
+    },
+    "prefix_sha256": "99405a9fe7cc2930ac5f4badbfecc6f4fae35e8e8bae8ba7448e96aa6996655a",
+    "prefix_bytes_equal": true
+  },
+  "docs/数据字典.md": {
+    "before": {
+      "bytes": 7852,
+      "sha256": "2eed2c1f4240011e6e843f20075aa492ed60044946cb75533dc1e8e439d704f5"
+    },
+    "after": {
+      "bytes": 8555,
+      "sha256": "00bd9d455cb9687f2dd2131bdb92ba7c7a42d8b3bf80fb73357f0f1038fa6ae1"
+    },
+    "prefix_sha256": "2eed2c1f4240011e6e843f20075aa492ed60044946cb75533dc1e8e439d704f5",
+    "prefix_bytes_equal": true
+  },
+  "docs/版本登记.md": {
+    "before": {
+      "bytes": 19944,
+      "sha256": "319912136b0d9daef389edf6ab27d54f319719da91fe4f14f14496f65fde607b"
+    },
+    "after": {
+      "bytes": 21214,
+      "sha256": "24f734bf60f9d04d55031de1a71e05233646b2319577289197f3bfa00de61bea"
+    },
+    "prefix_sha256": "319912136b0d9daef389edf6ab27d54f319719da91fe4f14f14496f65fde607b",
+    "prefix_bytes_equal": true
+  },
+  "docs/工作记录.md": {
+    "before": {
+      "bytes": 149088,
+      "sha256": "bf0ad2f220f717574defb9fc67e353e5be37d1b6e18ea8fd9021e92d100eeba1"
+    },
+    "after": {
+      "bytes": 162200,
+      "sha256": "49f6c496e0cdd528852c52e71dee2c67b0f586e98563d1da0f6328dee21b7c3b"
+    },
+    "prefix_sha256": "bf0ad2f220f717574defb9fc67e353e5be37d1b6e18ea8fd9021e92d100eeba1",
+    "prefix_bytes_equal": true
+  }
+}

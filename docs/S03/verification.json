@@ -1,0 +1,317 @@
+{
+  "stage": "S03",
+  "record_id": "R0021",
+  "version_id": "V0021",
+  "created_at": "2026-11-17 00:49:13 +0800",
+  "baseline": "2c37c4dafc09456174d10f85c4439fa5638a85f6",
+  "application": "0.3.0",
+  "schema": "0006",
+  "api_count": 75,
+  "pinned_dependencies": {
+    "annotated-doc": "0.0.6",
+    "annotated-types": "0.8.0",
+    "anyio": "4.16.0",
+    "click": "8.5.1",
+    "fastapi": "0.163.1",
+    "h11": "0.16.0",
+    "httpcore2": "2.16.2",
+    "httpx2": "2.16.2",
+    "idna": "3.20",
+    "opentelemetry-api": "1.45.2",
+    "pydantic": "2.14.3",
+    "pydantic-settings": "2.16.3",
+    "pydantic_core": "2.50.4",
+    "python-dotenv": "1.2.4",
+    "python-multipart": "0.0.34",
+    "starlette": "1.10.0",
+    "truststore": "0.10.5",
+    "typing-inspection": "0.4.5",
+    "typing_extensions": "4.16.0",
+    "tzdata": "2026.6",
+    "uvicorn": "0.54.0"
+  },
+  "python": "3.14.10",
+  "sqlite": "3.50.4",
+  "node": "v24.22.1",
+  "tests_each_environment": 121,
+  "python_skipped_each": 0,
+  "environments": {
+    "main": "existing .venv",
+    "fresh": "new .venv-s03-repro; offline 21 pinned wheels"
+  },
+  "frontend_tests": 33,
+  "frontend_tests_nested_in_python_entries": 2,
+  "frontend_breakdown": {
+    "S02": 14,
+    "S03": 19
+  },
+  "node_syntax_exit_code": 0,
+  "browser": {
+    "isolated_database": true,
+    "port": 8015,
+    "ten_then_eleven_of_fourteen": true,
+    "actual_zero_saved_and_queried": true,
+    "old_error_cleared": true,
+    "missing_and_unknown_unit_distinct": true,
+    "mock_submitted_not_delivered": true,
+    "explicit_maintenance_expired_history": true,
+    "mobile_viewport": [
+      390,
+      844
+    ],
+    "content_width": 375,
+    "temporary_tab_closed": true,
+    "viewport_reset": true,
+    "port_stopped": true,
+    "graceful_ui_shutdown_log_observed": false
+  },
+  "existing_default_runtime_database_unchanged": true,
+  "paid_api_calls": 0,
+  "old_migrations_preserved": true,
+  "old_contracts_preserved": true,
+  "sources": {
+    "medplatform/__init__.py": {
+      "bytes": 101,
+      "sha256": "c74672135cf46910f996bfb91547bc08e27ed635b3cfb4a449b30a3791995985"
+    },
+    "medplatform/__main__.py": {
+      "bytes": 4563,
+      "sha256": "55ef8d9c744b9ac03c058f8930ef40fe77c25cacc478a9ac3443ea96bdb9c4ed"
+    },
+    "medplatform/auth.py": {
+      "bytes": 3475,
+      "sha256": "1d0ce75e919ea91070a1c44c83d44762fe39fd6ae1be6164aa112cd0c2a155b9"
+    },
+    "medplatform/config.py": {
+      "bytes": 2471,
+      "sha256": "b3a7d21cc5f39204153cdc8e25f1c7997450fad77e1f0f1a2430cea2df08aae0"
+    },
+    "medplatform/database.py": {
+      "bytes": 992,
+      "sha256": "27cb7c49ac78ecd7706bd1cb92a4d212ce3cc92c4d1cf8e84ac50a12d03382d9"
+    },
+    "medplatform/demo_s03.py": {
+      "bytes": 9429,
+      "sha256": "10f96aef6cf74538d4abaaa3019861e9b9e876ab24d464fb6c4acabf9548c88b"
+    },
+    "medplatform/documents.py": {
+      "bytes": 2197,
+      "sha256": "c263a7284eb4362f75a2e8286956be5eeb0aee8a6d5cfee3cea92e9c5a495653"
+    },
+    "medplatform/errors.py": {
+      "bytes": 299,
+      "sha256": "692539b23c6bdf30287a0dd763362f8308daceb59b8d8941abb45b5a682e0d02"
+    },
+    "medplatform/idempotency.py": {
+      "bytes": 5270,
+      "sha256": "150a6454070848264914962389430e99f8da339455aaf5354c4ca74db4866edc"
+    },
+    "medplatform/identity.py": {
+      "bytes": 5876,
+      "sha256": "1a6ac9dfb801dc472ea45ac6748f4370265f900e319ccc94b20b43e7d5f267fa"
+    },
+    "medplatform/journal.py": {
+      "bytes": 3435,
+      "sha256": "2cea12d45f51e1a6130b7b859fc7fd02d5d55a021cee3d6b646d314dc44768c5"
+    },
+    "medplatform/migrations.py": {
+      "bytes": 4673,
+      "sha256": "c424227fd40c18c0e3aeaaf513a5385ef545746837fbd13606ef0fd486ad2342"
+    },
+    "medplatform/models.py": {
+      "bytes": 1219,
+      "sha256": "0747d1a0aff8f659708fc00179777d6a1576708f4f046cc116b96775abd69afa"
+    },
+    "medplatform/protection.py": {
+      "bytes": 1800,
+      "sha256": "682af90c81bec236b4e1e61a436c8848c82fbf091fb7fb32e42e05c7abfdb2be"
+    },
+    "medplatform/questionnaire.py": {
+      "bytes": 7463,
+      "sha256": "b77e82a680320ce6484edf7634e04b292e38567bda65a677f0eb79f2823000ea"
+    },
+    "medplatform/registry.py": {
+      "bytes": 1851,
+      "sha256": "8324b962d161344c02b7f346f907e972a8d854458465ad0693cf8648da252e1d"
+    },
+    "medplatform/s02_api.py": {
+      "bytes": 9507,
+      "sha256": "ba3b9d6906fdc0cb928add55220f688d6991a5592b0c4cf530d6cb3908039761"
+    },
+    "medplatform/s02_inputs.py": {
+      "bytes": 10004,
+      "sha256": "96927e1d59ab0fa1d8e05e55bd44597867f4990e9d21f4161346cce3452c6cdf"
+    },
+    "medplatform/s02_service.py": {
+      "bytes": 39218,
+      "sha256": "611ada0560c61b357d5078223ee6d36fb68c88796c0e6fd6ee4dcac4f64ab4f2"
+    },
+    "medplatform/s03_analytics.py": {
+      "bytes": 25213,
+      "sha256": "42cecd285304ed646b1729a5862baa28655045084cd165d3a5f39f63247beddd"
+    },
+    "medplatform/s03_api.py": {
+      "bytes": 2432,
+      "sha256": "be8126e88e3210d5cfe1bed6abc32161cea15345a32c813952ff69a52663a8ba"
+    },
+    "medplatform/s03_execution.py": {
+      "bytes": 51372,
+      "sha256": "970dbf11ff8dbb21e92fe5f30c77ac2db06ca2d99f7532c616e3811ddb32ee57"
+    },
+    "medplatform/s03_execution_inputs.py": {
+      "bytes": 5131,
+      "sha256": "1e52b4f7588ec24a96603b0fd0338f55774eeb32d5c11349047816bf6decc3ae"
+    },
+    "medplatform/s03_record_inputs.py": {
+      "bytes": 4031,
+      "sha256": "921e34b14506400738ea8b8e5c052aa433cf78556e4ff34c6fd7d94ca33bdaf9"
+    },
+    "medplatform/s03_records.py": {
+      "bytes": 35967,
+      "sha256": "e9a4011f151b6decc432e49a3ed47423d57f5cba8d8d6055fa61c98292a45239"
+    },
+    "medplatform/static/index.html": {
+      "bytes": 1121,
+      "sha256": "d6082c533675b5b8bd83ec13d1176d6b363d682b689d77bb995301c6357b0bce"
+    },
+    "medplatform/static/platform.css": {
+      "bytes": 6127,
+      "sha256": "b4151de7aac611e8a893a90105a1d2a7a9d86f1dc15e12c1be3618f2da1b9e1c"
+    },
+    "medplatform/static/s02.js": {
+      "bytes": 88060,
+      "sha256": "86f0e9725e0cf1ecbf865ddd163257da9c4b7f2ccee73589121647a888816bc3"
+    },
+    "medplatform/storage.py": {
+      "bytes": 975,
+      "sha256": "fadac7b572d67e7436b92c7a6797ec5854dacd02a3a405c76e6af2769eaa2593"
+    },
+    "medplatform/web.py": {
+      "bytes": 9524,
+      "sha256": "6238363037968918c6c551d43bc598e11e06cf66b20a6579e55742505eaa610c"
+    },
+    "migrations/0001_foundation.sql": {
+      "bytes": 2653,
+      "sha256": "17d298d1a0f82e78725fc9ab7613843a3e0a0cb742b7224b353eb8c114e6975b"
+    },
+    "migrations/0002_event_history.sql": {
+      "bytes": 1914,
+      "sha256": "a7a9761e3e906b90afd1c95bb2b721a91e149b55d3b03aa93b8c7e020e8a3846"
+    },
+    "migrations/0003_identity_and_plans.sql": {
+      "bytes": 3952,
+      "sha256": "e744de2e579357bfbffe314b146c6df0c61865c55b3f1c4e94b91bb3ad0fdec9"
+    },
+    "migrations/0004_records_and_quality.sql": {
+      "bytes": 2221,
+      "sha256": "c0213850e8933b0f34c1a105c0d38cb5b214f97fedf405d0bdad58fd89ed31d1"
+    },
+    "migrations/0005_analytics_snapshots.sql": {
+      "bytes": 1520,
+      "sha256": "6ce413209456303ee5260df63c7a6ba298b0b3c41419b9d379d34a2c52358b09"
+    },
+    "migrations/0006_tasks_and_execution.sql": {
+      "bytes": 3745,
+      "sha256": "74e3905f298b66520e025ad0cf49e9ff5f9e47f06e2cbc905ec5459f9f33155c"
+    },
+    "scripts/create_demo_document.py": {
+      "bytes": 1445,
+      "sha256": "971ffec637359fdcae32ca33511013058485130be9c9e4983c8289791c239b44"
+    },
+    "scripts/run.ps1": {
+      "bytes": 538,
+      "sha256": "cdfd691d37ed2f04a18334c81a2b6b68190223fb5b202a74da9235244d2c42b4"
+    },
+    "scripts/setup.ps1": {
+      "bytes": 852,
+      "sha256": "a70759c704ddaa34775dfe578604fbc4ea097f5b65dee608f86b382c6432e42e"
+    },
+    "scripts/test.ps1": {
+      "bytes": 414,
+      "sha256": "881f2b3a08b980e4b3d2f3701af6760372a5bee1b81d65c6ae46a86cd6778466"
+    },
+    "tests/test_foundation.py": {
+      "bytes": 20207,
+      "sha256": "565996be2c518f42f23feaaa5447f88b0826ce16a7b13f2aa9bd57f4405138ab"
+    },
+    "tests/test_http_lifecycle.py": {
+      "bytes": 4206,
+      "sha256": "abd351d70986bf2934fdec58afe42206580690d7f56fb6e2fb712950bb3fa88c"
+    },
+    "tests/test_s02.py": {
+      "bytes": 32863,
+      "sha256": "c37eab4cb240b3d93cc2479ddc584e56fb7b57532262dc0054db56c63fe2be33"
+    },
+    "tests/test_s02_auth_regressions.py": {
+      "bytes": 9987,
+      "sha256": "2233c76b2ffcc4a72a660fa14edeccb901048abe406e8b4996fd92967c1320ec"
+    },
+    "tests/test_s02_plan_regressions.py": {
+      "bytes": 3667,
+      "sha256": "54b2cc74ee0062b309bf7041e6a41e52052220a60e8c35dd86bd87589a3f86f5"
+    },
+    "tests/test_s02_ui_async.cjs": {
+      "bytes": 13645,
+      "sha256": "cf6def86acfb90911dce6adc56a490822c94f31b74c6c02c7517486c50c7010a"
+    },
+    "tests/test_s02_ui_regressions.py": {
+      "bytes": 810,
+      "sha256": "867418f564794d67060f64f6a242052de955187c53c13288104d68685ffee000"
+    },
+    "tests/test_s03_analytics.py": {
+      "bytes": 12961,
+      "sha256": "1e90e7cda06c5c65a60bac46488ebc6428a41d1e87a3319b441f1facdad36d43"
+    },
+    "tests/test_s03_analytics_audit.py": {
+      "bytes": 8790,
+      "sha256": "93b98f946ef296d8b92d09743ea879caff2a323d8f90dccda13a73150f60284d"
+    },
+    "tests/test_s03_demo.py": {
+      "bytes": 1313,
+      "sha256": "45221c010adbf0ef6fc8882356198f497db07f4e37bc2a6da82f3ce790db6629"
+    },
+    "tests/test_s03_execution.py": {
+      "bytes": 19340,
+      "sha256": "75b30e7ace7de11a87cecf879781ac6a95ef21cfe76035c7b913278594fc6a72"
+    },
+    "tests/test_s03_records.py": {
+      "bytes": 24872,
+      "sha256": "56222e82bf7cf44e615bfe64287669df0143e88874df255c59fd5f6f03537772"
+    },
+    "tests/test_s03_ui_async.cjs": {
+      "bytes": 20248,
+      "sha256": "c6d75c0ea2a36a2bb016f02b7d0b900448799aa5fb692c55f5c72636947a7961"
+    },
+    "tests/test_s03_ui_regressions.py": {
+      "bytes": 826,
+      "sha256": "f33f8cb2207b97524f5a321b35d5d225d396015f0582be744559b2d737bc07ec"
+    }
+  },
+  "evidence_sha256": {
+    "fictional-demo-results.json": "9edc352656d1c7bf28cfc40bd220851a9e0c684668f5dcaf81366ec14a7a3fbf",
+    "fresh-pip-check.txt": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "fresh-results.json": "6939da586995da4726ae55459be295e5bba458743b74f8655d3652cb85d10f6a",
+    "fresh-tests.txt": "9830fedd22133feec6eb9e22bd8088ae95bea2b04b163ec8a61b387c6c873856",
+    "frontend-tests.txt": "ff705c74f51192407e284ce0378be91313e8e746b5db4feb6a6018da3e2731d6",
+    "history-proof.json": "210ed493c490ad2dd70fb102f9df4977dd4d06ce8274c3d4a3e92dda7af8c6f0",
+    "input-manifest.json": "4c9288a5059b2d091ed9f3be379eaeac2ccc577ed208770904163935b2ef4e9f",
+    "interface-manifest.json": "2a6da04bb879a03ee967465ff7f0b000449095a6e969f409d02154f35bc32f0e",
+    "main-pip-check.txt": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "main-results.json": "ad248efdd0353a0adbf8d98fb6d1ed67dd4d9e8a61a3e0e906d3b7f7e11fbd39",
+    "main-tests.txt": "2645dc86db96e8dee3264b0ad7346b861865598f56ee4c5a03b3522ce29791ed",
+    "storage-schema.json": "d464561e6cf1616a16ecadc001e705a81789788082e2dcbcc08ba216d5883860",
+    "运行与交接.md": "2afd8ba171acbef1aefcd91e1e51955776bb08b87b17e2f4a3dab33865c70315",
+    "screenshots/measurement-zero-saved.jpg": "9f81cd60741430d83403443d8a583ca27c41fa710073c493c3e82fe49a564ca3",
+    "screenshots/mock-execution-final.jpg": "b90a2312a3734fe82e40e0728708d2e899b576d7363904d5e6faa74920fa4b23",
+    "screenshots/mock-execution-submitted.jpg": "59952330678e958fa87d0e099561f689adeb1e04c2dbed9d8c06a8cbff817a74",
+    "screenshots/report-11-of-14-desktop.jpg": "1d992c91f6721a4698de8e38e068b1d4949cfc4ccb7bcb19144f8b094be2af44",
+    "screenshots/report-11-of-14-mobile.jpg": "0b274302695e6611285865d66177276bbb3f5097d82e09939973fd872936952a"
+  },
+  "synchronization": "Commit/push and independent remote verification follow this record; see final stage report.",
+  "limits": [
+    "B/C business and runner not implemented",
+    "Real devices/channels/authentication/medical methods not integrated",
+    "Existing runtime DB is preserved at its prior schema until explicit user migration",
+    "No clinical or production validation"
+  ]
+}

@@ -7,19 +7,25 @@ from pathlib import Path
 
 from .config import ConfigurationError, load_settings
 from .database import Database
-from .errors import SchemaError
+from .errors import AppError, SchemaError
 from .journal import Snapshot, append_record, snapshot
 from .migrations import migrate, status
 
 
 def main():
-    parser = argparse.ArgumentParser(description="S01 shared foundation: explicit lifecycle")
-    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "expire-receipts", "serve", "journal-snapshot", "journal-append"])
+    parser = argparse.ArgumentParser(description="Shared platform: explicit lifecycle and S03 maintenance")
+    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "expire-receipts", "s03-maintain", "run-task", "serve", "journal-snapshot", "journal-append"])
     parser.add_argument("--target", type=int)
     parser.add_argument("--journal", type=Path, default=Path("docs/工作记录.md"))
     parser.add_argument("--entry", type=Path)
     parser.add_argument("--expect-bytes", type=int)
     parser.add_argument("--expect-sha")
+    parser.add_argument("--patient-id")
+    parser.add_argument("--window-start")
+    parser.add_argument("--window-end")
+    parser.add_argument("--task-id")
+    parser.add_argument("--expect-revision",type=int)
+    parser.add_argument("--operation-key")
     args = parser.parse_args()
     try:
         if args.command == "journal-snapshot":
@@ -46,6 +52,19 @@ def main():
                 from .documents import now
                 status(db)
                 print(json.dumps(expire_receipts(db,now)))
+            elif args.command in ('s03-maintain','run-task'):
+                from .web import create_app
+                status(db)
+                execution=create_app(settings).state.s03_execution
+                if args.command=='s03-maintain':
+                    if not all((args.patient_id,args.window_start,args.window_end)):
+                        parser.error('s03-maintain requires --patient-id and explicit --window-start/--window-end')
+                    result=execution.maintenance(None,args.patient_id,args.window_start,args.window_end)
+                else:
+                    if not args.task_id or not args.expect_revision or not args.operation_key:
+                        parser.error('run-task requires --task-id, --expect-revision and stable --operation-key')
+                    result=execution.run_once(None,args.task_id,args.expect_revision,args.operation_key).data
+                print(json.dumps(result,ensure_ascii=False))
             else:
                 import uvicorn
                 from .web import create_app
@@ -53,6 +72,9 @@ def main():
                 uvicorn.run(create_app(settings), host=settings.HOST, port=settings.PORT,
                             workers=1, access_log=False, log_level="info")
         return 0
+    except AppError as error:
+        print(json.dumps({'status':'error','error':{'code':error.code,'message':error.message}},ensure_ascii=False),file=sys.stderr)
+        return 2
     except (ConfigurationError, SchemaError, sqlite3.Error, OSError, ValueError):
         # No raw environment values, paths, SQL, entries or credentials in errors.
         print("操作失败：配置、schema、文件或历史校验不满足要求；请核对运行说明。", file=sys.stderr)
