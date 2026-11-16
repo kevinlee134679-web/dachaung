@@ -1,0 +1,42 @@
+{
+  "time": "2026-11-16 18:00:34 +08:00",
+  "timezone": "Asia/Shanghai",
+  "record_id": "R0011",
+  "base_local_commit": "e7aae17d6afc4573f77241b7c73ca246d6975d17",
+  "push_attempt": {
+    "exit_code": 1,
+    "reason": "Operation too slow. Less than 1 bytes/sec transferred the last 15 seconds",
+    "success_reply_received": false,
+    "remote_verified": false
+  },
+  "planned_ordinary_retry_count": 1,
+  "prefix_checks": [
+    {
+      "path": "README.md",
+      "before_bytes": 7816,
+      "before_sha256": "7eff565860e4998c66a4462f901d6b5d9cf2d3cbbb2f71decdbca2a79914e180",
+      "after_bytes": 8330,
+      "after_sha256": "28caab04254a28dccfe46b45ae72fab94f27e4f39d741b5390541189cec0ebbd",
+      "prefix_sha256": "7eff565860e4998c66a4462f901d6b5d9cf2d3cbbb2f71decdbca2a79914e180",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/版本登记.md",
+      "before_bytes": 9310,
+      "before_sha256": "e8593f23470121203ae2e958c5030b3bf428893cedb537a0844699b544848f7f",
+      "after_bytes": 9838,
+      "after_sha256": "955dd4bb417beae17e2f2b9c82f12d267155e58315f07f2a7bf7548fbb4406c1",
+      "prefix_sha256": "e8593f23470121203ae2e958c5030b3bf428893cedb537a0844699b544848f7f",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/工作记录.md",
+      "before_bytes": 70373,
+      "before_sha256": "1ff26dc6915a6d61264c3c7772b1e9d2d3b2fe9117deb15e2474c843efcc9b04",
+      "after_bytes": 74456,
+      "after_sha256": "3f2dfc20d4d12a8804974d63141bfbca5c6d439ecf720a0e7ff46e11131a02ec",
+      "prefix_sha256": "1ff26dc6915a6d61264c3c7772b1e9d2d3b2fe9117deb15e2474c843efcc9b04",
+      "prefix_bytes_equal": true
+    }
+  ]
+}
