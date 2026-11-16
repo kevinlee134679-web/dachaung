@@ -1,0 +1,4 @@
+# Preserve S00 document/evidence bytes for SHA256 and append-only history.
+# Source-code attributes may be defined when S01 is explicitly authorized.
+README.md -text
+docs/** -text

@@ -1,0 +1,76 @@
+{
+  "time": "2026-11-16 12:04:14 +08:00",
+  "timezone": "Asia/Shanghai",
+  "checks": [
+    {
+      "path": "D:\\大学\\大创\\dachaung\\docs\\S00\\03_工程与访问核查_20261116.md",
+      "before_bytes": 5716,
+      "before_sha256": "3ee9d0b6f9e71810cfec1c3c00669045d6a74e2831b637eee671eca4350eee63",
+      "after_bytes": 6342,
+      "after_sha256": "598963d604366d7537e0c6c6700feef8781834a60ad3518487bf41acabffd5a4",
+      "prefix_sha256": "3ee9d0b6f9e71810cfec1c3c00669045d6a74e2831b637eee671eca4350eee63",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "D:\\大学\\大创\\dachaung\\docs\\工作记录.md",
+      "before_bytes": 0,
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_bytes": 9531,
+      "after_sha256": "4c3ea59fd32583a5effb0fb52f509558156fc11795d5e080cd2e4a1a0c2f74c3",
+      "prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prefix_bytes_equal": true
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/baseline/v1.1/00_全平台分阶段编码汇总Prompt.md",
+      "bytes": 155075,
+      "sha256": "8334e2b6680b34324af89fc8d29dc8ffcd936f1c1ab372902cfa33f2a9c6fdd6"
+    },
+    {
+      "path": "docs/baseline/v1.1/00_汇总Prompt使用说明.md",
+      "bytes": 11828,
+      "sha256": "1961b7b607a56202e14f409ff62bdc93c4d4da04a96bc244cefbe398c1a306c1"
+    },
+    {
+      "path": "docs/S00/00_范围与全平台目录_draft01.md",
+      "bytes": 20328,
+      "sha256": "14e2727e927b1146f4f577324ceb091e0b78692b0503bf2ca48e8ee506591fb4"
+    },
+    {
+      "path": "docs/S00/01_公共基础与O字段_draft01.md",
+      "bytes": 37489,
+      "sha256": "54cecf7c92eb924bdc2f0241bef89d9671403f2793d8c10b17bdc1bb959680c7"
+    },
+    {
+      "path": "docs/S00/02_公共基础与O接口卡_draft01.md",
+      "bytes": 82548,
+      "sha256": "cc67785d158394e70db66e7ae3e6b179d7e706cc0c4b0995cf12fef4c7a9dc8d"
+    },
+    {
+      "path": "docs/S00/03_工程与访问核查_20261116.md",
+      "bytes": 6342,
+      "sha256": "598963d604366d7537e0c6c6700feef8781834a60ad3518487bf41acabffd5a4"
+    },
+    {
+      "path": "docs/S00/04_文档追加操作校验证据_20261116.json",
+      "bytes": 1186,
+      "sha256": "a61be03870dba89100fac03a8ff0ed1b84ab77b4d48646a0b30994dde78755eb"
+    },
+    {
+      "path": "docs/工作记录.md",
+      "bytes": 9531,
+      "sha256": "4c3ea59fd32583a5effb0fb52f509558156fc11795d5e080cd2e4a1a0c2f74c3"
+    },
+    {
+      "path": "docs/版本登记.md",
+      "bytes": 1550,
+      "sha256": "a0700c10b1e95849b0f26b7f644ef5ce7971fda1ed3b3f454eca3be96b6241ef"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1432,
+      "sha256": "74b211ab72a3f2bc518e68c4d15d6cd1dbb82fffe7ff810ac0f27b317df525a4"
+    }
+  ]
+}

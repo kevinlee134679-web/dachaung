@@ -1,0 +1,27 @@
+{
+  "time": "2026-11-16T12:01:05.591351+08:00",
+  "timezone": "Asia/Shanghai",
+  "scope": "isolated document append helper only; not S01 application recorder",
+  "test_directory": "D:\\大学\\大创\\tmp\\s00_append_check_20261116_120105",
+  "append": true,
+  "correction_preserves_original": true,
+  "stale_snapshot_rejected": true,
+  "tampered_history_rejected": true,
+  "original_history_tested_destructively": false,
+  "first_append": {
+    "before_bytes": 0,
+    "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after_bytes": 30,
+    "after_sha256": "c038037b673239350136c2e8746f33af0020fdaa2cca3eb64099f6caf7580355",
+    "prefix_bytes_equal": true,
+    "prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "second_append": {
+    "before_bytes": 30,
+    "before_sha256": "c038037b673239350136c2e8746f33af0020fdaa2cca3eb64099f6caf7580355",
+    "after_bytes": 78,
+    "after_sha256": "e3620317c487e8f54706c4b88187743757233530a114f4fed7a5198d6e94651d",
+    "prefix_bytes_equal": true,
+    "prefix_sha256": "c038037b673239350136c2e8746f33af0020fdaa2cca3eb64099f6caf7580355"
+  }
+}
