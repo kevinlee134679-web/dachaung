@@ -1,0 +1,25 @@
+{
+  "time": "2026-11-16T13:10:17.323917+08:00",
+  "timezone": "Asia/Shanghai",
+  "related_record": "R0004",
+  "initial_whole_index_whitespace_check": {
+    "exit_code": 2,
+    "reported_issue": "docs/S00/02_公共基础与O接口卡_draft01.md:2444: new blank line at EOF.",
+    "classification": "historical source formatting; no application failure"
+  },
+  "resolution": "Preserve confirmed source bytes and SHA256; do not rewrite history for an EOF style warning. Check newly authored/appended documents separately.",
+  "new_or_appended_document_whitespace_check": {
+    "exit_code": 0,
+    "paths": [
+      "README.md",
+      "docs/版本登记.md",
+      "docs/工作记录.md",
+      "docs/contracts/公共基础与O_v0.1_确认清单.md",
+      "docs/S00/08_公共O确认及A草案校验_20261116.json"
+    ],
+    "passed": true
+  },
+  "archive_original_sha256": "cc67785d158394e70db66e7ae3e6b179d7e706cc0c4b0995cf12fef4c7a9dc8d",
+  "archive_staged_bytes_unchanged": true,
+  "application_tests_run": false
+}

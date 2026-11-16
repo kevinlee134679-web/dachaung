@@ -1,0 +1,94 @@
+{
+  "time": "2026-11-16 13:08:51 +08:00",
+  "timezone": "Asia/Shanghai",
+  "record_id": "R0004",
+  "start_commit": "3a6437aeb304bc44ef786d7e009031de3ea20f11",
+  "confirmed_contract": "public-o-v0.1",
+  "confirmation_scope": "F01-F10 subject to U01-U08 exclusions; no S01 authorization",
+  "prefix_checks": [
+    {
+      "path": "README.md",
+      "before_bytes": 2588,
+      "before_sha256": "c58030cf25d2cb6415d4e5d455444c435d9b6da660ab09d9776584b97e9ffdc1",
+      "after_bytes": 3362,
+      "after_sha256": "3ab8742fed5c3516811288d09fcabd5fd24eeff87b5e20e32a0d01b46a52fa18",
+      "prefix_sha256": "c58030cf25d2cb6415d4e5d455444c435d9b6da660ab09d9776584b97e9ffdc1",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/版本登记.md",
+      "before_bytes": 2600,
+      "before_sha256": "84d0c8d47a011f2a21debb34f1b6b7b85f0fa75f3c05216ba3e226adda739d11",
+      "after_bytes": 3714,
+      "after_sha256": "ada51d2fd9e5e717b850940be433cbef4aaeb91cdafae07d6ff22e32230dd55c",
+      "prefix_sha256": "84d0c8d47a011f2a21debb34f1b6b7b85f0fa75f3c05216ba3e226adda739d11",
+      "prefix_bytes_equal": true
+    },
+    {
+      "path": "docs/工作记录.md",
+      "before_bytes": 20222,
+      "before_sha256": "40fe5c89b112e797133c664a8383c2fefd4461a3e2e41324d11533d49d79cf2a",
+      "after_bytes": 27535,
+      "after_sha256": "253c487581bd541344cb339ba924d8877ece63cb66281aed27db9ae4d1e3f4f3",
+      "prefix_sha256": "40fe5c89b112e797133c664a8383c2fefd4461a3e2e41324d11533d49d79cf2a",
+      "prefix_bytes_equal": true
+    }
+  ],
+  "document_validation": {
+    "public_O_cards": 33,
+    "public_O_json_examples": 66,
+    "A_cards": 41,
+    "A_objects": 50,
+    "A_fields": 318,
+    "A_json_examples": 82,
+    "A_recursive_success_schema_check": true,
+    "A_routes_match_prior_catalog": true,
+    "statistics_arithmetic_examples_checked": 5,
+    "base64_example_sha256_verified": true,
+    "application_tests_run": false
+  },
+  "files": [
+    {
+      "path": "docs/contracts/公共基础与O_v0.1_确认清单.md",
+      "bytes": 6951,
+      "sha256": "946fedd753ac69173ebdde94cb5d20ebfa4ada78b2eb78116cd25db389ae6311",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/00_范围与全平台目录_draft01.md",
+      "bytes": 20328,
+      "sha256": "14e2727e927b1146f4f577324ceb091e0b78692b0503bf2ca48e8ee506591fb4",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/01_公共基础与O字段_draft01.md",
+      "bytes": 37489,
+      "sha256": "54cecf7c92eb924bdc2f0241bef89d9671403f2793d8c10b17bdc1bb959680c7",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/02_公共基础与O接口卡_draft01.md",
+      "bytes": 82548,
+      "sha256": "cc67785d158394e70db66e7ae3e6b179d7e706cc0c4b0995cf12fef4c7a9dc8d",
+      "include_in_commit": true
+    },
+    {
+      "path": "docs/S00/A00_范围与待确认事项_draft01.md",
+      "bytes": 10893,
+      "sha256": "4ce9cf840844036e8964d2622190b5c2a08106c18f5314e8a987c050153cc5cb",
+      "include_in_commit": false
+    },
+    {
+      "path": "docs/S00/A01_字段_draft01.md",
+      "bytes": 43921,
+      "sha256": "05e022d01639ab8399042bb80ec3b101d1d7f5568a302c48f139a15131263c43",
+      "include_in_commit": false
+    },
+    {
+      "path": "docs/S00/A02_接口卡_draft01.md",
+      "bytes": 106025,
+      "sha256": "77b3071db4290e92574bb8ee16ec226ac9f6f8f9872444a299862b8334e6823a",
+      "include_in_commit": false
+    }
+  ]
+}
