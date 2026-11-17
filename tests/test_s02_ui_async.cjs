@@ -69,13 +69,15 @@ function setup(fetch, crypto = webcrypto) {
     document: { createElement: tag => new Element(tag), createTextNode: text => new Element('#text', String(text)),
       querySelector: selector => roots[selector], querySelectorAll: () => [] } });
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
+  const support = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's04.js'), 'utf8');
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   assert.ok(cutoff > 0);
-  vm.runInContext(source.slice(0, cutoff) + '\nglobalThis.frontend = {state,api,button,render,fileView,questionnaireView,familyView};', context);
+  vm.runInContext(source.slice(0, cutoff), context);
+  vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
   const app = context.frontend;
   function choose(patient = 'pa', account = 'account-a') {
     const access = { patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' }, relationship: 'self',
-      effective_scopes: ['files:write', 'files:read', 'medication:read', 'medication:edit', 'questionnaire:assist'] };
+      effective_scopes: ['files:write', 'files:read', 'medication:read', 'medication:edit', 'questionnaire:assist', 'knowledge:read'] };
     app.state.context = { account: { account_id: account, display_name: account }, current_patient_id: patient, patients: [access], csrf_token: 'csrf-' + account };
     app.state.patient = access;
   }
@@ -122,7 +124,7 @@ test('a stale form control cannot start another action after view change', async
 
 test('subpage change invalidates a delayed old medication list', async () => {
   const response = deferred();
-  const env = setup(async url => url.includes('/medications') ? response.promise : success({}));
+  const env = setup(async url => url.includes('/medications') ? response.promise : success({items: [], next_cursor: null}));
   env.app.state.page = 'medication'; env.app.state.tab = 'meds';
   const pending = env.app.render();
   await tick();
@@ -130,7 +132,25 @@ test('subpage change invalidates a delayed old medication list', async () => {
   response.resolve(success({ items: [{ medication_id: 'old-med', name: 'STALE_MEDICATION', notes: null }], next_cursor: null }));
   await pending;
   assert.equal(env.roots['#main'].textContent.includes('STALE_MEDICATION'), false);
-  assert.equal(env.roots['#main'].textContent.includes('当前尚未接入B2资料'), true);
+  assert.equal(env.roots['#main'].textContent.includes('目前没有适用的审核药学资料'), true);
+});
+
+test('support reply renders model markup as literal text', () => {
+  const env = setup(async () => success({}));
+  const markup = '<img src="x" onerror="evil()">';
+  const card = env.app.supportMessage({}, {role: 'assistant', content: markup}, false);
+  assert.equal(card.textContent.includes(markup), true);
+  assert.equal(find(card, node => node.tagName === 'IMG'), null);
+});
+
+test('an expired pending support invitation has no acceptance control', () => {
+  const env = setup(async () => success({}));
+  const section = env.app.invitationList([{
+    status: 'pending', invitation_id: 'test', title: '支持邀请', description: '可自行选择',
+    valid_until: '2026-11-17T12:00:00Z',
+  }], '2026-11-17T12:00:00Z');
+  assert.equal(section.textContent.includes('已到期'), true);
+  assert.equal(find(section, node => node.tagName === 'BUTTON'), null);
 });
 
 test('transient questionnaire restore failure preserves its saved reference', async () => {

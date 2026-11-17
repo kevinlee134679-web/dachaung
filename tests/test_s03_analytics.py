@@ -167,7 +167,8 @@ class S03AnalyticsTests(unittest.TestCase):
         self.prepare();self.report(0)
         summary=self.refresh();stats=self.get_result(as_of=summary['record_overview']['as_of'])
         self.assertEqual(summary['record_overview'],stats)
-        self.assertEqual([s['availability'] for s in summary['feedback_overview']['sources']],['not_integrated']*2)
+        self.assertEqual([s['availability'] for s in summary['feedback_overview']['sources']],
+                         ['not_collected','not_integrated'])
         self.assertEqual(summary['data_status'],'insufficient')
 
     def test_measurement_zero_missing_unit_and_method_groups(self):

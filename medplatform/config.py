@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def supported_modes(self):
         if self.APP_ENV == "production" or self.AUTH_MODE != "demo":
-            raise ValueError("S01外部身份适配未接入，不能启动该模式")
+            raise ValueError("外部身份适配未接入，不能启动该模式")
         if self.LLM_MODE != "mock":
-            raise ValueError("S01真实模型适配未接入，不能启动该模式")
+            raise ValueError("真实模型传输未启用，不能启动该模式")
         return self
 
     @property

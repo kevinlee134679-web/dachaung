@@ -32,6 +32,7 @@ class S03Execution:
     def __init__(self, db, auth, receipts, clock, analytics=None):
         self.db, self.auth, self.receipts, self.clock = db, auth, receipts, clock
         self.analytics = analytics
+        self.support_state = None
         self.instance_id = uid()
         # This local adapter performs no external effect. Tests may inject a
         # registered deterministic failure; there is no public adapter selector.
@@ -173,9 +174,12 @@ class S03Execution:
         if not internal:
             self._admin(c,principal)
         get(c,'Patient',body['patient_id'])
-        if body['owner_module'] in ('B','C'):
+        b_owned = body['owner_module'] == 'B'
+        if body['owner_module'] == 'C' or b_owned and (not internal or self.support_state is None):
             raise AppError(503,'TASK_OWNER_NOT_INTEGRATED','该任务的B或C业务处理器尚未接入')
-        if body['kind'].startswith('refresh_'):
+        if b_owned:
+            self.support_state.validate_task(c,body)
+        elif body['kind'].startswith('refresh_'):
             if body['payload']['data_environment']!='demo':
                 raise AppError(403,'ENVIRONMENT_FORBIDDEN','演示任务不能访问真实数据')
             if self.analytics is None:
@@ -341,6 +345,8 @@ class S03Execution:
                 elif task['kind']=='refresh_summary':
                     result=self.analytics.refresh_in_transaction(c,None,task['patient_id'],{**task['payload'],'as_of':at})
                     execution['result_ref']=result['summary_id']
+                elif task['kind']=='expire_b_state' and self.support_state is not None:
+                    execution['result_ref']=self.support_state.run_task(c,task)
                 elif task['kind']=='deliver_reminder':
                     identifier=uid()
                     c.execute('INSERT INTO a_in_app_notifications VALUES (?,?,?,?,?,?,?)',
@@ -383,7 +389,7 @@ class S03Execution:
                     row=c.execute('SELECT document_json FROM a_executions WHERE task_id=? ORDER BY attempt DESC LIMIT 1',(task['task_id'],)).fetchone()
                     if not row:
                         continue
-                    execution=json.loads(row[0]);local=task['kind'] in ('refresh_statistics','refresh_summary','deliver_reminder')
+                    execution=json.loads(row[0]);local=task['kind'] in ('refresh_statistics','refresh_summary','deliver_reminder','expire_b_state')
                     outcome={'error_code':'EXECUTION_INTERRUPTED','error_message':'本地事务未提交，原尝试已记录；按安全间隔恢复' if local else '在途副作用结果未知，必须核查',
                              'retryable':local,'outcome_unknown':not local}
                     if local and task['cancellation_requested']:
@@ -624,6 +630,9 @@ class S03Execution:
                     self.auth.require_patient(principal,patient,'reminder:write',c)
                     self.auth.require_patient(principal,patient,'plan:read',c)
             result['materialized_slots']=self._materialize(c,patient,start,end)
+            if self.support_state is not None:
+                self.support_state.maintain_invitations(c,patient)
+                self.support_state.consume_notices(c,patient)
             for notice in c.execute("SELECT n.* FROM change_notices n LEFT JOIN a_notice_consumptions x ON n.notice_id=x.notice_id AND x.consumer='A' WHERE n.patient_id=? AND n.data_environment='demo' AND n.kind IN ('plan_published','event_revision_changed') AND x.notice_id IS NULL",(patient,)).fetchall():
                 ref=json.loads(notice['source_ref'])
                 if notice['kind']=='plan_published':

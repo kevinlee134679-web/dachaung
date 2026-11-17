@@ -87,6 +87,7 @@ def query_input(action, pairs):
 class S03Analytics:
     def __init__(self, db, auth, receipts, clock, records):
         self.db, self.auth, self.receipts, self.clock, self.records = db, auth, receipts, clock, records
+        self.support_feedback = None
 
     def authorize(self, c, principal, patient, scope):
         if principal is None:
@@ -131,7 +132,7 @@ class S03Analytics:
             if action == 'analytics_measurement':
                 data = self.measurement_trend(c,patient,window)
             elif action == 'analytics_feedback':
-                data = self.feedback(c,patient,window)
+                data = self.feedback(c,patient,window,principal)
             else:
                 kind = 'summary' if action == 'analytics_summary' else 'statistics'
                 data, trend = self.read_result(c,principal,patient,kind,window,'as_of' in q)
@@ -257,6 +258,12 @@ class S03Analytics:
     def signature(self, c, patient, window, inputs=None):
         return fingerprint(inputs or self.source_inputs(c,patient,window))
 
+    def result_signature(self,c,principal,patient,kind,window,inputs=None):
+        signature = self.signature(c,patient,window,inputs)
+        if kind == 'summary' and self.support_feedback is not None:
+            return fingerprint([signature,self.support_feedback(c,principal,patient,window)])
+        return signature
+
     def persist(self, c, principal, patient, kind, window, data, trend, inputs):
         at = stamp(self.clock())
         refs = [{'resource_type':'PlanVersion','resource_id':p['plan_id'],'resource_revision':p['plan_version']} for p in inputs[0]]
@@ -268,7 +275,7 @@ class S03Analytics:
         result_id = data['summary_id' if kind=='summary' else 'statistics_id']
         c.execute('INSERT INTO s03_results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                   (result_id,patient,window['data_environment'],kind,window['window_start'],window['window_end'],window['as_of'],auth_hash,
-                   self.signature(c,patient,window,inputs),snapshot_id,encode(data),encode(trend) if trend else None,at))
+                    self.result_signature(c,principal,patient,kind,window,inputs),snapshot_id,encode(data),encode(trend) if trend else None,at))
         notice_kind = 'summary_changed' if kind=='summary' else 'statistics_changed'
         c.execute('INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)',
                   (uid(),'A',patient,window['data_environment'],notice_kind,encode({'resource_type':'Summary' if kind=='summary' else 'Statistics',
@@ -295,10 +302,13 @@ class S03Analytics:
         self.persist(c,principal,patient,'statistics',window,data,trend,inputs)
         return data
 
-    def feedback(self, c, patient, window):
+    def feedback(self, c, patient, window, principal=None):
+        sources = [{'source_module':m,'availability':'not_integrated','records':[],
+                    'reason':m+'业务尚未接入，本阶段不生成服务效果'} for m in ('B','C')]
+        if self.support_feedback is not None:
+            sources[0] = self.support_feedback(c,principal,patient,window)
         return {'patient_id':patient,'window_start':window['window_start'],'window_end':window['window_end'],
-                'sources':[{'source_module':m,'availability':'not_integrated','records':[],
-                            'reason':m+'业务尚未接入，本阶段不生成服务效果'} for m in ('B','C')], 'updated_at':stamp(self.clock())}
+                'sources':sources, 'updated_at':stamp(self.clock())}
 
     def refresh_in_transaction(self, c, principal, patient, window):
         self.authorize(c,principal,patient,'summary:read')
@@ -335,12 +345,14 @@ class S03Analytics:
                             'message':metric+('已接收，但质量或单位待复核，暂不可用于数值汇总' if blocked else '尚无有效采样值；保留未采集原因，不补零')})
         else:
             missing.append({'source':'measurement','code':'restricted','message':'当前授权不包含指标资料'})
-        missing.extend({'source':m,'code':'not_integrated','message':m+'业务尚未接入'} for m in ('B','C'))
+        feedback = self.feedback(c,patient,window,principal)
+        missing.extend({'source':s['source_module'],'code':s['availability'],'message':s['reason']}
+                       for s in feedback['sources'] if s['availability'] != 'available')
         at = stamp(self.clock())
         summary = {'summary_id':uid(),'patient_id':patient,'window_start':window['window_start'],'window_end':window['window_end'],
                    'generated_at':at,'valid_until':stamp(self.clock()+timedelta(minutes=15)),'updated_at':at,
                    'data_status':'insufficient' if missing else 'fresh','plan_refs':record['plan_refs'] if record else [],
-                   'record_overview':record,'measurement_overview':measurements,'feedback_overview':self.feedback(c,patient,window),
+                   'record_overview':record,'measurement_overview':measurements,'feedback_overview':feedback,
                    'missing_items':missing,'schema_version':SUMMARY_VERSION,'is_simulated':True}
         self.persist(c,principal,patient,'summary',window,summary,None,inputs)
         return summary
@@ -357,7 +369,7 @@ class S03Analytics:
             raise AppError(409,'RESULT_NOT_READY','没有匹配当前权限和截止的已存结果，请显式刷新；查询不会计算或补写')
         data = json.loads(row['result_json']);trend = json.loads(row['trend_json']) if row['trend_json'] else None
         old_window = {**window,'as_of':row['as_of']}
-        stale = row['as_of'] < window['as_of'] or row['input_signature'] != self.signature(c,patient,old_window)
+        stale = row['as_of'] < window['as_of'] or row['input_signature'] != self.result_signature(c,principal,patient,kind,old_window)
         if kind == 'summary':
             stale |= data['valid_until'] <= stamp(self.clock())
             if stale:

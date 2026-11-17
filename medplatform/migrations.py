@@ -60,6 +60,11 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
         if current>=3 and not {'o_accounts','o_sessions','o_binding_codes','s02_documents','s02_document_history',
                                's02_source_keys','idempotency_receipts','receipt_responses','change_notices','o_schedule_windows','o_revocation_audit'} <= tables:
             raise SchemaError('S02必要数据表缺失')
+        if current >= 7 and not {
+            'b_sessions', 'b_messages', 'b_generations', 'b_generation_runs', 'b_records',
+            'b_intervention_revisions', 'b_knowledge', 'b_knowledge_history', 'b_model_selection',
+        } <= tables:
+            raise SchemaError('S04必要数据表缺失')
         return current
 
 

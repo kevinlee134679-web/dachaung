@@ -396,7 +396,11 @@ async function render() {
   }
   main.append(el("h1", {}, titles[state.page]));
   if (state.page === "support") {
-    main.append(p("情感支持与社会支持将在后续阶段开放。当前尚未连接对话模型或实际服务方。"));
+    try {
+      await supportView();
+    } catch (error) {
+      if (epoch === state.epoch && !(error instanceof ViewChanged)) main.append(p(error.message, "error"));
+    }
     return;
   }
   if (state.page === "rewards") {
@@ -404,6 +408,14 @@ async function render() {
     return;
   }
   if (!state.patient) {
+    if (state.page === "profile" && isDemoAdmin()) {
+      try {
+        await supportConsole();
+      } catch (error) {
+        if (epoch === state.epoch && !(error instanceof ViewChanged)) main.append(p(error.message, "error"));
+      }
+      return;
+    }
     main.append(p("请先在上方选择本人或已获授权的照护对象。"));
     if (state.page === "profile") await familyView();
     return;
@@ -451,7 +463,7 @@ async function render() {
       records: () => eventListView("medication"),
       measurements: () => eventListView("measurement"),
       executions: taskView,
-      knowledge: async()=>main.append(p("药学资料将复用同一份经过适用审核的知识来源。当前尚未接入B2资料，不能提供个体化药学指引；涉及用药疑问，请咨询实际医生或药师。"))
+      knowledge: knowledgeView
     } [state.tab] || scheduleView)();
     else await ({
       overview: patientView,
@@ -483,6 +495,7 @@ async function homeView() {
     class: "actions"
   }, button("填写八题问卷", () => navigate("profile", "questionnaire"), "primary", !scope("questionnaire:assist")), button("核对用药资料", () => navigate("medication", "drafts"), "", !scope("drafts:read")), button("设置提醒", () => navigate("medication", "reminders"), "", !scope("reminder:read")), button("查看用药报告", () => navigate("profile", "report"), "", !scope("statistics:read") && !scope("summary:read"))), p("CAS、患者分类方法尚未适配。本人报告与家人、开盒等证据分别保存；提醒需显式执行，不保证关闭网页后送达。", "muted"));
   if (scope("plan:read")) await scheduleView();
+  if (scope("interventions:read")) await homeSupportInvitations();
   if (scope("summary:read")) {
     const view = captureView();
     const day = today() + "T00:00:00+08:00", window_end = new Date(new Date(day).getTime() + 86400000).toISOString(),
@@ -1672,7 +1685,7 @@ async function deviceView() {
 async function demoView() {
   if (!isDemoAdmin()) { main.append(p("演示控制台仅对受控演示管理员开放。")); return; }
   const box = el("section", {}), output = el("div", { "aria-live": "polite" }); main.append(box);
-  box.append(el("h2", {}, "独立演示控制台"), p("以下操作只用于当前虚构患者。不会启动后台runner，不调用B/C业务、真实设备或付费API。时段物化与任务准备使用运行说明中的显式维护命令。", "warning"));
+  box.append(el("h2", {}, "用药记录与任务演示"), p("以下操作只用于当前虚构患者。时段物化与任务准备需要显式维护。", "warning"));
   const deviceArea = el("details", {}, el("summary", {}, "发送固定场景的模拟设备事件")),
     [dl, device] = input("当前患者已绑定的模拟设备编号"),
     [sl, scenario] = select("固定设备场景", [["normal_box", "正常开盒"], ["duplicate", "重复上传"], ["late_upload", "迟到上传"], ["measurement_missing", "缺失指标"], ["unknown_unit", "未知单位"], ["unbound", "未绑定设备（预期拒绝）"]], "normal_box"),
