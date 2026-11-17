@@ -50,6 +50,7 @@ const grantOptions = [
   ["statistics:read", "五类用药统计"],
   ["summary:read", "近期状态摘要"],
   ["feedback:read", "获准来源的反馈概况"],
+  ["dialogue:read", "支持对话历史（只读）"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -110,7 +111,9 @@ function captureView() {
 
 function isCurrentView(view) {
   const current = captureView();
-  return Object.keys(current).every(key => current[key] === view[key]);
+  const sameSession = current.accountId === view.accountId && current.csrfToken === view.csrfToken;
+  return sameSession && (view.sessionOnly === true ||
+    (current.epoch === view.epoch && current.patientId === view.patientId));
 }
 
 function requireCurrentView(view) {
@@ -134,8 +137,7 @@ const p = (text, cls = "") => el("p", {
   class: cls
 }, text);
 
-function button(text, fn, cls = "", disabled = false) {
-  const view = captureView();
+function button(text, fn, cls = "", disabled = false, view = captureView()) {
   return el("button", {
     type: "button",
     class: cls,
@@ -358,17 +360,21 @@ function identity() {
     }));
     area.append(el("label", {}, "正在管理", picker));
   }
-  area.append(button("退出", async () => {
-    await api("/auth/logout", "POST", {});
+  // The header outlives navigation. Its logout action belongs to the session.
+  const sessionView = Object.freeze({...captureView(), sessionOnly: true});
+  area.append(button("退出", async view => {
+    await api("/auth/logout", "POST", {}, view);
+    requireCurrentView(view);
     state.epoch++;
     state.context = null;
     state.patient = null;
     state.response = null;
     state.draft = null;
+    state.demoTask = null;
     identity();
     await render();
     notice("当前会话已退出。");
-  }, "quiet"));
+  }, "quiet", false, sessionView));
 }
 
 function loginView() {
@@ -1011,7 +1017,7 @@ async function familyView() {
         checks.push([scopeCode, control]);
         settings.append(node);
       }
-      settings.append(p("家人不能发布正式计划或主动生成患者画像。授权范围不会自动随功能增加。", "muted"), button("明确确认并保存授权", async () => {
+      settings.append(p("家人获准后可查看支持对话历史。发言、切换模式和响应邀请由患者本人操作。家人不能发布正式计划或主动生成患者画像。授权范围不会自动随功能增加。", "muted"), button("明确确认并保存授权", async () => {
         const shown = new Set(grantOptions.map(x => x[0])),
           keep = latest?.status === "active" ? latest.scopes.filter(x => !shown.has(x)) : [];
         await api(`/family-bindings/${binding.binding_id}/grant`, "PUT", {

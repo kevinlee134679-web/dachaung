@@ -82,7 +82,7 @@ function setup(fetch, crypto = webcrypto) {
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   assert.ok(cutoff > 0);
   vm.runInContext(source.slice(0, cutoff), context);
-  vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
+  vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,identity,navigate,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
   const app = context.frontend;
   function choose(patient = 'pa', account = 'account-a') {
     const access = { patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' }, relationship: 'self',
@@ -129,6 +129,47 @@ test('a stale form control cannot start another action after view change', async
   env.app.state.epoch++;
   await oldButton.click();
   assert.equal(effects, 0);
+});
+
+test('header logout follows its session through navigation and clears the current page on success', async () => {
+  for (const account of ['demo-patient-a', 'demo-family', 'demo-admin']) {
+    const sent = deferred(), response = deferred(), requests = [];
+    const env = setup(async (url, options) => {
+      requests.push([url, options.method, options.headers['X-CSRF-Token']]);
+      sent.resolve();
+      return response.promise;
+    });
+    env.choose('pa', account);
+    if (account === 'demo-admin') {
+      env.app.state.context.patients = [];
+      env.app.state.patient = null;
+    }
+    env.app.identity();
+    const logout = byText(env.roots['#identity'], 'button', '退出');
+    await env.app.navigate('rewards');
+    const pending = logout.click();
+    await Promise.race([sent.promise, pending]);
+    assert.deepEqual(requests, [['/api/v1/auth/logout', 'POST', 'csrf-' + account]]);
+    await env.app.navigate('rewards');
+    response.resolve(success({outcome: 'logged_out'}));
+    await pending;
+    assert.equal(env.app.state.context, null);
+    assert.equal(env.app.state.patient, null);
+    byText(env.roots['#main'], 'button', '管理自己的用药');
+    assert.equal(env.roots['#notice'].textContent, '当前会话已退出。');
+  }
+});
+
+test('a retained logout control cannot log out a replacement session on the same account', async () => {
+  const requests = [];
+  const env = setup(async url => { requests.push(url); return success({}); });
+  env.app.identity();
+  const oldLogout = byText(env.roots['#identity'], 'button', '退出');
+  env.app.state.context.csrf_token = 'replacement-session-csrf';
+  env.app.identity();
+  await oldLogout.click();
+  assert.deepEqual(requests, []);
+  assert.equal(env.app.state.context.csrf_token, 'replacement-session-csrf');
 });
 
 test('subpage change invalidates a delayed old medication list', async () => {
@@ -352,7 +393,12 @@ async function grantEnvironment() {
   const grant = { grant_id: 'grant-a', binding_id: 'binding-a', status: 'active', valid_until: '2030-12-01T02:03:45.123456+00:00',
     scopes: ['patient:read'], meta: { revision: 2 } };
   const env = setup(async (url, options) => {
-    if (options.method !== 'GET') { writes.push(JSON.parse(options.body)); return success(grant); }
+    if (options.method !== 'GET') {
+      const body = JSON.parse(options.body);
+      writes.push(body);
+      grant.scopes = body.scopes;
+      return success(grant);
+    }
     if (url.includes('/family-bindings')) return success({ items: [{ binding_id: 'binding-a', family_account_id: 'demo-family', status: 'active' }], next_cursor: null });
     if (url.includes('/grants')) return success({ items: [grant], next_cursor: null });
     if (url.endsWith('/auth/me')) return success(env.app.state.context);
@@ -362,6 +408,29 @@ async function grantEnvironment() {
   await env.app.familyView();
   return { ...env, writes, grant };
 }
+test('patient can explicitly grant and remove dialogue reading and see the saved scope', async () => {
+  const env = await grantEnvironment();
+  const main = env.roots['#main'];
+  const label = '支持对话历史（只读）';
+  const dialogueCheck = () => {
+    const field = find(main, node => node.tagName === 'LABEL' && node.children[1]?.textContent === label);
+    assert.ok(field);
+    return field.children[0];
+  };
+  assert.equal(dialogueCheck().checked, false);
+  dialogueCheck().checked = true;
+  await byText(main, 'button', '明确确认并保存授权').click();
+  assert.deepEqual(env.writes[0].scopes, ['patient:read', 'dialogue:read']);
+  assert.equal(env.writes[0].confirmed, true);
+  assert.equal(dialogueCheck().checked, true);
+  byText(main, 'p', '授权：有效，基础资料查看、支持对话历史（只读）');
+  dialogueCheck().checked = false;
+  await byText(main, 'button', '明确确认并保存授权').click();
+  assert.deepEqual(env.writes[1].scopes, ['patient:read']);
+  assert.equal(dialogueCheck().checked, false);
+  byText(main, 'p', '授权：有效，基础资料查看');
+});
+
 test('editing grant scopes keeps its exact current expiration by default', async () => {
   const env = await grantEnvironment();
   const deadline = fieldControl(env.roots['#main'], '授权截止时间（北京时间，留空表示无预设截止）');
