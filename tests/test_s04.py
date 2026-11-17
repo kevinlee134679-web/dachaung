@@ -42,9 +42,9 @@ class S04Tests(unittest.TestCase):
             "client_message_id": number or existing.key(), "content": content, "expected_turn_count": turn,
         }, expected=expected, operation=operation)
 
-    def trigger(self, scenario, *, session=None, run=None, at=None, client=None, expected=201):
+    def trigger(self, scenario, *, session=None, run=None, at=None, case=CASE_A, client=None, expected=201):
         return self.api("POST", "/demo/triggers", dict(
-            case_id=CASE_A, session_id=session and session["session_id"], scenario=scenario,
+            case_id=case, session_id=session and session["session_id"], scenario=scenario,
             scenario_run_id=run or existing.key(), occurred_at=at or stamp(self.s.clock()),
         ), client=client or self.admin, expected=expected)
 
@@ -95,6 +95,31 @@ class S04Tests(unittest.TestCase):
         self.assertEqual(len(view["intensity_mapping"]), 8)
         self.assertEqual(len(self.api("GET", self.path(created, "/messages"))["items"]), 2)
         self.assertEqual(self.s.db.path.read_bytes(), before)
+
+    def test_stale_turn_recovers_without_saving_or_generating_rejected_message(self):
+        session = self.create()
+        messages = self.path(session, "/messages")
+        rejected_id, new_id, operation = existing.key(), existing.key(), existing.key()
+        adapter = self.b.dialogue.adapter
+        with patch.object(adapter, "complete", wraps=adapter.complete) as complete:
+            self.send(session)
+            error = self.send(session, number=rejected_id, operation=operation, turn=0, expected=409)
+            self.assertEqual(error["code"], "SESSION_REVISION_CONFLICT")
+            lookup = self.api("GET", messages + "?client_message_id=" + rejected_id, expected=404)
+            self.assertEqual(lookup["code"], "RESOURCE_NOT_FOUND")
+            self.assertEqual(complete.call_count, 1)
+            current = self.api("GET", self.path(session))
+            self.assertEqual(current["turn_count"], 1)
+            new_operation = existing.key()
+            saved = self.send(current, number=new_id, operation=new_operation, turn=current["turn_count"])
+            self.assertEqual(self.send(current, number=new_id, operation=new_operation, turn=1), saved)
+            self.assertEqual(self.send(current, number=new_id, turn=1), saved)
+            self.assertEqual(complete.call_count, 2)
+        self.assertEqual(self.api("GET", self.path(session))["turn_count"], 2)
+        stored = self.api("GET", messages)["items"]
+        self.assertEqual(len(stored), 4)
+        self.assertEqual([m["client_message_id"] for m in stored if m["client_message_id"] == new_id], [new_id])
+        self.assertNotIn(rejected_id, [m["client_message_id"] for m in stored])
 
     def test_failed_message_restores_and_retries_original_generation(self):
         s = self.create()
@@ -189,6 +214,75 @@ class S04Tests(unittest.TestCase):
         export_query = urlencode(dict(window_start=stamp(self.s.clock() - timedelta(days=1)),
                                      window_end=stamp(self.s.clock() + timedelta(days=1)), patient_id=PA))
         self.assertEqual(self.api("GET", "/interventions/export?" + export_query)["items"], [])
+
+    def test_a41_rechecks_feedback_and_b_source_scopes_without_exposing_content(self):
+        session = self.create()
+        query = urlencode(dict(window_start=stamp(self.s.clock() - timedelta(days=1)),
+                               window_end=stamp(self.s.clock() + timedelta(days=1)), data_environment="demo"))
+        path = f"/patients/{PA}/feedback-overview?" + query
+
+        def source(client=None):
+            return next(s for s in self.api("GET", path, client=client)["sources"] if s["source_module"] == "B")
+
+        binding, grant = self.s.bind(["feedback:read"])
+
+        def change_scopes(*scopes):
+            nonlocal grant
+            grant = self.api("PUT", f"/family-bindings/{binding['binding_id']}/grant", {
+                "expected_revision": grant["meta"]["revision"], "scopes": list(scopes),
+                "valid_until": None, "confirmed": True,
+            })
+
+        restricted = source(self.s.f)
+        self.assertEqual((restricted["availability"], restricted["records"]), ("restricted", []))
+        self.assertTrue(restricted["reason"])
+        empty = source()
+        self.assertEqual((empty["availability"], empty["records"]), ("not_collected", []))
+        secret = "仅用于隔离权限测试的自评正文"
+        report = self.api("POST", self.path(session, "/self-reports"), {
+            "client_report_id": existing.key(), "items": [{"dimension": "burden", "description": secret}],
+        }, expected=201)
+        owner_view = source()
+        self.assertEqual(owner_view["availability"], "available")
+        self.assertEqual([ref["record_id"] for ref in owner_view["records"]], [report["assessment_id"]])
+        self.assertNotIn(secret, json.dumps(owner_view, ensure_ascii=False))
+        self.assertEqual(source(self.s.f), restricted)
+        change_scopes("feedback:read", "interventions:read")
+        self.assertEqual(source(self.s.f), restricted)
+        change_scopes("feedback:read", "assessment:read")
+        self.assertEqual(source(self.s.f), owner_view)
+        change_scopes("feedback:read", "assessment:read", "interventions:read")
+        self.assertEqual(source(self.s.f), owner_view)
+        feedback = f"/patients/{PA}/intervention-feedback?" + query.replace("&data_environment=demo", "")
+        self.assertEqual(self.api("GET", feedback, client=self.s.f, expected=403)["code"],
+                         "PATIENT_CONFIRMATION_REQUIRED")
+        change_scopes("feedback:read")
+        self.assertEqual(source(self.s.f), restricted)
+        self.api("POST", f"/grants/{grant['grant_id']}/revoke", {
+            "expected_revision": grant["meta"]["revision"], "reason": "withdraw test grant",
+        })
+        denied = self.api("GET", path, client=self.s.f, expected=403)
+        self.assertEqual(denied["code"], "SCOPE_REQUIRED")
+        for unrelated in (self.s.b, self.admin):
+            self.assertEqual(self.api("GET", path, client=unrelated, expected=404)["code"], "RESOURCE_NOT_FOUND")
+
+    def test_s04_summary_signature_still_tracks_b_source_changes(self):
+        session = self.create()
+        window = dict(window_start=stamp(self.s.clock() - timedelta(days=1)),
+                      window_end=stamp(self.s.clock() + timedelta(days=1)), data_environment="demo")
+        summary = self.api("POST", f"/patients/{PA}/summary-refresh", window)
+        query = urlencode(dict(window, as_of=stamp(self.s.clock())))
+        path = f"/patients/{PA}/summary?" + query
+        self.assertEqual(self.api("GET", path), summary)
+        self.api("POST", self.path(session, "/self-reports"), {
+            "client_report_id": existing.key(), "items": [{"dimension": "burden", "description": "虚构正文"}],
+        }, expected=201)
+        before = self.s.db.path.read_bytes()
+        stale = self.api("GET", path)
+        self.assertEqual(stale["data_status"], "stale")
+        self.assertEqual(stale["summary_id"], summary["summary_id"])
+        self.assertEqual(stale["feedback_overview"], summary["feedback_overview"])
+        self.assertEqual(self.s.db.path.read_bytes(), before)
 
     def test_expiry_projection_and_registered_a_task(self):
         session = self.create()
@@ -286,6 +380,62 @@ class S04Tests(unittest.TestCase):
         self.api("GET", self.path(free))
         self.api("GET", self.path(case_session), expected=404)
         self.assertEqual(len(self.api("GET", f"/patients/{PA}/medications")["items"]), 1)
+
+    def test_demo_reset_cancels_only_target_unbound_invitations_and_keeps_responses(self):
+        self.s.time[0] += timedelta(days=7)
+        self.s.a = self.s.login("demo-patient-a")
+        self.s.b = self.s.login("demo-patient-b")
+        self.admin = self.s.login("demo-admin")
+        case_session = self.create()
+        free = self.create(None)
+
+        def invite(**options):
+            return self.trigger("state_event", **options)["related_ids"][0]
+
+        def respond(identifier, choice="accepted", session=None, expected=200):
+            return self.api("POST", f"/invitations/{identifier}/response", {
+                "choice": choice, "expected_status": "pending", "session_id": session and session["session_id"],
+            }, expected=expected)
+
+        def visible(patient=PA, client=None):
+            return {d["invitation_id"]: d for d in self.api("GET", f"/patients/{patient}/invitations", client=client)["items"]}
+
+        pending, accepted, declined = invite(), invite(), invite()
+        bound, resolved, outside = invite(session=case_session), invite(), invite()
+        other_case = invite(case=CASE_B)
+        periodic, = self.trigger("periodic_node")["related_ids"]
+        with self.s.db.transaction() as conn:
+            unlinked = self.b.state.invitation(conn, PA, None, "state_event", existing.key(), stamp(self.s.clock()))
+        accepted_response = respond(accepted)
+        respond(declined, "declined")
+        respond(resolved, session=case_session)
+        respond(outside, session=free)
+        first = visible()
+        self.assertEqual((first[pending]["status"], first[pending]["session_id"]), ("pending", None))
+        self.assertEqual((first[periodic]["status"], first[periodic]["session_id"]), ("pending", None))
+        self.assertEqual((first[accepted]["status"], first[accepted]["resolved_session_id"]), ("accepted", None))
+        self.assertEqual(first[bound]["session_id"], case_session["session_id"])
+        self.assertEqual(first[resolved]["resolved_session_id"], case_session["session_id"])
+        other_before = visible(PB, self.s.b)
+        self.assertEqual(other_before[other_case]["status"], "pending")
+
+        self.api("POST", f"/cases/{CASE_A}/reset", {"case_template_version": CASE_VERSION, "confirmed": True},
+                 client=self.admin)
+        after = visible()
+        self.assertNotIn(bound, after)
+        for identifier in (pending, accepted, resolved, periodic):
+            self.assertEqual((after[identifier]["status"], after[identifier]["resolved_session_id"]),
+                             ("cancelled", None))
+        for identifier in (declined, outside, unlinked["invitation_id"]):
+            self.assertEqual(after[identifier], first[identifier])
+        self.assertEqual(visible(PB, self.s.b), other_before)
+        self.assertEqual(self.trigger("periodic_node")["related_ids"], [periodic])
+        self.assertEqual(visible(), after)
+        self.assertEqual(respond(pending, expected=409)["code"], "INVITATION_RESPONSE_CONFLICT")
+        self.assertEqual(respond(accepted), accepted_response)
+        self.assertEqual(self.api("POST", "/sessions", {
+            "patient_id": PA, "case_id": CASE_A, "entry_source": "accepted_invitation", "invitation_id": accepted,
+        }, expected=409)["code"], "INVITATION_NOT_ACCEPTED")
 
     def test_missing_c_and_external_identity_cannot_fabricate_success(self):
         session = self.create()

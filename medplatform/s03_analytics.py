@@ -369,7 +369,16 @@ class S03Analytics:
             raise AppError(409,'RESULT_NOT_READY','没有匹配当前权限和截止的已存结果，请显式刷新；查询不会计算或补写')
         data = json.loads(row['result_json']);trend = json.loads(row['trend_json']) if row['trend_json'] else None
         old_window = {**window,'as_of':row['as_of']}
-        stale = row['as_of'] < window['as_of'] or row['input_signature'] != self.result_signature(c,principal,patient,kind,old_window)
+        # Snapshots created before B was connected signed only the A inputs.
+        legacy_summary = kind == 'summary' and any(
+            source['source_module'] == 'B' and source['availability'] == 'not_integrated'
+            for source in data['feedback_overview']['sources']
+        )
+        if legacy_summary:
+            signature = self.signature(c,patient,old_window)
+        else:
+            signature = self.result_signature(c,principal,patient,kind,old_window)
+        stale = row['as_of'] < window['as_of'] or row['input_signature'] != signature
         if kind == 'summary':
             stale |= data['valid_until'] <= stamp(self.clock())
             if stale:

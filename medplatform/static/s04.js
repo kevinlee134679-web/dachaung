@@ -181,38 +181,63 @@ function supportMessage(session, message, canWrite) {
 }
 
 function addSupportComposer(panel, session) {
-  const text = el("textarea", {maxLength: 4000, rows: 3, placeholder: "写下想说的话"});
+  const text = el("textarea", {maxLength: 4000, rows: 3, placeholder: "写下想说的话",
+                               "data-support-session": session.session_id});
   const key = referenceKey("support-pending:" + session.session_id);
   const readPending = () => JSON.parse(sessionStorage.getItem(key) || "null");
+
+  function clearPending(pending) {
+    if (readPending()?.id === pending.id) sessionStorage.removeItem(key);
+  }
 
   async function recover(view) {
     const pending = readPending();
     if (!pending) return;
-    const result = await api(supportPath(session, "/messages?client_message_id=" + encodeURIComponent(pending.id)),
-                             "GET", null, view);
+    let result;
+    try {
+      result = await api(supportPath(session, "/messages?client_message_id=" + encodeURIComponent(pending.id)),
+                         "GET", null, view);
+    } catch (error) {
+      if (!pending.rejected || error.status !== 404 || error.code !== "RESOURCE_NOT_FOUND") throw error;
+      requireCurrentView(view);
+      const draft = text.value;
+      clearPending(pending);
+      await refreshSupport(view);
+      const editor = main.querySelector("textarea[data-support-session]");
+      if (editor?.getAttribute("data-support-session") === session.session_id && !editor.value) {
+        editor.value = draft;
+        notice("会话已更新。请核对最新记录后再次点击发送。");
+      }
+      return;
+    }
+    requireCurrentView(view);
     const status = result.items[0].generation_status;
-    if (!["accepted", "running"].includes(status)) sessionStorage.removeItem(key);
+    if (!["accepted", "running"].includes(status)) clearPending(pending);
     await refreshSupport(view);
     notice(generationState[status] || "已核对原消息。");
   }
-  if (readPending()) panel.append(button("核查原消息", recover));
+  if (readPending()) panel.append(button("核查原消息", recover, "support-recover"));
   panel.append(field("你想说的话", text), button("发送", async view => {
-    if (!text.value.trim()) throw new Error("请先填写消息。");
-    const hash = await sha(text.value);
+    const content = text.value;
+    if (!content.trim()) throw new Error("请先填写消息。");
+    const hash = await sha(content);
     requireCurrentView(view);
     const old = readPending();
+    if (old?.rejected) return recover(view);
     if (old && old.hash !== hash) throw new Error("上一条结果尚未核对。请核查原消息，或使用相同原文重试。");
     const pending = old || {id: crypto.randomUUID(), hash, turn: session.turn_count};
     sessionStorage.setItem(key, JSON.stringify(pending));
+    let data;
     try {
-      const data = await api(supportPath(session, "/messages"), "POST", {
-        client_message_id: pending.id, expected_turn_count: pending.turn, content: text.value
+      data = await api(supportPath(session, "/messages"), "POST", {
+        client_message_id: pending.id, expected_turn_count: pending.turn, content
       }, view);
-      sessionStorage.removeItem(key);
-      await refreshSupport(view);
-      showSupportOutput(data);
     } catch (error) {
       if (error instanceof ViewChanged) throw error;
+      requireCurrentView(view);
+      if (error.status === 409 && error.code === "SESSION_REVISION_CONFLICT" && readPending()?.id === pending.id) {
+        sessionStorage.setItem(key, JSON.stringify({...pending, rejected: true}));
+      }
       try {
         await recover(view);
       } catch (lookup) {
@@ -222,7 +247,11 @@ function addSupportComposer(panel, session) {
         }
         throw error;
       }
+      return;
     }
+    clearPending(pending);
+    await refreshSupport(view);
+    showSupportOutput(data);
   }, "primary"));
 }
 

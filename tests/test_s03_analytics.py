@@ -127,6 +127,26 @@ class S03AnalyticsTests(unittest.TestCase):
         summary=self.get_result('summary',as_of=cutoff)
         self.assertEqual(summary['data_status'],'stale');self.assertEqual(before,self.s.db.path.read_bytes())
 
+    def test_summary_with_legacy_a_signature_keeps_projection_and_expiry(self):
+        from unittest.mock import patch
+
+        self.prepare()
+        self.report(0)
+        analytics = self.s.app.state.s03_analytics
+        with patch.object(analytics, 'support_feedback', None):
+            snapshot = self.refresh()
+        cutoff = snapshot['record_overview']['as_of']
+        before = self.s.db.path.read_bytes()
+        self.assertEqual(snapshot['feedback_overview']['sources'][0]['availability'], 'not_integrated')
+        self.s.time[0] += timedelta(minutes=14, seconds=59)
+        self.assertEqual(self.get_result('summary', as_of=cutoff), snapshot)
+        self.s.time[0] += timedelta(seconds=1)
+        expired = self.get_result('summary', as_of=cutoff)
+        self.assertEqual(expired['data_status'], 'stale')
+        self.assertEqual(expired['valid_until'], snapshot['valid_until'])
+        self.assertEqual(expired['missing_items'][-1]['code'], 'refresh_required')
+        self.assertEqual(self.s.db.path.read_bytes(), before)
+
     def test_empty_plan_is_zero_but_unmaterialized_window_is_not(self):
         empty=self.refresh()['record_overview']
         self.assertEqual(empty['planned_dose_count'],0);self.assertIsNone(empty['patient_confirmation_ratio'])
@@ -167,8 +187,12 @@ class S03AnalyticsTests(unittest.TestCase):
         self.prepare();self.report(0)
         summary=self.refresh();stats=self.get_result(as_of=summary['record_overview']['as_of'])
         self.assertEqual(summary['record_overview'],stats)
-        self.assertEqual([s['availability'] for s in summary['feedback_overview']['sources']],
-                         ['not_collected','not_integrated'])
+        sources=summary['feedback_overview']['sources']
+        self.assertEqual([(s['source_module'],s['availability']) for s in sources],
+                         [('B','not_collected'),('C','not_integrated')])
+        for source in sources:
+            self.assertEqual(source['records'],[])
+            self.assertTrue(source['reason'])
         self.assertEqual(summary['data_status'],'insufficient')
 
     def test_measurement_zero_missing_unit_and_method_groups(self):

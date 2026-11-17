@@ -447,7 +447,11 @@ class S02Tests(unittest.TestCase):
 
     def test_no_later_phase_routes_or_background_tasks(self):
         self.assertEqual(len(ROUTES),40)
-        # Later authorized phases own /tasks and /cases; C routes remain absent.
+        # B02 registers /cases for demo:manage; C routes remain absent.
+        denied=self.call(self.a,'GET','/cases',expected=403)
+        self.assertEqual(denied['code'],'ADMIN_REQUIRED')
+        cases=self.call(self.login('demo-admin'),'GET','/cases')['items']
+        self.assertEqual({case['case_id'] for case in cases},{'case-low-mood','case-anxiety','case-fatigue'})
         for path in ('/api/v1/patients/'+PA+'/statistics','/api/v1/patients/'+PA+'/services'):
             self.assertEqual(self.a.get(path).status_code,404)
         self.assertEqual(self.a.get('/api/v1/tasks').status_code,405)

@@ -368,6 +368,8 @@ class S04Service:
                                     recorded_at=doc[time_key], service_status=None, support_needs=None,
                                     support_acceptance=None, intervention_effectiveness=None, is_simulated=True))
         results.sort(key=lambda item: (item["recorded_at"], item["record_id"]))
+        if not results and not {"assessment:read", "interventions:read"}.issubset(scopes):
+            return dict(source_module="B", availability="restricted", records=[], reason="当前授权不含完整的 B 来源读取")
         return dict(source_module="B", availability="available" if results else "not_collected", records=results,
                     reason=None if results else "此窗口暂无可见 B 反馈")
 
@@ -404,14 +406,21 @@ class S04Service:
             conn.execute("DELETE FROM b_messages WHERE session_id=? AND source_message_id IS NOT NULL", (identifier,))
             conn.execute("DELETE FROM b_messages WHERE session_id=?", (identifier,))
             conn.execute("DELETE FROM b_records WHERE session_id=? AND kind<>'ScenarioRun'", (identifier,))
+        case_runs = [trigger for trigger in store.records(conn, "ScenarioRun", patient)
+                     if trigger["result"]["case_id"] == case_id]
+        case_invitation_ids = {identifier for trigger in case_runs
+                               if trigger["result"]["scenario"] in {"state_event", "periodic_node"}
+                               for identifier in trigger["result"]["related_ids"]}
         for invite in store.records(conn, "Invitation", patient):
             if invite["resolved_session_id"] in sessions:
                 self.state.update_invitation(conn, invite, status="cancelled", resolved_session_id=None)
-        for trigger in store.records(conn, "ScenarioRun", patient):
-            if trigger["result"]["case_id"] == case_id:
-                trigger.update(queued=False, session_id=None)
-                conn.execute("UPDATE b_records SET session_id=NULL,document_json=? WHERE kind='ScenarioRun' AND record_id=?",
-                             (encode(trigger), trigger["result"]["trigger_id"]))
+            elif (invite["invitation_id"] in case_invitation_ids and invite["session_id"] is None
+                  and invite["resolved_session_id"] is None and invite["status"] in {"pending", "accepted"}):
+                self.state.update_invitation(conn, invite, status="cancelled")
+        for trigger in case_runs:
+            trigger.update(queued=False, session_id=None)
+            conn.execute("UPDATE b_records SET session_id=NULL,document_json=? WHERE kind='ScenarioRun' AND record_id=?",
+                         (encode(trigger), trigger["result"]["trigger_id"]))
         for intervention in interventions:
             conn.execute("DELETE FROM b_intervention_revisions WHERE intervention_id=?", (intervention,))
         for identifier in sessions:

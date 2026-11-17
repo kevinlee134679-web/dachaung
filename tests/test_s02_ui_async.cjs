@@ -25,10 +25,17 @@ class Element {
   replaceChildren(...nodes) { this.children = []; this._text = ''; this.append(...nodes); }
   addEventListener(name, action) { this.events[name] = action; }
   setAttribute(name, value) { this.attributes[name] = value; }
+  getAttribute(name) { return this.attributes[name] ?? null; }
   removeAttribute(name) { delete this.attributes[name]; }
+  querySelector(selector) {
+    if (selector.startsWith('.')) return find(this, node => node.className.split(' ').includes(selector.slice(1)));
+    const [, tag, attr] = /^(\w+)\[([\w-]+)\]$/.exec(selector);
+    return find(this, node => node.tagName === tag.toUpperCase() && node.getAttribute(attr) !== null);
+  }
   get textContent() { return this._text + this.children.map(n => n.textContent).join(''); }
   set textContent(text) { this._text = text; this.children = []; }
   get firstChild() { return this.children[0]; }
+  get childNodes() { return this.children; }
   click() { return this.events.click?.({ currentTarget: this }); }
   change() { return this.events.change?.({ currentTarget: this }); }
   input() { return this.events.input?.({ currentTarget: this }); }
@@ -62,10 +69,12 @@ function fieldControl(root, label) {
 }
 function setup(fetch, crypto = webcrypto) {
   const roots = Object.fromEntries(['#main', '#identity', '#notice', '#health', '#refresh'].map(k => [k, new Element('div')]));
-  const stored = new Map();
+  const stored = new Map(), savedSession = new Map();
+  const storage = values => ({ getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) });
   const context = vm.createContext({ Node: Element, FormData: Form, TextEncoder, Uint8Array, ArrayBuffer,
     AbortController, setTimeout, clearTimeout, URL, Blob, Intl, crypto, fetch,
-    localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, String(value)), removeItem: key => stored.delete(key) },
+    localStorage: storage(stored), sessionStorage: storage(savedSession),
     document: { createElement: tag => new Element(tag), createTextNode: text => new Element('#text', String(text)),
       querySelector: selector => roots[selector], querySelectorAll: () => [] } });
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
@@ -82,7 +91,7 @@ function setup(fetch, crypto = webcrypto) {
     app.state.patient = access;
   }
   choose();
-  return { app, roots, stored, choose };
+  return { app, roots, stored, savedSession, choose };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -124,7 +133,12 @@ test('a stale form control cannot start another action after view change', async
 
 test('subpage change invalidates a delayed old medication list', async () => {
   const response = deferred();
-  const env = setup(async url => url.includes('/medications') ? response.promise : success({items: [], next_cursor: null}));
+  const knowledgeRequests = [];
+  const env = setup(async url => {
+    if (url.includes('/medications')) return response.promise;
+    if (url.startsWith('/api/v1/knowledge')) knowledgeRequests.push(url);
+    return success({items: [], next_cursor: null});
+  });
   env.app.state.page = 'medication'; env.app.state.tab = 'meds';
   const pending = env.app.render();
   await tick();
@@ -132,7 +146,8 @@ test('subpage change invalidates a delayed old medication list', async () => {
   response.resolve(success({ items: [{ medication_id: 'old-med', name: 'STALE_MEDICATION', notes: null }], next_cursor: null }));
   await pending;
   assert.equal(env.roots['#main'].textContent.includes('STALE_MEDICATION'), false);
-  assert.equal(env.roots['#main'].textContent.includes('目前没有适用的审核药学资料'), true);
+  assert.deepEqual(knowledgeRequests, ['/api/v1/knowledge?kind=medical&limit=100']);
+  byText(env.roots['#main'], 'p', '目前没有适用的审核药学资料。用药问题请向实际医生或药师核实。');
 });
 
 test('support reply renders model markup as literal text', () => {
@@ -151,6 +166,100 @@ test('an expired pending support invitation has no acceptance control', () => {
   }], '2026-11-17T12:00:00Z');
   assert.equal(section.textContent.includes('已到期'), true);
   assert.equal(find(section, node => node.tagName === 'BUTTON'), null);
+});
+
+async function openComposer(onRequest) {
+  const session = {session_id: 'support-s', turn_count: 2, status: 'active', ui_mode: 'normal', meta: {revision: 1}};
+  const events = [];
+  const env = setup(async (url, options) => {
+    events.push([options.method, url]);
+    if (url === '/api/v1/sessions?patient_id=pa&limit=100') return success({items: [session], next_cursor: null});
+    if (url === '/api/v1/sessions/support-s/messages?limit=100') return success({items: [], next_cursor: null});
+    return onRequest(url, options, session);
+  });
+  env.app.state.page = 'support';
+  env.app.state.patient.effective_scopes.push('dialogue:read');
+  await env.app.render();
+  const main = env.roots['#main'];
+  return { ...env, events, editor: () => fieldControl(main, '你想说的话'),
+    click: label => byText(main, 'button', label).click() };
+}
+
+test('rejected support turn with absent original refreshes the session and waits for explicit resend', async () => {
+  const posts = [];
+  const env = await openComposer(async (url, options, session) => {
+    if (options.method === 'GET') {
+      assert.equal(url, '/api/v1/sessions/support-s/messages?client_message_id=' + posts[0].body.client_message_id);
+      return failure(404, 'RESOURCE_NOT_FOUND');
+    }
+    posts.push({body: JSON.parse(options.body), key: options.headers['Idempotency-Key']});
+    if (posts.length === 1) {
+      session.turn_count = 3;
+      return failure(409, 'SESSION_REVISION_CONFLICT');
+    }
+    assert.equal(posts.at(-1).body.expected_turn_count, session.turn_count);
+    session.turn_count++;
+    return success({});
+  });
+  env.editor().value = '留在页面内的草稿';
+  const originalEditor = env.editor();
+  await env.click('发送');
+  assert.equal(posts.length, 1);
+  assert.equal(env.events.filter(([, url]) => url.startsWith('/api/v1/sessions?')).length, 2);
+  assert.notEqual(env.editor(), originalEditor);
+  assert.equal(env.editor().value, '留在页面内的草稿');
+  assert.match(env.roots['#notice'].textContent, /再次点击发送/);
+  assert.equal(env.savedSession.size, 0);
+  assert.equal(env.stored.size, 0);
+  await env.click('发送');
+  assert.deepEqual(posts.map(p => p.body.expected_turn_count), [2, 3]);
+  assert.equal(posts[1].body.content, posts[0].body.content);
+  assert.notEqual(posts[1].body.client_message_id, posts[0].body.client_message_id);
+  assert.notEqual(posts[1].key, posts[0].key);
+});
+
+test('lookup of an in-flight support submission preserves its ID and never starts another generation', async () => {
+  let posted, count = 0, generationStatus = 'running';
+  const env = await openComposer(async (url, options, session) => {
+    if (options.method === 'POST') {
+      count++;
+      posted = JSON.parse(options.body);
+      session.turn_count = 3;
+      return failure(409, 'OPERATION_IN_PROGRESS');
+    }
+    assert.equal(url, '/api/v1/sessions/support-s/messages?client_message_id=' + posted.client_message_id);
+    return success({items: [{generation_status: generationStatus}]});
+  });
+  env.editor().value = '发送中的消息';
+  await env.click('发送');
+  assert.equal(JSON.parse([...env.savedSession.values()][0]).id, posted.client_message_id);
+  assert.equal(env.stored.size, 1);
+  generationStatus = 'completed';
+  await env.click('核查原消息');
+  assert.equal(count, 1);
+  assert.equal(env.savedSession.size, 0);
+  assert.equal(env.roots['#notice'].textContent, '已核对原消息。');
+});
+
+test('support timeout and absent lookup retain the original turn and both idempotency identifiers', async () => {
+  const posts = [];
+  const env = await openComposer(async (url, options) => {
+    if (options.method === 'GET') {
+      assert.equal(url, '/api/v1/sessions/support-s/messages?client_message_id=' + JSON.parse(posts[0].body).client_message_id);
+      return failure(404, 'RESOURCE_NOT_FOUND');
+    }
+    posts.push({body: options.body, key: options.headers['Idempotency-Key']});
+    if (posts.length === 1) throw Object.assign(new Error('test abort'), {name: 'AbortError'});
+    return success({});
+  });
+  env.editor().value = '结果尚待核对的消息';
+  await env.click('发送');
+  assert.match(env.roots['#notice'].textContent, /等待超时/);
+  assert.equal(JSON.parse([...env.savedSession.values()][0]).id, JSON.parse(posts[0].body).client_message_id);
+  await env.click('发送');
+  assert.equal(posts.length, 2);
+  assert.deepEqual(posts[1], posts[0]);
+  assert.equal(env.savedSession.size, 0);
 });
 
 test('transient questionnaire restore failure preserves its saved reference', async () => {
