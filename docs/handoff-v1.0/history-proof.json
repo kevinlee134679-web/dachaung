@@ -1,0 +1,38 @@
+{
+  "README.md": {
+    "before": {
+      "bytes": 16628,
+      "sha256": "252c2c7de50eba61a051dd681c2a4b89255d11f58383362b0f7b87a462d907b8"
+    },
+    "after": {
+      "bytes": 17043,
+      "sha256": "beb1967f61ff72a196f3326c0c3d2b6e22e0c902268b9e0bb91aa9cc773c5d0b"
+    },
+    "prefix_sha256": "252c2c7de50eba61a051dd681c2a4b89255d11f58383362b0f7b87a462d907b8",
+    "prefix_bytes_equal": true
+  },
+  "docs/版本登记.md": {
+    "before": {
+      "bytes": 21214,
+      "sha256": "24f734bf60f9d04d55031de1a71e05233646b2319577289197f3bfa00de61bea"
+    },
+    "after": {
+      "bytes": 22141,
+      "sha256": "243dceb9577784b25b441a7261e6660fe7ce87a3275a9a7eadbbbde36cdc9eb7"
+    },
+    "prefix_sha256": "24f734bf60f9d04d55031de1a71e05233646b2319577289197f3bfa00de61bea",
+    "prefix_bytes_equal": true
+  },
+  "docs/工作记录.md": {
+    "before": {
+      "bytes": 162200,
+      "sha256": "49f6c496e0cdd528852c52e71dee2c67b0f586e98563d1da0f6328dee21b7c3b"
+    },
+    "after": {
+      "bytes": 171522,
+      "sha256": "2a619773f4f77dbe0f3cebd5c7a08417679de1887bb68ed9333581ec422dc541"
+    },
+    "prefix_sha256": "49f6c496e0cdd528852c52e71dee2c67b0f586e98563d1da0f6328dee21b7c3b",
+    "prefix_bytes_equal": true
+  }
+}
