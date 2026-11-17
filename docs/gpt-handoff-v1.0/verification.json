@@ -1,0 +1,72 @@
+{
+  "record_id": "R0025",
+  "version_id": "V0025",
+  "document_version": "gpt-handoff-v1.0",
+  "created_at": "2026-11-17 10:19:08 +0800",
+  "base": "c2d41223067c149040e45dfdd44e7abe40b88219",
+  "application": "0.3.0",
+  "schema": "0006",
+  "application_code_changed": false,
+  "static": {
+    "text_blocks": 4,
+    "prompt_exact_copy": true,
+    "links": 18,
+    "broken_local_links": [],
+    "existing_tracked_files_unchanged_before_history_append": 182,
+    "remote_clone": {
+      "branch": "develop",
+      "head": "5f49d779392fc61b4725a97d3cf1118bd846d313",
+      "S03_baseline_in_history": true,
+      "required_source_files_present": 12,
+      "local_bootstrap_path_ignored": true,
+      "no_runtime_database_env_or_venv_supplied_by_git": true
+    },
+    "guide_sha256": "49bfdfae79b8e926b787ccf15589b99001e3a6cb68af874811d639a4b12bb103",
+    "prompt_sha256": "1e077ccb1c6dfc1ba85868f7107395897385bdcd99ea9f54899797554245b78a"
+  },
+  "fresh_clone_environment_and_demo": {
+    "python": {
+      "version": [
+        3,
+        14,
+        10
+      ],
+      "bits": 64
+    },
+    "fresh_virtual_environment": true,
+    "install_command": "python -m pip install --timeout 15 --retries 1 -r requirements.txt",
+    "dependency_install": "passed; existing pip download cache reused, no offline flags",
+    "locked_packages_verified": 21,
+    "pip_check": "No broken requirements found.",
+    "remote_clone_code_head": "5f49d779392fc61b4725a97d3cf1118bd846d313",
+    "schema": "0006",
+    "initial_planned": 14,
+    "initial_confirmed": 10,
+    "late_confirmed": 11,
+    "replay_confirmed": 11,
+    "manifest_dates_Asia_Shanghai": {
+      "window_start": "2026-11-10",
+      "window_end": "2026-11-17"
+    },
+    "cmd_launcher_unicode_space_path": true,
+    "health_http": 200,
+    "page_http": 200,
+    "only_owned_service_tree_stopped": true,
+    "clone_tracked_files_clean": true,
+    "paid_api_calls": 0,
+    "new_recipient_computer_tested": false,
+    "base_python_git_node_installed_this_turn": false,
+    "limitations": "Fresh clone and virtual environment on original Windows account; cached packages reused. No fresh system tool install or recipient computer access. No full business suite rerun for documentation-only change."
+  },
+  "full_business_suite_rerun": false,
+  "official_product_sources": [
+    "https://chatgpt.com/download/",
+    "https://help.openai.com/en/articles/20001276-moving-to-the-new-chatgpt-desktop-app",
+    "https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan",
+    "https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex",
+    "https://learn.chatgpt.com/docs/windows/windows-sandbox"
+  ],
+  "manual_fetch_status": "Official manual helper failed HEAD with HTTP403; actual official topic pages opened as fallback.",
+  "recipient_install_status": "Not executed on recipient computer; document and current-machine fresh-clone rehearsal only.",
+  "remote_sync": "New document commit/push and independent remote verification follow; see handoff report and later append."
+}
