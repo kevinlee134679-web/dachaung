@@ -51,7 +51,7 @@ class S04Tests(unittest.TestCase):
     def test_registered_cards_and_guarded_mock_config(self):
         registry = self.s.app.state.registry
         self.assertEqual({f"B{n:02d}" for n in range(1, 40)}, {name for name in registry.names if name.startswith("B")})
-        # The three S05 batches authorize precisely these additional routes.
+        # The four S05 batches authorize precisely these additional routes.
         c_routes = {
             ("GET", "/api/v1/patients/{}/support-recommendations"),
             ("GET", "/api/v1/support-resources"),
@@ -68,6 +68,9 @@ class S04Tests(unittest.TestCase):
             ("POST", "/api/v1/services/{}/cancel"),
             ("POST", "/api/v1/integrations/service-receipts"),
             ("POST", "/api/v1/demo/services/{}/transitions"),
+            ("POST", "/api/v1/services/{}/feedback"),
+            ("GET", "/api/v1/services/{}/feedback"),
+            ("GET", "/api/v1/patients/{}/support-feedback"),
         }
         self.assertEqual(registry.routes & c_routes, c_routes)
         self.assertEqual(len(registry.routes - c_routes), 114)
@@ -227,7 +230,7 @@ class S04Tests(unittest.TestCase):
         query = urlencode(dict(window_start=stamp(self.s.clock() - timedelta(days=1)),
                               window_end=stamp(self.s.clock() + timedelta(days=1)), data_environment="demo"))
         response = self.api("GET", f"/patients/{PA}/feedback-overview?" + query)["sources"]
-        self.assertEqual([s["availability"] for s in response], ["available", "not_integrated"])
+        self.assertEqual([s["availability"] for s in response], ["available", "not_collected"])
         self.assertNotIn("隔离自评", json.dumps(response, ensure_ascii=False))
         self.assertEqual(response[0]["records"][0]["record_id"], report["assessment_id"])
         export_query = urlencode(dict(window_start=stamp(self.s.clock() - timedelta(days=1)),

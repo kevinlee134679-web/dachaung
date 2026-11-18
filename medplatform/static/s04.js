@@ -126,7 +126,10 @@ async function supportView() {
     }
     if (history.childNodes.length > 1) main.append(history);
   }
-  main.append(p("社会支持申请尚未接入。", "muted"));
+  if (scope("support:read")) main.append(button("查看社会支持", () => navigate("support", "social")));
+  if (own() && scope("feedback:read") && scope("services:read") && typeof supportFeedbackPanel === "function") {
+    main.append(supportFeedbackPanel());
+  }
 }
 
 async function supportConversation(session, view) {

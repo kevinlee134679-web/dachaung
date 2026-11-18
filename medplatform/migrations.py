@@ -77,6 +77,8 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             'c_services', 'c_service_history', 'c_service_dispatches', 'c_service_provider_receipts',
         } <= tables:
             raise SchemaError('S05正式服务或派发记录表缺失')
+        if current >= 11 and 'c_service_feedback' not in tables:
+            raise SchemaError('S05服务反馈表缺失')
         return current
 
 

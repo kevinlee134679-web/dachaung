@@ -875,5 +875,253 @@
       "sha256": "b2c921b31e406911b47bb5cc566392b024bf05af41ec401a3a2ae06a6c7bbc70"
     },
     "evidence_index": "test-output/s05-batch3-20261118T125237-785215/evidence-index.json"
+  },
+  "batch4": {
+    "application": "0.5.3",
+    "schema": "0011",
+    "work_record": "R0037",
+    "version": "V0037",
+    "implemented_cards": [
+      "C13",
+      "C14",
+      "C15",
+      "A41",
+      "A31/A32 C projection",
+      "B in-process summary reference and C15 browser read"
+    ],
+    "baseline": {
+      "head": "99ec4f995e8566fe88105dfe8371fe452179c94f",
+      "branch": "develop",
+      "upstream": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+      "ahead": 10,
+      "behind": 0,
+      "previous_write_http": 403,
+      "this_turn_remote_writes": 0
+    },
+    "automation": [
+      {
+        "group": "python",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch4-20261118T065528-967Z/delivery-python.log"
+      },
+      {
+        "group": "node",
+        "command": "& 'D:/nodejs/node.exe' --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch4-20261118T065528-967Z/delivery-node.log"
+      },
+      {
+        "group": "c",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch4-20261118T065528-967Z/delivery-c.log"
+      },
+      {
+        "group": "b",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch4-20261118T065528-967Z/delivery-b.log"
+      },
+      {
+        "group": "feedback",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_feedback.py -v",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch4-20261118T065528-967Z/delivery-feedback.log"
+      }
+    ],
+    "migration": {
+      "from_schema": "0010",
+      "to_schema": "0011",
+      "prior_tables": 59,
+      "prior_migrations": 10,
+      "source": "test-output/s05-batch3-20261118T125237-785215/browser-run2/browser.sqlite3",
+      "source_sha256": "be7c14b07018cbab7e612701e96531e5c8e345f2f1938be80bae9cfa947ec2ff",
+      "new_table": "c_service_feedback",
+      "new_migration_sha256": "0aaccd6d13ddcf513a36fc31ce002b67f65f48d81724407f3f53d49e259fe7e1",
+      "failed_copy_byte_identical": true,
+      "retry_completed": true,
+      "integrity_check": "ok",
+      "foreign_key_check": "ok",
+      "originals_unchanged": 4
+    },
+    "legacy_summaries": [
+      {
+        "clock": "2026-11-17T12:00:00.000000+00:00",
+        "window": {
+          "window_start": "2026-11-16T12:00:00.000000+00:00",
+          "window_end": "2026-11-18T12:00:00.000000+00:00",
+          "as_of": "2026-11-17T12:00:00.000000+00:00",
+          "data_environment": "demo"
+        },
+        "patient_id": "demo-patient-a-self",
+        "summary_id": "492c51d5-e955-4267-9b66-cb66a781c777",
+        "status_before": "insufficient",
+        "old_code": "5f49d779392fc61b4725a97d3cf1118bd846d313",
+        "initial_schema": "0006",
+        "final_schema": "0011",
+        "status_after": "insufficient",
+        "full_projection_equal": true,
+        "signature_bytes_equal": true,
+        "seed_exit_code": 0
+      },
+      {
+        "clock": "2026-11-17T12:00:00.000000+00:00",
+        "window": {
+          "window_start": "2026-11-16T12:00:00.000000+00:00",
+          "window_end": "2026-11-18T12:00:00.000000+00:00",
+          "as_of": "2026-11-17T12:00:00.000000+00:00",
+          "data_environment": "demo"
+        },
+        "patient_id": "demo-patient-a-self",
+        "summary_id": "32f16ff3-c50c-493a-b270-4f9d19051e18",
+        "status_before": "insufficient",
+        "old_code": "99ec4f995e8566fe88105dfe8371fe452179c94f",
+        "initial_schema": "0010",
+        "final_schema": "0011",
+        "status_after": "insufficient",
+        "full_projection_equal": true,
+        "signature_bytes_equal": true,
+        "seed_exit_code": 0
+      }
+    ],
+    "browser": {
+      "schema": "0011",
+      "engine": "Microsoft Edge headless Chromium",
+      "foreground_manual": false,
+      "service_id": "e7fb228a-a657-49b2-8ac3-a28da01b188b",
+      "feedback_posts": [
+        {
+          "method": "POST",
+          "path": "/api/v1/services/e7fb228a-a657-49b2-8ac3-a28da01b188b/feedback",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/services/e7fb228a-a657-49b2-8ac3-a28da01b188b/feedback",
+          "status": 201
+        }
+      ],
+      "feedback_revisions": [
+        {
+          "id": "4ed2fc6d-2118-4dc5-a199-84532428eb3e",
+          "revision": 1,
+          "supersedes": null
+        },
+        {
+          "id": "db67e2de-72c7-40e2-93ce-f9dc3916f850",
+          "revision": 2,
+          "supersedes": "4ed2fc6d-2118-4dc5-a199-84532428eb3e"
+        }
+      ],
+      "summary_feedback_refs": [
+        {
+          "resource_id": "db67e2de-72c7-40e2-93ce-f9dc3916f850",
+          "resource_revision": 2,
+          "resource_type": "ServiceFeedback"
+        }
+      ],
+      "service_and_dispatch_unchanged": true,
+      "feedback_notices": 2,
+      "b_dialogue_business_unchanged": true,
+      "service_stopped": true,
+      "db_sha256": "796253fac836b9cb69da8db4af77860b008087de8215f08676fc9e5baf7e43c4",
+      "observations": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/browser-observations.json",
+      "steps": [
+        {
+          "step": "01-voluntary-feedback",
+          "description": "Patient submitted all three dimensions; dropped response recovered from C14.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/01-voluntary-feedback.png",
+          "sha256": "2cadafc2a970825e867d41fe558451a2c654de8a14bba0a8fe151f1c8e816801"
+        },
+        {
+          "step": "02-corrected",
+          "description": "Correction adds an immutable revision with an explicit missing-dimension reason.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/02-corrected.png",
+          "sha256": "d46ca7bc9ca6f1837ef169e57be8dfbf209dfd33050a005b745f9a2093e1c63f"
+        },
+        {
+          "step": "03-immutable-history",
+          "description": "Previous description remains visible in revision 1.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/03-immutable-history.png",
+          "sha256": "f4c0475cb916aece7d234b0d7393df15f997a6dba301b409ccd3314c12e5c829"
+        },
+        {
+          "step": "04-refresh",
+          "description": "A new document load restores the same service and both feedback revisions.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/04-refresh.png",
+          "sha256": "0bc2f1b5cdb24767c0d62037b9fdb80b9f7838260a3a63463d7197d6f9af2439"
+        },
+        {
+          "step": "05-a-report",
+          "description": "A report shows C as source and uses the current correction within its cutoff.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/05-a-report.png",
+          "sha256": "a4e18d28b1ee6c7f272da3974ed2ff4dbd06e85782875a4a2fde86e0e0954629"
+        },
+        {
+          "step": "06-b-source",
+          "description": "The support dialogue page reads the same authorized C projection.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/06-b-source.png",
+          "sha256": "dd0302400154d12f2ab29c979674985bb7c89ff805fc2f43dbeeb0e233cd7f04"
+        },
+        {
+          "step": "07-family-only",
+          "description": "Authorized family sees feedback provenance, without private dimensions or write controls.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/07-family-only.png",
+          "sha256": "a029a04e0f6bd53f12e0f7391cfa288ac701404b7daef1ec61899163672f9837"
+        },
+        {
+          "step": "08-revoked",
+          "description": "After feedback scope removal the permitted service stays visible without C14.",
+          "screenshot": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/08-revoked.png",
+          "sha256": "06fd16cd9ae2d9018cb4f05807ab6683a655958ee23f0f33ce09d2d2b996aec2"
+        }
+      ]
+    },
+    "historical_failures": {
+      "initial_feedback": "test-output/s05-batch4-20261118T065528-967Z/initial-feedback.log",
+      "python_regression": "test-output/s05-batch4-20261118T065528-967Z/final-python.log"
+    },
+    "source_projection": {
+      "C15_version": "Service.meta.revision",
+      "immutable_feedback_reference": "ServiceFeedback.feedback_id and feedback_revision in A snapshots",
+      "body_access": "patient own, family projection minimised",
+      "B_context": "current C recheck, no feedback prose in model input"
+    },
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch3.json",
+      "bytes": 34061,
+      "sha256": "21d87ae98551d27fbbfc2daab95877bb47d9ffaca3e856e2ba3ba7b5a5f5b410"
+    },
+    "markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 240635,
+        "sha256": "1fe5bef622a1fc769fdc1cd3207f6938b30d4d1b809b72c938b0626d3577f43f"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 29303,
+        "sha256": "c543a7ea40da731554cba1c474a7a3b32c88c91de09d45803555511d12effab4"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 12440,
+        "sha256": "93ede5ea3137126bbb55150cfa5b3c15d639822edd3c90dc29b88522850710ab"
+      }
+    },
+    "local_evidence_index": "test-output/s05-batch4-20261118T065528-967Z/evidence-index.json"
   }
 }

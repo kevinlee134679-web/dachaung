@@ -41,7 +41,8 @@ def router(modules, envelope):
                         raise AppError(422,'VALIDATION_ERROR','请求字段、时区、窗口或格式不合法') from None
                     response = await run_in_threadpool(service.handle,action,principal,params,q,body,request.headers.get('Idempotency-Key'))
                     error = response.error
-                    return JSONResponse(envelope(request,response.data,**({'code':error['code'],'message':error['message']} if error else {})),status_code=response.status)
+                    return JSONResponse(envelope(request,response.data,**({'code':error['code'],'message':error['message']} if error else {})),
+                                        status_code=response.status,headers=response.headers)
                 return handle
             result.add_api_route('/api/v1'+path,endpoint(),methods=[method],operation_id=card,name=card)
     return result

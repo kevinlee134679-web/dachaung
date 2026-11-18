@@ -36,12 +36,13 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_api import router as s02_router
     from . import s03_records, s03_analytics, s03_execution
     from .s03_api import router as s03_router
-    from . import s04_api, s05_api, s05_draft_api, s05_service_api
+    from . import s04_api, s05_api, s05_draft_api, s05_service_api, s05_feedback_api
     from .s04_service import S04Service
     from .s05_catalog import S05Catalog, catalog_registered
     from .s05_drafts import S05Drafts
     from .s05_dispatch import MockServiceDispatch
     from .s05_services import S05Services
+    from .s05_feedback import S05Feedback
     service = S02Service(db,clock or now)
     records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
     analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
@@ -50,10 +51,12 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     catalog = S05Catalog(db, service, clock or now)
     drafts = S05Drafts(db, service, clock or now)
     services = S05Services(db, drafts, execution, settings, clock or now)
+    feedback = S05Feedback(db, services, clock or now)
     execution.service_dispatch = MockServiceDispatch(db, services, clock or now)
     support.formal_services = drafts.formal_services = services
     execution.support_state = support.state
     analytics.support_feedback = support.feedback_source
+    analytics.service_feedback = feedback
     authority = authority if authority is not None else service.auth
     app = FastAPI(title="Medication platform foundation", version=__version__,
                   docs_url=None, redoc_url=None, openapi_url=None)
@@ -65,6 +68,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.s05_catalog = catalog
     app.state.s05_drafts = drafts
     app.state.s05_services = services
+    app.state.s05_feedback = feedback
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -200,6 +204,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
         (s05_api,catalog),
         (s05_draft_api,drafts),
         (s05_service_api,services),
+        (s05_feedback_api,feedback),
     ],envelope))
 
     @app.get("/", include_in_schema=False)

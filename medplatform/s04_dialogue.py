@@ -43,7 +43,10 @@ class Dialogue:
             return None
         window = dict(row, data_environment="demo")
         doc, _ = self.analytics.read_result(conn, principal, patient, "summary", window, True)
-        return {field: doc[field] for field in SUMMARY_FIELDS}
+        ref = {field: doc[field] for field in SUMMARY_FIELDS}
+        if ref["data_status"] == "fresh" and not self.analytics.summary_feedback_current(conn, principal, patient, ref):
+            ref["data_status"] = "stale"
+        return ref
 
     def snapshot(self, conn, principal, session, message, scenario, profile, at):
         patient, identifier = session["patient_id"], session["session_id"]
@@ -211,7 +214,7 @@ class Dialogue:
         self.auth.require_patient(principal, gen["patient_id"], "dialogue:write", conn, self_only=True)
         return session["status"] == "active"
 
-    def _input_messages(self, conn, gen):
+    def _input_messages(self, conn, principal, gen):
         snap = gen["input_snapshot"]
         retrieval = store.by_id(conn, "Retrieval", snap["retrieval_id"]) if snap["retrieval_id"] else None
         snippets = knowledge.usable_snippets(conn, stamp(self.clock()), retrieval)
@@ -223,7 +226,8 @@ class Dialogue:
         if snap["plan_refs"]:
             msgs.append({"role": "system", "content": "当前正式计划引用：" + encode(snap["plan_refs"])})
         summary = snap["summary_ref"]
-        if summary is not None and summary["data_status"] == "fresh" and summary["valid_until"] > stamp(self.clock()):
+        if (summary is not None and summary["data_status"] == "fresh" and summary["valid_until"] > stamp(self.clock())
+                and self.analytics.summary_feedback_current(conn, principal, gen["patient_id"], summary)):
             row = conn.execute("SELECT result_json FROM s03_results WHERE result_id=? AND patient_id=? AND kind='summary'",
                                (summary["summary_id"], gen["patient_id"])).fetchone()
             if row is not None:
@@ -266,7 +270,7 @@ class Dialogue:
                 gen.update(status="cancelled", finished_at=at, error_code="GENERATION_CANCELLED")
                 self._record_state(conn, gen, number, "cancelled")
                 return self._result(conn, gen, row, "cancelled", request_status)
-            msgs, allowed, retrieval, used_snippets = self._input_messages(conn, gen)
+            msgs, allowed, retrieval, used_snippets = self._input_messages(conn, principal, gen)
             gen["status"] = "running"
             self._record_state(conn, gen, number, "running")
             scenario = row["scenario"] if number == 1 else None

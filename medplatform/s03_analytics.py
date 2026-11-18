@@ -13,7 +13,7 @@ from .s02_inputs import DateTime, Input, utc
 
 SHANGHAI = ZoneInfo('Asia/Shanghai')
 COUNT_VERSION = 'flow-v0.1-count-v1'
-SUMMARY_VERSION = 'A-v0.4-summary-v1'
+SUMMARY_VERSION = 'A-v0.4-summary-v2'
 METRICS = {'sleep_duration': 'h', 'step_count': 'count', 'heart_rate': 'beats/min'}
 
 
@@ -88,6 +88,7 @@ class S03Analytics:
     def __init__(self, db, auth, receipts, clock, records):
         self.db, self.auth, self.receipts, self.clock, self.records = db, auth, receipts, clock, records
         self.support_feedback = None
+        self.service_feedback = None
 
     def authorize(self, c, principal, patient, scope):
         if principal is None:
@@ -132,7 +133,9 @@ class S03Analytics:
             if action == 'analytics_measurement':
                 data = self.measurement_trend(c,patient,window)
             elif action == 'analytics_feedback':
+                c.execute('BEGIN')
                 data = self.feedback(c,patient,window,principal)
+                c.commit()
             else:
                 kind = 'summary' if action == 'analytics_summary' else 'statistics'
                 data, trend = self.read_result(c,principal,patient,kind,window,'as_of' in q)
@@ -258,16 +261,29 @@ class S03Analytics:
     def signature(self, c, patient, window, inputs=None):
         return fingerprint(inputs or self.source_inputs(c,patient,window))
 
-    def result_signature(self,c,principal,patient,kind,window,inputs=None):
-        signature = self.signature(c,patient,window,inputs)
-        if kind == 'summary' and self.support_feedback is not None:
+    def result_signature(self,c,principal,patient,kind,window,data):
+        signature = self.signature(c,patient,window)
+        if kind != 'summary':
+            return signature
+        stored = {src['source_module']:src for src in data['feedback_overview']['sources']}
+        if data['schema_version'] == SUMMARY_VERSION:
+            b_source = stored['B'] if stored['B']['availability']=='not_integrated' else self.b_feedback(c,principal,patient,window)
+            c_source, c_refs = ((stored['C'], []) if stored['C']['availability']=='not_integrated'
+                                else self.c_feedback(c,principal,patient,window))
+            return fingerprint([signature,[b_source,c_source],c_refs])
+        # S03 signed A inputs. S04 and S05 through batch 3 added B only.
+        if self.support_feedback is not None and stored['B']['availability'] != 'not_integrated':
             return fingerprint([signature,self.support_feedback(c,principal,patient,window)])
         return signature
 
-    def persist(self, c, principal, patient, kind, window, data, trend, inputs):
+    def persist(self, c, principal, patient, kind, window, data, trend, inputs, feedback_refs=()):
         at = stamp(self.clock())
         refs = [{'resource_type':'PlanVersion','resource_id':p['plan_id'],'resource_revision':p['plan_version']} for p in inputs[0]]
         refs.extend({'resource_type':'SourceEvent','resource_id':x['event']['event_id'],'resource_revision':x['event']['meta']['revision']} for x in inputs[1])
+        refs.extend(feedback_refs)
+        signature = self.signature(c,patient,window,inputs)
+        if kind == 'summary':
+            signature = fingerprint([signature,data['feedback_overview']['sources'],list(feedback_refs)])
         snapshot_id = uid()
         auth_hash = self.auth_hash(c,principal,patient)
         c.execute('INSERT INTO s03_computation_snapshots VALUES (?,?,?,?,?,?,?,?,?)',
@@ -275,7 +291,7 @@ class S03Analytics:
         result_id = data['summary_id' if kind=='summary' else 'statistics_id']
         c.execute('INSERT INTO s03_results VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                   (result_id,patient,window['data_environment'],kind,window['window_start'],window['window_end'],window['as_of'],auth_hash,
-                    self.result_signature(c,principal,patient,kind,window,inputs),snapshot_id,encode(data),encode(trend) if trend else None,at))
+                    signature,snapshot_id,encode(data),encode(trend) if trend else None,at))
         notice_kind = 'summary_changed' if kind=='summary' else 'statistics_changed'
         c.execute('INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)',
                   (uid(),'A',patient,window['data_environment'],notice_kind,encode({'resource_type':'Summary' if kind=='summary' else 'Statistics',
@@ -302,13 +318,43 @@ class S03Analytics:
         self.persist(c,principal,patient,'statistics',window,data,trend,inputs)
         return data
 
-    def feedback(self, c, patient, window, principal=None):
-        sources = [{'source_module':m,'availability':'not_integrated','records':[],
-                    'reason':m+'业务尚未接入，本阶段不生成服务效果'} for m in ('B','C')]
+    def c_feedback(self, c, principal, patient, window):
+        if self.service_feedback is not None:
+            return self.service_feedback.source(c,principal,patient,window)
+        return {'source_module':'C','availability':'not_integrated','records':[],
+                'reason':'C业务尚未接入，本阶段不生成服务效果'}, []
+
+    def b_feedback(self, c, principal, patient, window):
         if self.support_feedback is not None:
-            sources[0] = self.support_feedback(c,principal,patient,window)
+            return self.support_feedback(c,principal,patient,window)
+        return {'source_module':'B','availability':'not_integrated','records':[],
+                'reason':'B业务尚未接入，本阶段不生成服务效果'}
+
+    def summary_feedback_current(self, c, principal, patient, summary):
+        """A live consumer rechecks C; historical A31 reads keep their cutoff."""
+        if summary['schema_version'] != SUMMARY_VERSION:
+            return True
+        row = c.execute("""
+            SELECT r.result_json,s.source_refs FROM s03_results r
+            JOIN s03_computation_snapshots s USING(snapshot_id)
+            WHERE r.result_id=? AND r.patient_id=? AND r.kind='summary' AND r.authorization_context_hash=?
+        """, (summary['summary_id'],patient,self.auth_hash(c,principal,patient))).fetchone()
+        if row is None:
+            return False
+        window = {name:summary[name] for name in ('window_start','window_end')}
+        current, refs = self.c_feedback(c,principal,patient,window)
+        saved = next(source for source in json.loads(row['result_json'])['feedback_overview']['sources']
+                     if source['source_module']=='C')
+        previous = [ref for ref in json.loads(row['source_refs'])
+                    if ref['resource_type'] in ('Service','ServiceFeedback')]
+        return current == saved and refs == previous
+
+    def feedback(self, c, patient, window, principal=None, *, c_source=None):
+        b_source = self.b_feedback(c,principal,patient,window)
+        if c_source is None:
+            c_source, _ = self.c_feedback(c,principal,patient,window)
         return {'patient_id':patient,'window_start':window['window_start'],'window_end':window['window_end'],
-                'sources':sources, 'updated_at':stamp(self.clock())}
+                'sources':[b_source,c_source], 'updated_at':stamp(self.clock())}
 
     def refresh_in_transaction(self, c, principal, patient, window):
         self.authorize(c,principal,patient,'summary:read')
@@ -345,7 +391,8 @@ class S03Analytics:
                             'message':metric+('已接收，但质量或单位待复核，暂不可用于数值汇总' if blocked else '尚无有效采样值；保留未采集原因，不补零')})
         else:
             missing.append({'source':'measurement','code':'restricted','message':'当前授权不包含指标资料'})
-        feedback = self.feedback(c,patient,window,principal)
+        c_source, c_refs = self.c_feedback(c,principal,patient,window)
+        feedback = self.feedback(c,patient,window,principal,c_source=c_source)
         missing.extend({'source':s['source_module'],'code':s['availability'],'message':s['reason']}
                        for s in feedback['sources'] if s['availability'] != 'available')
         at = stamp(self.clock())
@@ -354,7 +401,7 @@ class S03Analytics:
                    'data_status':'insufficient' if missing else 'fresh','plan_refs':record['plan_refs'] if record else [],
                    'record_overview':record,'measurement_overview':measurements,'feedback_overview':feedback,
                    'missing_items':missing,'schema_version':SUMMARY_VERSION,'is_simulated':True}
-        self.persist(c,principal,patient,'summary',window,summary,None,inputs)
+        self.persist(c,principal,patient,'summary',window,summary,None,inputs,feedback_refs=c_refs)
         return summary
 
     def read_result(self, c, principal, patient, kind, window, explicit_as_of):
@@ -369,15 +416,7 @@ class S03Analytics:
             raise AppError(409,'RESULT_NOT_READY','没有匹配当前权限和截止的已存结果，请显式刷新；查询不会计算或补写')
         data = json.loads(row['result_json']);trend = json.loads(row['trend_json']) if row['trend_json'] else None
         old_window = {**window,'as_of':row['as_of']}
-        # Snapshots created before B was connected signed only the A inputs.
-        legacy_summary = kind == 'summary' and any(
-            source['source_module'] == 'B' and source['availability'] == 'not_integrated'
-            for source in data['feedback_overview']['sources']
-        )
-        if legacy_summary:
-            signature = self.signature(c,patient,old_window)
-        else:
-            signature = self.result_signature(c,principal,patient,kind,old_window)
+        signature = self.result_signature(c,principal,patient,kind,old_window,data)
         stale = row['as_of'] < window['as_of'] or row['input_signature'] != signature
         if kind == 'summary':
             stale |= data['valid_until'] <= stamp(self.clock())

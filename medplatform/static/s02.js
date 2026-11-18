@@ -1576,7 +1576,13 @@ function summaryView(summary) {
   const box = el("section", {}, el("h2", {}, "近期状态摘要"), p(`${labelFor(summary.data_status)}；生成 ${dateText(summary.generated_at)}；原有效期至 ${dateText(summary.valid_until)}。`));
   box.append(statisticsView(summary.record_overview));
   for (const metric of summary.measurement_overview) box.append(p(`${metricOptions.find(x => x[0] === metric.metric_code)?.[1] || metric.metric_code}：${labelFor(metric.availability)}；${metric.latest_value === null ? "没有可用值" : metric.latest_value + " " + (metric.unit || "")}；${metric.sampled_at ? dateText(metric.sampled_at) : "无可用采样时间"}`), issuesView((metric.missing_items || []).map(message => ({ message }))));
-  for (const source of summary.feedback_overview.sources) box.append(p(`${source.source_module}反馈：${labelFor(source.availability)}${source.reason ? "；" + source.reason : ""}`));
+  for (const source of summary.feedback_overview.sources) {
+    if (source.source_module === "C" && typeof cFeedbackProjection === "function") {
+      box.append(cFeedbackProjection(source));
+    } else {
+      box.append(p(`${source.source_module}反馈：${labelFor(source.availability)}${source.reason ? " · " + source.reason : ""}`));
+    }
+  }
   box.append(issuesView(summary.missing_items));
   return box;
 }

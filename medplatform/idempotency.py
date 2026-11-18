@@ -19,6 +19,7 @@ class Result:
     resource_type: str | None = None
     resource_id: str | None = None
     error: dict | None = None
+    headers: dict | None = None
 
 
 class Receipts:

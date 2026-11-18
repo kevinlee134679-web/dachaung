@@ -111,6 +111,12 @@ async function serviceRecordsView() {
     }
     if (value.provider_response) detail.append(p("模拟答复 · " + value.provider_response.text));
     detail.append(button("刷新服务状态", async () => { await list(); await load(id); }));
+    if (scope("services:read") && scope("feedback:read")) {
+      const feedback = serviceFeedbackHistory(value, view);
+      detail.append(feedback.node);
+      await feedback.load();
+      check();
+    }
     if (own() && ["submitted", "in_progress"].includes(value.status)) {
       const [reasonLabel, reason] = input("取消原因", unsavedReason, "text", {maxLength: 500});
       const [confirmLabel, explicit] = checkbox("我明确取消本次服务");

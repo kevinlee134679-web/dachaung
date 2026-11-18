@@ -189,7 +189,7 @@ class S03AnalyticsTests(unittest.TestCase):
         self.assertEqual(summary['record_overview'],stats)
         sources=summary['feedback_overview']['sources']
         self.assertEqual([(s['source_module'],s['availability']) for s in sources],
-                         [('B','not_collected'),('C','not_integrated')])
+                         [('B','not_collected'),('C','not_collected')])
         for source in sources:
             self.assertEqual(source['records'],[])
             self.assertTrue(source['reason'])
