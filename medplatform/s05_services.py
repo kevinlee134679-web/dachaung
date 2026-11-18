@@ -22,6 +22,7 @@ class S05Services:
         self.db, self.auth, self.receipts = db, drafts.auth, drafts.receipts
         self.clock, self.drafts, self.execution, self.settings = clock, drafts, execution, settings
         self.peer = None
+        self.rewards = None
 
     def authenticate_provider(self, header):
         secret = self.settings.DEMO_SERVICE_RECEIPT_TOKEN.get_secret_value()
@@ -137,7 +138,8 @@ class S05Services:
                 or (consent["resource_id"], consent["resource_version"]) != (doc["resource_id"], doc["resource_version"])):
             raise confirmation_required()
         resource = current_resource(conn, doc)
-        if resource is None or resource["access_mode"] != "support_free":
+        expected_access = "reward_only" if doc.get("redemption_id") else "support_free"
+        if resource is None or resource["access_mode"] != expected_access:
             raise confirmation_required("资源已停用或版本有变化，请重新核对")
         provider, purpose = resource["provider"], resource["service_kind"]
         if (consent["provider_id"], consent["service_kind"]) != (provider["provider_id"], purpose):
@@ -154,7 +156,7 @@ class S05Services:
         deadline = min(consent["valid_until"], self.drafts.sharing.deadline(conn, scope, versions))
         return resource, scope, versions, deadline
 
-    def prepared(self, conn, principal, patient, body, at):
+    def prepared(self, conn, principal, patient, body, at, *, redemption_id=None):
         self.auth.require_patient(principal, patient, "services:apply", conn, self_only=True)
         draft = self.drafts.draft(conn, body["service_draft_id"])
         if draft["patient_id"] != patient:
@@ -168,7 +170,7 @@ class S05Services:
         ).fetchone()
         if link is None:
             raise confirmation_required()
-        resource, scope, versions, deadline = self.consent(conn, dict(draft) | body, at)
+        resource, scope, versions, deadline = self.consent(conn, dict(draft) | body | {"redemption_id": redemption_id}, at)
         try:
             current_grants = self.drafts.sharing.terms(conn, principal, patient, resource, scope["data_categories"])
         except AppError as exc:
@@ -179,15 +181,16 @@ class S05Services:
             raise confirmation_required("O 授权版本已经变化，请本人重新确认")
         return draft, resource, deadline
 
-    def submit(self, conn, principal, patient, body, *, referral_id=None, suggestion_id=None, resource_id=None):
+    def submit(self, conn, principal, patient, body, *, referral_id=None, suggestion_id=None, resource_id=None,
+               redemption_id=None):
         at = stamp(self.clock())
-        draft, resource, deadline = self.prepared(conn, principal, patient, body, at)
+        draft, resource, deadline = self.prepared(conn, principal, patient, body, at, redemption_id=redemption_id)
         if resource_id is not None and resource_id != draft["resource_id"]:
             raise confirmation_required("转介资源与已确认草稿不一致")
         if draft["status"] == "submitted":
             old = self.service(conn, draft["service_id"])
-            if (old["draft_revision"], old["confirmation_ref_id"], old["sharing_scope_ref_id"]) != (
-                body["draft_revision"], body["confirmation_ref_id"], body["sharing_scope_ref_id"]
+            if (old["draft_revision"], old["confirmation_ref_id"], old["sharing_scope_ref_id"], old["redemption_id"]) != (
+                body["draft_revision"], body["confirmation_ref_id"], body["sharing_scope_ref_id"], redemption_id
             ):
                 raise confirmation_required("草稿已有正式服务，请核对原申请")
             return old
@@ -205,7 +208,7 @@ class S05Services:
             request_text=draft["request_text"], status="submitted", submitted_at=at, started_at=None,
             completed_at=None, cancelled_at=None, failed_at=None, failure_reason=None,
             cancellation_requested=False, cancellation_reason=None, source_suggestion_id=suggestion_id,
-            source_referral_id=referral_id, redemption_id=None, dispatch_task_id=task_id,
+            source_referral_id=referral_id, redemption_id=redemption_id, dispatch_task_id=task_id,
             result_summary=None, provider_response=None, meta=meta(at, CONTRACT),
         )
         conn.execute("INSERT INTO c_services VALUES (?,?,?,?,?,?,?,?)",
@@ -289,6 +292,8 @@ class S05Services:
             self.peer.accept(conn, result, actor, occurred, at)
         if target in {"cancelled", "failed"}:
             self.stop_dispatch(conn, doc["dispatch_task_id"], at)
+        if result["redemption_id"] and self.rewards is not None:
+            self.rewards.fulfillment.observe_service(conn, result, origin, occurred, at)
         return result
 
     def provider_receipt(self, subject, body, key):

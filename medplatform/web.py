@@ -36,7 +36,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_api import router as s02_router
     from . import s03_records, s03_analytics, s03_execution
     from .s03_api import router as s03_router
-    from . import s04_api, s05_api, s05_draft_api, s05_service_api, s05_feedback_api, s05_peer_api, s05_points_api
+    from . import s04_api, s05_api, s05_draft_api, s05_service_api, s05_feedback_api, s05_peer_api, s05_points_api, s05_rewards_api
     from .s04_service import S04Service
     from .s05_catalog import S05Catalog, catalog_registered
     from .s05_drafts import S05Drafts
@@ -45,6 +45,8 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s05_feedback import S05Feedback
     from .s05_peer import S05Peer
     from .s05_points import S05Points
+    from .s05_rewards import S05Rewards
+    from .s05_reward_fulfillment import RewardFulfillment
     service = S02Service(db,clock or now)
     records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
     analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
@@ -56,6 +58,10 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     feedback = S05Feedback(db, services, clock or now)
     peer = S05Peer(db, services, clock or now)
     points = S05Points(db, service.auth, service.receipts, analytics, peer, clock or now)
+    rewards = S05Rewards(db, points, services, clock or now)
+    rewards.fulfillment = RewardFulfillment(rewards, settings)
+    services.rewards = rewards
+    execution.reward_fulfillment = rewards.fulfillment
     services.peer = peer
     execution.service_dispatch = MockServiceDispatch(db, services, clock or now)
     support.formal_services = drafts.formal_services = services
@@ -76,6 +82,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.s05_feedback = feedback
     app.state.s05_peer = peer
     app.state.s05_points = points
+    app.state.s05_rewards = rewards
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -92,6 +99,8 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
                         raise AppError(403,'CSRF_REJECTED','演示登录需要同源操作')
                 elif request.url.path == s05_service_api.RECEIPT_PATH and request.method == "POST":
                     request.state.integration_principal = services.authenticate_provider(request.headers.get("Authorization"))
+                elif request.url.path == s05_rewards_api.RECEIPT_PATH and request.method == "POST":
+                    request.state.integration_principal = rewards.fulfillment.authenticate(request.headers.get("Authorization"))
                 elif request.url.path == '/api/v1/auth/logout' and authority is service.auth:
                     principal=authority.resolve(request.cookies.get('session'),logout_receipt=True)
                     authority.require_write(principal,request.headers.get('X-CSRF-Token'),request.headers.get('origin'),settings.allowed_origins,logout_receipt=True)
@@ -214,6 +223,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
         (s05_feedback_api,feedback),
         (s05_peer_api,peer),
         (s05_points_api,points),
+        (s05_rewards_api,rewards),
     ],envelope))
 
     @app.get("/", include_in_schema=False)

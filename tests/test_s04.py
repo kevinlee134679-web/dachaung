@@ -85,6 +85,14 @@ class S04Tests(unittest.TestCase):
             ("POST", "/api/v1/internal/points/reconcile"),
             ("POST", "/api/v1/patients/{}/management-reviews"),
             ("GET", "/api/v1/patients/{}/management-reviews"),
+            ("GET", "/api/v1/rewards"),
+            ("GET", "/api/v1/rewards/{}"),
+            ("POST", "/api/v1/patients/{}/redemptions"),
+            ("GET", "/api/v1/patients/{}/redemptions"),
+            ("GET", "/api/v1/redemptions/{}"),
+            ("POST", "/api/v1/integrations/fulfillment-receipts"),
+            ("GET", "/api/v1/redemptions/{}/fulfillment"),
+            ("POST", "/api/v1/redemptions/{}/feedback"),
         }
         self.assertEqual(registry.routes & c_routes, c_routes)
         self.assertEqual(len(registry.routes - c_routes), 114)

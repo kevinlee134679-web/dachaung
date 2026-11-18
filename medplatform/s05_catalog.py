@@ -43,7 +43,7 @@ class DemoResource(Input):
     description: Text
     provider: DemoProvider
     availability: Literal["available", "unavailable", "unknown"]
-    access_mode: Literal["support_free"]
+    access_mode: Literal["support_free", "reward_only"]
     is_essential: bool
     required_shared_categories: list[SharedCategory]
     optional_shared_categories: list[SharedCategory]
@@ -53,6 +53,8 @@ class DemoResource(Input):
     @model_validator(mode="after")
     def validate_fixture(self):
         pharmacist = self.service_kind == "pharmacist_consultation"
+        if self.access_mode == "reward_only" and (self.is_essential or pharmacist or self.peer_group_id is not None):
+            raise ValueError("necessary and peer services cannot require demo points")
         if (self.peer_group_id is not None) != (self.service_kind == "peer_support"):
             raise ValueError("Demo peer resources require a precise group")
         if (self.provider.provider_type == "pharmacist") != pharmacist:

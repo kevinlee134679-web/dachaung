@@ -1643,5 +1643,221 @@
       }
     },
     "local_evidence_index": "test-output/s05-batch6-20261118T085452-988Z/evidence-index.json"
+  },
+  "batch7": {
+    "application": "0.5.6",
+    "schema": "0014",
+    "record_id": "R0040",
+    "version_id": "V0040",
+    "base": "db6fb6cfca99f9dcd315799c0260117f854a6c8e",
+    "remote_opening_head": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+    "rules_version": "points-demo-v1",
+    "reward_version": "reward-demo-v1",
+    "tests": {
+      "python": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "pass_count": 212,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/acceptance-python.log"
+      },
+      "node": {
+        "command": "& D:/nodejs/node.exe --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "pass_count": 51,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/final-node.log"
+      },
+      "c": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "pass_count": 73,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/acceptance-c.log"
+      },
+      "rewards": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_rewards.py -v",
+        "pass_count": 9,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/delivery-rewards.log"
+      },
+      "points": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_points.py -v",
+        "pass_count": 11,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/acceptance-points.log"
+      },
+      "peer": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_peer.py -v",
+        "pass_count": 8,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/final-peer.log"
+      },
+      "b": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s04.py -v",
+        "pass_count": 17,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/final-b.log"
+      },
+      "prior": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 test-output/s05-batch6-20261118T085452-988Z/run-prior-tests.py (PYTHONPATH=\u9879\u76ee\u6839\u76ee\u5f55)",
+        "pass_count": 139,
+        "fail_count": 0,
+        "skip_count": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch7-20261118T121008200Z/final-prior.log"
+      }
+    },
+    "migration": {
+      "from_schema": "0013",
+      "to_schema": "0014",
+      "old_business_tables": 72,
+      "old_migrations": 13,
+      "preserved_awards": 2,
+      "preserved_sources": 2,
+      "preserved_account_rows": 3,
+      "new_tables": [
+        "c_fulfillment_receipts",
+        "c_redemption_feedback",
+        "c_redemption_history",
+        "c_redemption_notices",
+        "c_redemptions",
+        "c_reward_fulfillments",
+        "c_reward_versions",
+        "c_rewards"
+      ],
+      "source_path": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/browser.sqlite3",
+      "source_sha256": "048dfd8d399faee1f0b6dfe031ed396f664aeca2d7aa5f86c7b0cb0c16df8038",
+      "migration_sha256": "6b67a1b8ba7a7cafcc028d1a5647ff16f4ed6d71b1047ffd7519025104cbfe48",
+      "integrity_check": "ok",
+      "foreign_key_check": "ok",
+      "injected_failure_byte_identical": true,
+      "retry": true,
+      "originals_unchanged": 6,
+      "historical": [
+        {
+          "original_schema": "0006",
+          "same_cutoff": "2026-11-17T12:00:00.000000+00:00",
+          "exact_projection_equal": true,
+          "stored_signature_equal": true
+        },
+        {
+          "original_schema": "0010",
+          "same_cutoff": "2026-11-17T12:00:00.000000+00:00",
+          "exact_projection_equal": true,
+          "stored_signature_equal": true
+        }
+      ]
+    },
+    "browser": {
+      "engine": "Microsoft Edge Chromium",
+      "steps": [
+        {
+          "step": "01-catalog",
+          "result": "Patient reads all five costs and zero initial balance.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/01-catalog.png",
+          "sha256": "02bde787d184cb9bca3cc3bb6881950f3708a9e03dda8f730f9a9188d3156e61"
+        },
+        {
+          "step": "02-awards",
+          "result": "C25 generates 83 points from actual matching source facts.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/02-awards.png",
+          "sha256": "f7d3f117fa016a57fa0875d9f836a52271da531a5226dcfa6a6e1e59beae5c42"
+        },
+        {
+          "step": "03-debit",
+          "result": "First debit is -30, with one order and pending delivery.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/03-debit.png",
+          "sha256": "637f54211adeb27a8f965c74cff5bb9a2d9c9c70313599e22a6ad46da6cfd096"
+        },
+        {
+          "step": "04-completed",
+          "result": "A36 persists plain text; provider failure after delivery does not refund. A fresh login restores the same order.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/04-completed.png",
+          "sha256": "64f7c0f3bd35ddb73e6c60474e3a97c7c0a6a926f33af373e10f8e36ec0ee147"
+        },
+        {
+          "step": "05-unknown",
+          "result": "Unknown delivery leaves the debit intact and presents source-check status.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/05-unknown.png",
+          "sha256": "877b155f5aff44663150ae08fa70f2230561b0aac027f66a03e5bc30af0f1597"
+        },
+        {
+          "step": "06-refunded",
+          "result": "The confirmed distinct non-delivery returns exactly 40 once, with its original debit intact.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/06-refunded.png",
+          "sha256": "b8d711f92bf18a9d1c7447aa82fa1f4fa6f119e89f36203e58f5a270dd45c7c2"
+        },
+        {
+          "step": "07-patient-isolation",
+          "result": "Patient B cannot read A and has no redemption records.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/07-patient-isolation.png",
+          "sha256": "02bde787d184cb9bca3cc3bb6881950f3708a9e03dda8f730f9a9188d3156e61"
+        },
+        {
+          "step": "08-family-grant",
+          "result": "Exact points:read displays order and status. Artifact and purchase controls stay private.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/08-family-grant.png",
+          "sha256": "b9a6b8dda8194a71b80b63f45dc5c03e76bfd0b0eb3c58f1a038db2b0490cfa3"
+        },
+        {
+          "step": "09-family-revoked",
+          "result": "Revoked family grant no longer authorizes order access.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-accepted/09-family-revoked.png",
+          "sha256": "8edd5a28580a3afaf1ba0e1b9d90d8f41eb07598e03f2f2bb3f88f8f7610e5ee"
+        }
+      ],
+      "browser_requests": 189,
+      "provider_requests": 5,
+      "award_entries": 34,
+      "awarded": 83,
+      "debited": 70,
+      "refunded": 40,
+      "final_balance": 53,
+      "patient_b_balance": 0,
+      "orders": 2,
+      "distinct_provider_receipts": 4,
+      "c28_committed_receipts": 3,
+      "order_history_revisions": 5,
+      "database_sha256": "fc104222131d7347a4fd3fbbb35eee0cec0ac267c96e9146f60252c1ba1d0c93",
+      "integrity_check": "ok",
+      "foreign_key_check": "ok"
+    },
+    "verified_at": "2026-11-18T20:45:52+08:00",
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch6.json",
+      "bytes": 65846,
+      "sha256": "668a634117823837a08fe2af48d105d9789b233b3817e6750354babed3359c64"
+    },
+    "markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 253727,
+        "sha256": "54843c243d72a5c614202f3a59dda1f71f6926b755c7d68dfe5b2e6dcdd789fc"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 31004,
+        "sha256": "ab9c0eb5cb5fbecc5ded4d088b4ad8e715342ff21cddde106e515b802f47046e"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 22901,
+        "sha256": "52b9d26d2d19dcc20e65fb070625fccbe69380d001f0c67c596c9a26cba375ab"
+      },
+      "docs/S05/\u5f85\u786e\u8ba4\u4e8b\u9879.md": {
+        "bytes": 2354,
+        "sha256": "952ccfc9bc6a82d051e9156d43b21055929dbd10e0bae7e6b832a2552773775a"
+      }
+    },
+    "local_evidence_index": "test-output/s05-batch7-20261118T121008200Z/evidence-index.json"
   }
 }

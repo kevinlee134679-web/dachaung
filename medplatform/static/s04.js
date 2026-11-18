@@ -360,4 +360,5 @@ async function supportConsole() {
   if (typeof serviceDemoControls === "function") main.append(serviceDemoControls());
   if (typeof peerModerationControls === "function") main.append(peerModerationControls());
   main.append(pointsConsole());
+  if (typeof rewardDemoControls === "function") main.append(rewardDemoControls());
 }

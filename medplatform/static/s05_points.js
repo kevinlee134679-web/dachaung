@@ -6,7 +6,7 @@ const pointLabels = {
   weekly_review: "每周管理回顾",
   peer_participation: "经审核可见的同辈参与"
 };
-const pointSourceLabels = {event: "A 服药情况报告", management_review: "C 本人管理回顾", peer_post: "C 本人同辈参与"};
+const pointSourceLabels = {event: "A 服药情况报告", management_review: "C 本人管理回顾", peer_post: "C 本人同辈参与", redemption: "C 兑换订单"};
 
 function pointsRange(fields) {
   const {window_start, window_end} = fields();
@@ -77,8 +77,10 @@ function pointsLedgerRow(item) {
         + " · 版本 " + ref.version + " · " + dateText(ref.recorded_at),
         el("div", {class: "muted"}, ref.record_id))))
     : p("当前权限下来源详情不可用。", "muted");
-  return el("li", {}, el("strong", {}, "+" + item.delta + " · " + pointLabels[item.rule_code]),
-    p(dateText(item.created_at) + " · 入账后 " + item.balance_after + " 积分 · " + item.rules_version, "muted"),
+  const label = {redemption_debit: "自愿兑换扣减", redemption_refund: "未交付全额退分"}[item.entry_kind] || pointLabels[item.rule_code];
+  return el("li", {}, el("strong", {}, (item.delta > 0 ? "+" : "") + item.delta + " · " + label),
+    p(dateText(item.created_at) + " · 入账后 " + item.balance_after + " 积分"
+      + (item.rules_version ? " · " + item.rules_version : ""), "muted"),
     el("details", {}, el("summary", {}, "来源与版本"), sources));
 }
 
@@ -91,8 +93,7 @@ async function pointsView() {
     p("漏服、医嘱暂停或退出同辈支持不会扣除已有积分。必要专业支持不设积分门槛。"));
   const canRead = view.patientId && scope("points:read");
   const balance = p("正在读取当前余额…");
-  const section = el("section", {class: "panel"}, el("h2", {}, "演示积分"), canRead ? balance : null, rulePanel,
-    p("积分兑换将在后续开放。", "muted"));
+  const section = el("section", {class: "panel"}, el("h2", {}, "演示积分"), canRead ? balance : null, rulePanel);
   main.append(section);
   if (!canRead) {
     section.append(p("当前身份没有该患者的积分读取权限。"));
@@ -127,6 +128,11 @@ async function pointsView() {
   requireCurrentView(view);
   if (own()) {
     const panel = await managementReviewPanel(path, state.patient.patient.timezone, view);
+    requireCurrentView(view);
+    main.append(panel);
+  }
+  if (typeof redemptionPanel === "function") {
+    const panel = await redemptionPanel(path, view);
     requireCurrentView(view);
     main.append(panel);
   }

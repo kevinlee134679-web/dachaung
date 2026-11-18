@@ -32,7 +32,7 @@ def current_resource(conn, content):
     if row is None:
         return None
     doc = json.loads(row["resource_json"])
-    if doc["availability"] == "available" and doc["access_mode"] == "support_free" and doc["is_simulated"] is True:
+    if doc["availability"] == "available" and doc["is_simulated"] is True:
         return doc
     return None
 

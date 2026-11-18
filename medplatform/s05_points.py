@@ -163,10 +163,18 @@ class S05Points:
             if visible:
                 sources.append(dict(module=ref["module"], record_kind=kind, record_id=ref["record_id"],
                                     version=str(ref["source_revision"]), recorded_at=ref["recorded_at"]))
+        if row["redemption_id"]:
+            revision = conn.execute("""SELECT revision FROM c_redemption_history
+                WHERE redemption_id=? AND (revision=1 AND ? IS NULL
+                    OR json_extract(redemption_json,'$.refund_ledger_id')=?)
+                ORDER BY revision LIMIT 1""",
+                (row["redemption_id"], row["reverses_ledger_id"], row["ledger_id"])).fetchone()
+            sources.append(dict(module="C", record_kind="redemption", record_id=row["redemption_id"],
+                                version=str(revision[0]), recorded_at=row["created_at"]))
         return {name: row[name] for name in ("ledger_id", "points_account_id", "patient_id", "entry_kind", "delta",
                                             "balance_after", "business_key", "rule_code", "rules_version",
-                                            "created_at")} | dict(source_refs=sources, redemption_id=None,
-                                                                  reverses_ledger_id=None, is_simulated=True)
+                                            "created_at", "redemption_id", "reverses_ledger_id")} | dict(
+            source_refs=sources, is_simulated=True)
 
     @staticmethod
     def review_view(row, own=True):
@@ -234,7 +242,7 @@ class S05Points:
 
     def choose_awards(self, conn, patient, days, reviews, peers):
         existing = {(row["rule_code"], date.fromisoformat(row["period_start"])): row["business_key"]
-                    for row in conn.execute("SELECT * FROM c_points_ledger WHERE patient_id=?", (patient,))}
+                    for row in conn.execute("SELECT * FROM c_points_ledger WHERE patient_id=? AND entry_kind='award'", (patient,))}
         used = {(row["rule_code"], row["record_id"]): row["business_key"] for row in conn.execute("""
                     SELECT s.rule_code,s.record_id,l.business_key
                     FROM c_points_award_sources s JOIN c_points_ledger l USING(ledger_id)
@@ -276,7 +284,9 @@ class S05Points:
     def award(self, conn, account, operation, rule, period, refs, balance, at):
         identifier, patient = uid(), account["patient_id"]
         key = f"{patient}:{rule}:{period.isoformat()}"
-        conn.execute("INSERT INTO c_points_ledger VALUES (?,?,?,?,'award',?,?,?,?,?,?,?)",
+        conn.execute("""INSERT INTO c_points_ledger
+                     (ledger_id,points_account_id,patient_id,operation_id,entry_kind,delta,balance_after,
+                      business_key,rule_code,period_start,rules_version,created_at) VALUES (?,?,?,?,'award',?,?,?,?,?,?,?)""",
                      (identifier, account["points_account_id"], patient, operation, RULES[rule][0], balance,
                       key, rule, period.isoformat(), RULES_VERSION, at))
         allocated = []

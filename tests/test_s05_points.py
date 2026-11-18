@@ -67,13 +67,14 @@ class PointsTests(unittest.TestCase):
     def issues(result):
         return {issue["code"] for issue in result["source_issues"]}
 
-    def test_rules_signed_in_account_not_created_by_reads_and_no_redemption(self):
+    def test_rules_signed_in_account_not_created_by_reads(self):
         rules = self.call("GET", "/points/rules")
         self.assertEqual(rules["rules_version"], RULES_VERSION)
         self.assertEqual({r["rule_code"]: r["points"] for r in rules["rules"]},
                          dict(daily_record=2, five_day_block=5, weekly_review=3, peer_participation=2))
         self.assertEqual((rules["week_start_day"], rules["timezone_source"], rules["is_simulated"]), (1, "patient", True))
-        self.assertEqual(self.s.a.get("/api/v1/rewards").status_code, 404)
+        self.call("PUT", "/auth/current-patient", {"patient_id": PA})
+        self.assertEqual(self.call("GET", "/rewards", expected=503)["code"], "REWARD_CATALOG_UNAVAILABLE")
         self.assertEqual(self.call("GET", "/points/rules?rules_version=unknown", expected=404)["code"],
                          "POINTS_RULES_NOT_ENABLED")
         before = self.s.db.path.read_bytes()
@@ -234,7 +235,10 @@ class PointsTests(unittest.TestCase):
                 with self.assertRaisesRegex(sqlite3.IntegrityError, "immutable"):
                     conn.execute(sql)
             with self.assertRaisesRegex(sqlite3.IntegrityError, "UNIQUE"):
-                conn.execute("""INSERT INTO c_points_ledger SELECT 'duplicate',points_account_id,patient_id,
+                conn.execute("""INSERT INTO c_points_ledger
+                                (ledger_id,points_account_id,patient_id,operation_id,entry_kind,delta,balance_after,
+                                 business_key,rule_code,period_start,rules_version,created_at)
+                                SELECT 'duplicate',points_account_id,patient_id,
                                 operation_id,entry_kind,delta,6,business_key,rule_code,period_start,rules_version,created_at
                                 FROM c_points_ledger""")
 

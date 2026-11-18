@@ -18,7 +18,7 @@ def router(modules, envelope):
             def endpoint(service=service, module=module, action=action, schema=schema, method=method):
                 async def handle(request: Request):
                     await run_in_threadpool(status,service.db)
-                    if action == "provider_receipt":
+                    if action in {"provider_receipt", "fulfillment_receipt"}:
                         principal = getattr(request.state, "integration_principal", None)
                         if principal is None:
                             raise AppError(401, "AUTH_REQUIRED", "需使用独立的模拟服务方凭据")

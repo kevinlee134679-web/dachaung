@@ -453,7 +453,8 @@ class S02Tests(unittest.TestCase):
         cases=self.call(self.login('demo-admin'),'GET','/cases')['items']
         self.assertEqual({case['case_id'] for case in cases},{'case-low-mood','case-anxiety','case-fatigue'})
         self.assertEqual(self.call(self.a,'GET',f'/patients/{PA}/services'), {'items':[],'next_cursor':None})
-        for path in ('/api/v1/patients/'+PA+'/statistics','/api/v1/patients/'+PA+'/redemptions'):
+        self.assertEqual(self.call(self.a,'GET',f'/patients/{PA}/redemptions'), {'items':[],'next_cursor':None})
+        for path in ('/api/v1/patients/'+PA+'/statistics','/api/v1/redemptions/missing'):
             self.assertEqual(self.a.get(path).status_code,404)
         self.assertEqual(self.a.get('/api/v1/tasks').status_code,405)
         self.assertNotIn('Task',{r[0] for r in self.db_connection_table_names()})
