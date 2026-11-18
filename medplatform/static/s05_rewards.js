@@ -45,13 +45,14 @@ function rewardOrderRow(order, view) {
     p((order.points_status === "refunded" ? "已全额退回 " : "原兑换扣减 ") + order.points_spent + " 积分"),
     button("查看交付结果", async v => {
       const [current, delivery] = await Promise.all([api(detail, "GET", null, v), api(detail + "/fulfillment", "GET", null, v)]);
-      result.replaceChildren(p(fulfillmentStatus[delivery.status]), delivery.failure_reason ? p(delivery.failure_reason) : null,
+      const contents = [p(fulfillmentStatus[delivery.status]), delivery.failure_reason ? p(delivery.failure_reason) : null,
         p(current.points_status === "refunded" ? "全额退分流水 " + current.refund_ledger_id : "原扣减流水 " + current.debit_ledger_id, "muted"),
         delivery.task_id ? p("原履约任务编号 " + delivery.task_id, "muted") : null,
         delivery.artifact ? el("pre", {}, delivery.artifact.text) : null,
         delivery.artifact ? button("保存模拟管理文本", () => saveRewardText(delivery.artifact)) : null,
         delivery.service_id ? button("查看关联的模拟服务", () => openServiceRecord(delivery.service_id)) : null,
-        own() && ["completed", "failed"].includes(current.status) ? rewardFeedback(detail, v) : null);
+        own() && ["completed", "failed"].includes(current.status) ? rewardFeedback(detail, v) : null];
+      result.replaceChildren(...contents.filter(Boolean));
     }, "", false, view), result);
   return row;
 }

@@ -1859,5 +1859,89 @@
       }
     },
     "local_evidence_index": "test-output/s05-batch7-20261118T121008200Z/evidence-index.json"
+  },
+  "batch7_ui_recheck": {
+    "record_id": "R0040",
+    "base": "039a4d953fb163c86d592507434d40c17a07c9a4",
+    "ui_test_passed": 51,
+    "ui_test_failed": 0,
+    "ui_test_skipped": 0,
+    "browser": {
+      "engine": "Microsoft Edge Chromium",
+      "steps": [
+        {
+          "step": "01-catalog",
+          "result": "Patient reads all five costs and zero initial balance.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/01-catalog.png",
+          "sha256": "02bde787d184cb9bca3cc3bb6881950f3708a9e03dda8f730f9a9188d3156e61"
+        },
+        {
+          "step": "02-awards",
+          "result": "C25 generates 83 points from actual matching source facts.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/02-awards.png",
+          "sha256": "f7d3f117fa016a57fa0875d9f836a52271da531a5226dcfa6a6e1e59beae5c42"
+        },
+        {
+          "step": "03-debit",
+          "result": "First debit is -30, with one order and pending delivery.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/03-debit.png",
+          "sha256": "f656011eb85eec2de2f26c5b807cd77f167ec280007a9a3f091bba93e1e5ef9a"
+        },
+        {
+          "step": "04-completed",
+          "result": "A36 persists plain text; provider failure after delivery does not refund. A fresh login restores the same order.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/04-completed.png",
+          "sha256": "958c7bec7070741e5db60bfd04d50aea7e0da436138bbd705e22cf13ceb7c913"
+        },
+        {
+          "step": "05-unknown",
+          "result": "Unknown delivery leaves the debit intact and presents source-check status.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/05-unknown.png",
+          "sha256": "448800ebf7665f144bb0469b27dfa92f8182e8318dcde12399943a28ce02105b"
+        },
+        {
+          "step": "06-refunded",
+          "result": "The confirmed distinct non-delivery returns exactly 40 once, with its original debit intact.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/06-refunded.png",
+          "sha256": "b5c2b0b7c6aa986326cab3effc35498ac79992b2832c1afbd86774b907765661"
+        },
+        {
+          "step": "07-patient-isolation",
+          "result": "Patient B cannot read A and has no redemption records.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/07-patient-isolation.png",
+          "sha256": "02bde787d184cb9bca3cc3bb6881950f3708a9e03dda8f730f9a9188d3156e61"
+        },
+        {
+          "step": "08-family-grant",
+          "result": "Exact points:read displays order and status. Artifact and purchase controls stay private.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/08-family-grant.png",
+          "sha256": "50509b89e29d2af6407d6de08cdeb7d92bd518ea8cd82c020ed198ef9de367e4"
+        },
+        {
+          "step": "09-family-revoked",
+          "result": "Revoked family grant no longer authorizes order access.",
+          "image": "test-output/s05-batch7-20261118T121008200Z/browser-recheck/09-family-revoked.png",
+          "sha256": "8edd5a28580a3afaf1ba0e1b9d90d8f41eb07598e03f2f2bb3f88f8f7610e5ee"
+        }
+      ],
+      "browser_requests": 189,
+      "provider_requests": 5,
+      "award_entries": 34,
+      "awarded": 83,
+      "debited": 70,
+      "refunded": 40,
+      "final_balance": 53,
+      "patient_b_balance": 0,
+      "orders": 2,
+      "distinct_provider_receipts": 4,
+      "c28_committed_receipts": 3,
+      "order_history_revisions": 5,
+      "database_sha256": "61e57d38e22b40b4a311487b3874661bcef097df272bfd1bc856246452b62cc2",
+      "integrity_check": "ok",
+      "foreign_key_check": "ok",
+      "downloaded_artifact_sha256": "13517f9fb05c5ecb0f48d6fb81fa54b18d2c5c26beeeacab3e96a7a267956ad3"
+    },
+    "log": "test-output/s05-batch7-20261118T121008200Z/ui-recheck-node.log",
+    "handoff_prefix_sha256": "174cadfc01daa8aecabd7265c7390b050c491f93d98a066000cddde9b262e6bf"
   }
 }
