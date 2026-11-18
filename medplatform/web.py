@@ -36,7 +36,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_api import router as s02_router
     from . import s03_records, s03_analytics, s03_execution
     from .s03_api import router as s03_router
-    from . import s04_api, s05_api, s05_draft_api, s05_service_api, s05_feedback_api, s05_peer_api
+    from . import s04_api, s05_api, s05_draft_api, s05_service_api, s05_feedback_api, s05_peer_api, s05_points_api
     from .s04_service import S04Service
     from .s05_catalog import S05Catalog, catalog_registered
     from .s05_drafts import S05Drafts
@@ -44,6 +44,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s05_services import S05Services
     from .s05_feedback import S05Feedback
     from .s05_peer import S05Peer
+    from .s05_points import S05Points
     service = S02Service(db,clock or now)
     records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
     analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     services = S05Services(db, drafts, execution, settings, clock or now)
     feedback = S05Feedback(db, services, clock or now)
     peer = S05Peer(db, services, clock or now)
+    points = S05Points(db, service.auth, service.receipts, analytics, peer, clock or now)
     services.peer = peer
     execution.service_dispatch = MockServiceDispatch(db, services, clock or now)
     support.formal_services = drafts.formal_services = services
@@ -73,6 +75,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.s05_services = services
     app.state.s05_feedback = feedback
     app.state.s05_peer = peer
+    app.state.s05_points = points
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -210,6 +213,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
         (s05_service_api,services),
         (s05_feedback_api,feedback),
         (s05_peer_api,peer),
+        (s05_points_api,points),
     ],envelope))
 
     @app.get("/", include_in_schema=False)

@@ -17,6 +17,11 @@ SUMMARY_VERSION = 'A-v0.4-summary-v2'
 METRICS = {'sleep_duration': 'h', 'step_count': 'count', 'heart_rate': 'beats/min'}
 
 
+def valid_plan_slot(slot, plan):
+    return bool(plan and slot['status'] != 'cancelled' and plan['effective_from'] <= slot['scheduled_at']
+                and (not plan['effective_until'] or slot['scheduled_at'] < plan['effective_until']))
+
+
 class Refresh(Input):
     window_start: DateTime
     window_end: DateTime
@@ -200,7 +205,7 @@ class S03Analytics:
             plan = by_plan.get((slot['plan_id'],slot['plan_version']))
             if plan is None and not get(c,'PlanVersion',slot['plan_id']+':'+str(slot['plan_version']),required=False):
                 raise AppError(503,'PLAN_DEPENDENCY_UNAVAILABLE','正式时段的权威计划不可用，不能把依赖失败显示为零')
-            if plan and slot['status'] != 'cancelled' and plan['effective_from'] <= slot['scheduled_at'] and (not plan['effective_until'] or slot['scheduled_at'] < plan['effective_until']):
+            if valid_plan_slot(slot,plan):
                 slots.append(slot)
         groups = {s['dose_slot_id']:[] for s in slots}
         for item in details:

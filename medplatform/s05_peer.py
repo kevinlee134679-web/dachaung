@@ -10,6 +10,7 @@ from .errors import AppError
 from .idempotency import Result
 from .s05_catalog import CURRENT
 from .s05_drafts import CONTRACT, missing
+from .s05_points_sources import points_notice
 
 POSTS = """SELECT p.*,m.alias,h.revision,h.status,h.recorded_at AS status_at
            FROM c_peer_posts p JOIN c_peer_memberships m USING(membership_id)
@@ -366,6 +367,10 @@ class S05Peer:
             raise AppError(409, "REVISION_CONFLICT", "审核修订已变化，请重新读取")
         if body["decision"] == "visible":
             self.validate_text(conn, row["content"])
+        revision, at = row["revision"] + 1, stamp(self.clock())
         conn.execute("INSERT INTO c_peer_post_history VALUES (?,?,?,?,?,?)",
-                     (identifier, row["revision"]+1, body["decision"], principal.account_id, body["reason"], stamp(self.clock())))
+                     (identifier, revision, body["decision"], principal.account_id, body["reason"], at))
+        owner = conn.execute("SELECT patient_id FROM c_peer_memberships WHERE membership_id=?",
+                             (row["membership_id"],)).fetchone()
+        points_notice(conn, owner["patient_id"], "PeerPost", identifier, revision, at)
         return self.public_post(self.post(conn, identifier))

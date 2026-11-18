@@ -1374,5 +1374,274 @@
       }
     },
     "local_evidence_index": "test-output/s05-batch5-20261118T074402-078Z/evidence-index.json"
+  },
+  "batch6": {
+    "application": "0.5.5",
+    "schema": "0013",
+    "base": "0fa8a8b67b12997219514810e62c8a5965678afa",
+    "record_id": "R0039",
+    "version_id": "V0039",
+    "verified_at": "2026-11-18T17:32:27+08:00",
+    "rules_version": "points-demo-v1",
+    "tests": {
+      "python": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 203,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/final-python.log"
+      },
+      "node": {
+        "command": "& D:/nodejs/node.exe --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "passed": 51,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/final-node.log"
+      },
+      "c": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/delivery-c.log"
+      },
+      "points": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_points.py -v",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/delivery-points.log"
+      },
+      "b": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s04.py -v",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/final-b.log"
+      },
+      "prior": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 test-output/s05-batch6-20261118T085452-988Z/run-prior-tests.py (PYTHONPATH=\u9879\u76ee\u6839\u76ee\u5f55)",
+        "passed": 139,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch6-20261118T085452-988Z/final-prior.log"
+      }
+    },
+    "migration": {
+      "from_schema": "0012",
+      "to_schema": "0013",
+      "prior_tables": 66,
+      "prior_migrations": 12,
+      "source": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/browser.sqlite3",
+      "source_sha256": "15f4ac031e2caebcf93f47d683bebd9041402cf93e5ea0ba70d21d97c86ebb36",
+      "new_tables": [
+        "c_management_reviews",
+        "c_points_accounts",
+        "c_points_award_sources",
+        "c_points_date_allocations",
+        "c_points_ledger",
+        "c_points_reconciliations"
+      ],
+      "new_migration_sha256": "82a176e355cba1b1a1d0c06edbf188de5de99f0a6a499d587b8f5ba1acc6759d",
+      "failed_copy_byte_identical": true,
+      "retry_completed": true,
+      "integrity_check": "ok",
+      "foreign_key_check": "ok",
+      "foreign_keys": {
+        "c_points_ledger": 3,
+        "c_points_award_sources": 3,
+        "c_points_date_allocations": 3,
+        "c_points_reconciliations": 2
+      },
+      "originals_unchanged": 4,
+      "historical": [
+        {
+          "original_schema": "0006",
+          "original_commit": "5f49d779392fc61b4725a97d3cf1118bd846d313",
+          "input_sha256": "1d9fe3c59a4ce1685fd03bff58fb57d5d1a7b9cd6fe4f268eae8c1a8d58dcd40",
+          "same_cutoff": "2026-11-17T12:00:00.000000+00:00",
+          "data_status": "insufficient",
+          "summary_id": "d99db26b-9ff6-4580-842a-630037fb3e9e",
+          "exact_projection_equal": true,
+          "stored_signature_equal": true
+        },
+        {
+          "original_schema": "0010",
+          "original_commit": "99ec4f995e8566fe88105dfe8371fe452179c94f",
+          "input_sha256": "3f7097ddef2dbe0149af2d1978c6fc985ec44c8f009191d6eb100ed1307c02ad",
+          "same_cutoff": "2026-11-17T12:00:00.000000+00:00",
+          "data_status": "insufficient",
+          "summary_id": "d16d6488-b13a-43d1-813f-0b3273de41c1",
+          "exact_projection_equal": true,
+          "stored_signature_equal": true
+        }
+      ],
+      "old_table_row_counts": {
+        "schema_migrations": 12,
+        "operation_audit": 23,
+        "o_accounts": 4,
+        "o_sessions": 23,
+        "o_binding_codes": 1,
+        "s02_documents": 5,
+        "s02_document_history": 8,
+        "idempotency_receipts": 82,
+        "receipt_responses": 55,
+        "change_notices": 13,
+        "s03_devices": 3,
+        "s03_computation_snapshots": 2,
+        "s03_results": 2,
+        "a_tasks": 3,
+        "a_task_history": 9,
+        "a_executions": 3,
+        "a_task_leases": 3,
+        "a_task_run_receipt_links": 3,
+        "c_support_resource_versions": 9,
+        "c_support_resources": 8,
+        "o_demo_support_recipients": 7,
+        "o_sharing_scopes": 3,
+        "o_sharing_scope_history": 4,
+        "c_service_drafts": 3,
+        "c_service_draft_revisions": 3,
+        "c_service_confirmations": 3,
+        "c_draft_confirmations": 3,
+        "c_confirmation_revocations": 1,
+        "c_services": 3,
+        "c_service_history": 9,
+        "c_service_dispatches": 3,
+        "c_service_feedback": 2,
+        "c_peer_groups": 2,
+        "c_peer_moderators": 1,
+        "c_peer_memberships": 2,
+        "c_peer_membership_history": 5,
+        "c_peer_posts": 2,
+        "c_peer_post_history": 4
+      }
+    },
+    "browser": {
+      "engine": "Microsoft Edge headless Chromium",
+      "exit_code": 0,
+      "steps": [
+        {
+          "step": "01-initial",
+          "result": "Patient A has an initialized zero balance and no ledger entries.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/01-initial.png",
+          "sha256": "21ca5b22633e558b0c99d327ff3b1e5c37e8eececd06780d5f327c5edf0878b1"
+        },
+        {
+          "step": "02-management-review",
+          "result": "Patient explicitly completed the weekly review. The balance remains zero before C25.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/02-management-review.png",
+          "sha256": "6e5b405e961fa29c229261a8b4d8076adabbd5356e9e36b17fe12b80ded91b06"
+        },
+        {
+          "step": "03-first-award",
+          "result": "An authorized C25 call awards three points for the explicit review.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/03-first-award.png",
+          "sha256": "aad5e000b61a82745dab905162f0dabbab684702de412a588695e010aa884ba9"
+        },
+        {
+          "step": "04-repeated",
+          "result": "A second operator request, carrying a new key, awards zero for the same source.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/04-repeated.png",
+          "sha256": "8745676b38059a20eaec439f3b6657b7300c0e6a02545f6281f339a218717cea"
+        },
+        {
+          "step": "05-rules-source-reload",
+          "result": "Reload re-queries the server and restores the balance. Rule and authorized source revision are visible.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/05-rules-source-reload.png",
+          "sha256": "ffdeda1fac88616a8f3985e82124c038a1ee906bfd654e43b5f9a991ea763c94"
+        },
+        {
+          "step": "06-valid-manual-source",
+          "result": "Patient reported non-administration from an actual due mock plan slot. A persisted a matched event.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/06-valid-manual-source.png",
+          "sha256": "fdaf2dc4efb513d8c9e54b480b9c894f4dc0c8f122cf8ce98f0877bf67da0b58"
+        },
+        {
+          "step": "07-unmatched-manual-source",
+          "result": "Patient reported unknown without a formal slot. A persisted the event without a match.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/07-unmatched-manual-source.png",
+          "sha256": "95698a735a6508731382c1ed10057f9b3b12d8dce664e1ac072b53d1044519ca"
+        },
+        {
+          "step": "08-second-award",
+          "result": "C25 adds two points for the matched report and identifies the unmatched report as ineligible.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/08-second-award.png",
+          "sha256": "41152aaa4ddc802714b0a25e10052b9d76fa8efed1c4b6c81ea4f1fff63f2475"
+        },
+        {
+          "step": "09-patient-isolation",
+          "result": "Patient B sees their own zero balance, no entries, and receives 404 for A by direct path.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/09-patient-isolation.png",
+          "sha256": "1f73e8122e776e6feccbdd7d315350cca2660d2e66f114a24f1a0342aed5e62d"
+        },
+        {
+          "step": "10-family-no-grant",
+          "result": "A family account with services:read alone has no points access.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/10-family-no-grant.png",
+          "sha256": "5c35e3322323da8e0ab5436169a0c1129a10d88d97fd1fa5804516dd096c0d3a"
+        },
+        {
+          "step": "11-new-session",
+          "result": "Patient A signs in again and recovers the persisted five-point ledger.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/11-new-session.png",
+          "sha256": "4acb3a76e4bf594fcdaccf37a6bc8e2953f4d4fd5bc827acac91c33a61c69eca"
+        },
+        {
+          "step": "12-family-grant",
+          "result": "With points:read the family account can see totals and ledger; the source object details remain restricted.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/12-family-grant.png",
+          "sha256": "f9b580ac19c52c1fe6631022862eec962ff2637f1237022c2db3d5b51618ab2b"
+        },
+        {
+          "step": "13-family-revoked",
+          "result": "After Grant revocation the same patient lookup is denied, while A ledger remains intact.",
+          "image": "test-output/s05-batch6-20261118T085452-988Z/browser-delivery/13-family-revoked.png",
+          "sha256": "5ecc2fc182a20b6eebbcdc289b43a5c4aab3f5cbc2274b99329e42c3ed456fad"
+        }
+      ],
+      "matched_manual_award": 2,
+      "weekly_review_award": 3,
+      "unmatched_award": 0,
+      "patient_a_balance": 5,
+      "patient_b_balance": 0,
+      "c25_writes": 3,
+      "ledger_entry_count": 2,
+      "private_evidence": {
+        "database_sha256": "048dfd8d399faee1f0b6dfe031ed396f664aeca2d7aa5f86c7b0cb0c16df8038",
+        "browser_request_count": 129,
+        "original_browser_attempt_preserved": true
+      }
+    },
+    "previous_verification_archive": {
+      "path": "docs/S05/verification.batch5.json",
+      "bytes": 54235,
+      "sha256": "9b0d53ef2dbe4c2019e3125447bb0d74e065ad0464d2147602da6ca2cfc69a07"
+    },
+    "markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 249082,
+        "sha256": "51f26cb8ca60da895ea1c0f749d0d40e7ef7d2abc3e93ff13513fc85aa5691f3"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 30406,
+        "sha256": "a06dd3153ae0de411b1a2fa629b3a5e7aca625ca6bf27209e995b3584acaf6bb"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 18737,
+        "sha256": "6b6bcc1160daf2ef5ed5bc7ffb3b178f3580f95ed9d5eac533d48b81ce75ca6a"
+      },
+      "docs/S05/\u5f85\u786e\u8ba4\u4e8b\u9879.md": {
+        "bytes": 1584,
+        "sha256": "a731a05293a3ed670887ca78cf9736b345e7f9cd66b05ce67a5821122661f0f3"
+      }
+    },
+    "local_evidence_index": "test-output/s05-batch6-20261118T085452-988Z/evidence-index.json"
   }
 }

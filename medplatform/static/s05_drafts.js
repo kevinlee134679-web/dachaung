@@ -18,6 +18,8 @@ function rememberServicePage() {
     sessionStorage.setItem(key, "consents");
   } else if (state.page === "profile" && state.tab === "formal-services" && scope("services:read")) {
     sessionStorage.setItem(key, "formal-services");
+  } else if (state.page === "rewards") {
+    sessionStorage.setItem(key, "rewards");
   } else {
     sessionStorage.removeItem(key);
   }
@@ -40,6 +42,10 @@ async function restoreServicePage() {
   }
   if (page === "formal-services" && scope("services:read")) {
     await navigate("profile", "formal-services");
+    return true;
+  }
+  if (page === "rewards") {
+    await navigate("rewards");
     return true;
   }
   return false;

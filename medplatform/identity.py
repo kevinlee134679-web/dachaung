@@ -50,10 +50,18 @@ class PersistentAuthority:
 
     def scopes(self, principal, patient, conn):
         account = self.account(principal,conn)
+        return self._scopes_for_account(account,patient,conn)
+
+    def source_actor_scopes(self, conn, account_id, patient):
+        """Use current O scopes for a historical source actor without a session."""
+        account = conn.execute('SELECT * FROM o_accounts WHERE account_id=?',(account_id,)).fetchone()
+        return self._scopes_for_account(account,patient,conn) if account is not None else []
+
+    def _scopes_for_account(self, account, patient, conn):
         if account['self_patient_id'] == patient:
             return sorted(SCOPES - {'demo:manage','knowledge:manage','knowledge:review'})
         bindings = {d['binding_id'] for d in all_docs(conn,'FamilyBinding',patient)
-                    if d['family_account_id']==principal.account_id and d['status']=='active'}
+                    if d['family_account_id']==account['account_id'] and d['status']=='active'}
         scopes = set()
         for grant in all_docs(conn,'Grant',patient):
             if grant['binding_id'] in bindings and grant['status']=='active' and (grant['valid_until'] is None or grant['valid_until']>stamp(self.clock())):

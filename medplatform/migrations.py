@@ -82,6 +82,9 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
         if current >= 12 and not {'c_peer_groups','c_peer_moderators','c_peer_memberships','c_peer_membership_history',
                                   'c_peer_posts','c_peer_post_history'} <= tables:
             raise SchemaError('S05匿名同辈表缺失')
+        if current >= 13 and not {'c_points_accounts','c_management_reviews','c_points_reconciliations',
+                                  'c_points_ledger','c_points_award_sources','c_points_date_allocations'} <= tables:
+            raise SchemaError('S05积分账本或来源表缺失')
         return current
 
 

@@ -55,6 +55,7 @@ const grantOptions = [
   ["services:prepare", "协助准备服务草稿"],
   ["services:read", "查看正式服务状态"],
   ["peer:read", "查看同辈小组介绍"],
+  ["points:read", "查看积分余额和流水"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -423,7 +424,11 @@ async function render() {
     return;
   }
   if (state.page === "rewards") {
-    main.append(p("积分和自愿兑换将在后续阶段开放，当前没有生成余额、流水或兑换记录。"));
+    try {
+      await pointsView();
+    } catch (error) {
+      if (epoch === state.epoch && !(error instanceof ViewChanged)) main.append(p(error.message, "error"));
+    }
     return;
   }
   if (!state.patient) {

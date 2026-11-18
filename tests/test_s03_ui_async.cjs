@@ -25,6 +25,7 @@ class Element {
   get textContent() { return this._text + this.children.map(n => n.textContent).join(''); }
   set textContent(text) { this._text = text; this.children = []; }
   get firstChild() { return this.children[0]; }
+  get childElementCount() { return this.children.length; }
   click() { return this.events.click?.({ currentTarget: this }); }
   change() { return this.events.change?.({ currentTarget: this }); }
   input() { return this.events.input?.({ currentTarget: this }); }
@@ -52,10 +53,14 @@ function setup(fetch) {
   const context = vm.createContext({ Node: Element, FormData, TextEncoder, Uint8Array, ArrayBuffer, URL, URLSearchParams,
     AbortController, setTimeout, clearTimeout, Blob, Intl, crypto: webcrypto, fetch,
     localStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, String(value)), removeItem: key => stored.delete(key) },
+    sessionStorage: { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, String(value)), removeItem: key => stored.delete(key) },
+    window: {confirm: () => true},
     document: { createElement: tag => new Element(tag), createTextNode: text => new Element('#text', String(text)), querySelector: selector => roots[selector], querySelectorAll: () => [] } });
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   vm.runInContext(source.slice(0, cutoff) + '\nglobalThis.frontend = {state,api,button,render,scheduleView,reportView,summaryView,medicationReportForm,measurementForm,eventCard,eventListView,taskView,demoView};', context);
+  const points = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's05_points.js'), 'utf8');
+  vm.runInContext(points + '\nfrontend.localReviewWeek = localReviewWeek;', context);
   const app = context.frontend;
   function choose(patient = 'pa', account = 'account-a', relationship = 'self') {
     const access = { patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' }, relationship,
@@ -66,6 +71,53 @@ function setup(fetch) {
   choose(); return { app, roots, stored, choose };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
+
+test('points view reads actual zero and history with no write; missing family grant suppresses account requests', async () => {
+  const calls = [];
+  const env = setup(async (url, options) => {
+    calls.push([url, options.method]);
+    if (url.endsWith('/points/rules')) return success({rules_version: 'points-demo-v1', rules: []});
+    if (url.endsWith('/points')) return success({balance: 0});
+    return success({items: [], next_cursor: null});
+  });
+  env.app.state.page = 'rewards';
+  env.app.state.patient.effective_scopes.push('points:read');
+  await env.app.render();
+  assert.match(env.roots['#main'].textContent, /可用积分 0.*暂无积分流水/s);
+  assert.ok(calls.every(([, method]) => method === 'GET'));
+  assert.ok(calls.some(([url]) => url.includes('/management-reviews?')));
+  calls.length = 0;
+  env.choose('pa', 'account-family', 'family');
+  await env.app.render();
+  assert.match(env.roots['#main'].textContent, /当前身份没有该患者的积分读取权限/);
+  assert.deepEqual(calls, [['/api/v1/points/rules', 'GET']]);
+});
+
+test('weekly review uses local ISO week and recovers a committed write from the server after loss of response', async () => {
+  const env = setup(async (url, options) => {
+    if (url.endsWith('/points/rules')) return success({rules_version: 'points-demo-v1', rules: []});
+    if (url.endsWith('/points')) return success({balance: 0});
+    if (options.method === 'POST') {
+      assert.equal(options.headers['Idempotency-Key'].length, 36);
+      const submission = JSON.parse(options.body);
+      saved = {week_start: submission.week_start, reflection: submission.reflection, completed_at: new Date().toISOString()};
+      assert.equal(submission.confirmed_completed, true);
+      throw new Error('Response lost after commit');
+    }
+    return success({items: url.includes('/management-reviews?') && saved ? [saved] : [], next_cursor: null});
+  });
+  let saved = null;
+  assert.equal(env.app.localReviewWeek('Asia/Shanghai', new Date('2026-11-22T15:59:59Z')), '2026-11-16');
+  assert.equal(env.app.localReviewWeek('Asia/Shanghai', new Date('2026-11-22T16:00:00Z')), '2026-11-23');
+  env.app.state.page = 'rewards';
+  env.app.state.patient.effective_scopes.push('points:read');
+  await env.app.render();
+  field(env.roots['#main'], '回顾内容（可留空）').value = '虚构回顾';
+  check(env.roots['#main'], '我已完成本周管理回顾').checked = true;
+  await byText(env.roots['#main'], 'button', '确认完成本周回顾').click();
+  assert.match(env.roots['#main'].textContent, /已记录本周回顾.*虚构回顾/s);
+  assert.match(env.roots['#main'].textContent, /可用积分 0/);
+});
 const slot = { dose_slot_id: 'slot-a', medication_id: 'med-a', plan_id: 'plan-a', plan_version: 1, plan_entry_id: 'entry-a', scheduled_at: '2026-11-16T00:00:00Z', status: 'active' };
 function statistic(as_of = '2026-11-17T00:00:00Z') {
   return { statistics_id: 'statistics-a', patient_id: 'pa', window_start: '2026-11-10T00:00:00+08:00', window_end: '2026-11-17T00:00:00+08:00',

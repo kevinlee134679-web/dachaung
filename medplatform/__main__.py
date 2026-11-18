@@ -15,7 +15,7 @@ from .migrations import migrate, status
 def main():
     parser = argparse.ArgumentParser(description="Shared platform: explicit lifecycle and S03 maintenance")
     parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "seed-support-catalog", "seed-support-recipients", "seed-peer-groups",
-                                          "expire-receipts", "s03-maintain", "run-task", "serve",
+                                          "seed-points", "expire-receipts", "s03-maintain", "run-task", "serve",
                                           "journal-snapshot", "journal-append"])
     parser.add_argument("--target", type=int)
     parser.add_argument("--journal", type=Path, default=Path("docs/工作记录.md"))
@@ -58,6 +58,9 @@ def main():
             elif args.command == 'seed-peer-groups':
                 from .s05_peer_fixtures import seed_peer_groups
                 print(json.dumps(seed_peer_groups(db) | {'outcome':'ready','is_simulated':True}))
+            elif args.command == 'seed-points':
+                from .s05_points import seed_points
+                print(json.dumps({'accounts_added':seed_points(db),'outcome':'ready','is_simulated':True}))
             elif args.command == 'expire-receipts':
                 from .idempotency import expire_receipts
                 from .documents import now

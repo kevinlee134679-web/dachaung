@@ -359,4 +359,5 @@ async function supportConsole() {
     }, "danger"), output));
   if (typeof serviceDemoControls === "function") main.append(serviceDemoControls());
   if (typeof peerModerationControls === "function") main.append(peerModerationControls());
+  main.append(pointsConsole());
 }
