@@ -308,5 +308,273 @@
     "Equivalent candidates have no approved ranking or tie-break.",
     "A and B do not supply a currently confirmed typed need to this batch.",
     "The browser role/authorization matrix was tested via API and Node, and the desktop foreground was not completed."
-  ]
+  ],
+  "batch2": {
+    "application_version": "0.5.1",
+    "schema_version": "0009",
+    "effective_contracts": [
+      "C-v0.2",
+      "public-o-v0.5",
+      "flow-v0.1"
+    ],
+    "implemented_cards": [
+      "C04",
+      "C05",
+      "C06",
+      "C34",
+      "C35",
+      "C36"
+    ],
+    "work_record": "R0035",
+    "version_registry": "V0035",
+    "baseline": {
+      "branch": "develop",
+      "local_head": "e239413f3ebb5b2ab85425960d42632411ff7461",
+      "upstream_head": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+      "initial_ahead": 8,
+      "initial_behind": 0,
+      "previous_write_http": 403,
+      "this_turn_remote_writes": 0
+    },
+    "automated": [
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 166,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-python.log"
+      },
+      {
+        "command": "node --test (Get-ChildItem -Path tests -Filter 'test_*_async.cjs' | Select-Object -ExpandProperty FullName)",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-node.log"
+      },
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-c.log"
+      },
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-b.log"
+      }
+    ],
+    "prior_failed_run": {
+      "python_failed": 1,
+      "node_failed": 5,
+      "original_exits": "test-output/s05-batch2-20261118T112307-2a0875/current-exits.json",
+      "reason": "Optional null nodes reached replaceChildren, including in a prior catalog Node test. The production DOM code now omits those nodes."
+    },
+    "migration": {
+      "from_schema": 8,
+      "to_schema": 9,
+      "isolated_source": "test-output/s05-batch1-20261118T102526-638926/schema0007-to-0008.sqlite3",
+      "source_sha256": "ea34faf85a65ea04eff40bd2bbd8bc38a0c667e6246c7617c81d5d5563345be8",
+      "old_business_tables": 47,
+      "old_schema_objects": 60,
+      "schema_ledger_rows_preserved": 8,
+      "new_migration_sha256": "a50fa8a71a093eb7169258d8f2ec4c429325a332a76d6655013e3b7eea29e606",
+      "new_tables": [
+        "c_confirmation_revocations",
+        "c_draft_confirmations",
+        "c_service_confirmations",
+        "c_service_draft_revisions",
+        "c_service_drafts",
+        "o_demo_support_recipients",
+        "o_sharing_scope_history",
+        "o_sharing_scopes"
+      ],
+      "integrity": "ok",
+      "foreign_key_check": "ok",
+      "injected_failure_byte_identical": true,
+      "retry_schema": 9,
+      "explicit_seed": 5,
+      "seed_replay": 0,
+      "unchanged_batch_one_databases": 4,
+      "unchanged_historical_snapshots_or_manifests": 6
+    },
+    "browser": {
+      "engine": "Microsoft Edge headless Chromium",
+      "browser_steps": [
+        {
+          "id": "01-family-grant",
+          "sha256": "0251803a0e9e09ec1fdc8ed5c0e9b7efc8458f6f7bf1af8586236d882cc95f7d",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/01-family-grant.png"
+        },
+        {
+          "id": "02-family-draft",
+          "sha256": "1ae4541d2cd2f0af2838dd76a49d3ed4d5b1bccc7856b7bcc5011b78f7838f0c",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/02-family-draft.png"
+        },
+        {
+          "id": "03-review",
+          "sha256": "e9784657db4c035f61c7984d5b687f680128f8f3fcd79a6a815465caf940af55",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/03-review.png"
+        },
+        {
+          "id": "04-selected",
+          "sha256": "71a760507cb79ac98a32adbeff1773fd9e2302b75b1cc684664d4bdd804ecf74",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/04-selected.png"
+        },
+        {
+          "id": "05-confirmed",
+          "sha256": "96204a7c0a0701ea3821ce1035c3d28d4d28aa46b32d0410ba3ac2fe820bebc1",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/05-confirmed.png"
+        },
+        {
+          "id": "06-refresh",
+          "sha256": "c2dfe8d71b5c80642ffef4bbd7916e6256f219e14f1e8f781b4947540cb6c4cd",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/06-refresh.png"
+        },
+        {
+          "id": "07-reused",
+          "sha256": "f546154a77671ca91f1f6c3eee29073300b8fdcd240d7cb846c16d82b00a84f8",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/07-reused.png"
+        },
+        {
+          "id": "08-revoked",
+          "sha256": "e633e02b11fdac7f989e9fe124204522466a724b9854b00c2f1f2d7f9682fb5e",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/08-revoked.png"
+        },
+        {
+          "id": "09-after-revocation",
+          "sha256": "1bd61cb36cfe2b75ae5e14574d69831998fa73fa57d6557c9c3fd71a07606bcf",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/09-after-revocation.png"
+        }
+      ],
+      "business_writes": [
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-drafts",
+          "status": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/service-drafts/ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-confirmations",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-drafts",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-confirmations",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/service-confirmations/234dec5a-975d-4455-8a84-ff31ddca686a/revoke",
+          "status": 200
+        }
+      ],
+      "draft_revisions": [
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 1,
+          "author_account_id": "demo-family"
+        },
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 2,
+          "author_account_id": "demo-family"
+        },
+        {
+          "service_draft_id": "e4c501bd-fb7c-429b-9b65-51e1c77085bc",
+          "draft_revision": 1,
+          "author_account_id": "demo-patient-a"
+        }
+      ],
+      "links": [
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 2,
+          "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+        },
+        {
+          "service_draft_id": "e4c501bd-fb7c-429b-9b65-51e1c77085bc",
+          "draft_revision": 1,
+          "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+        }
+      ],
+      "confirmation": {
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a",
+        "origin_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+        "origin_draft_revision": 2,
+        "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+        "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+        "valid_until": "2026-11-19T03:47:59.785140+00:00"
+      },
+      "O_versions": [
+        {
+          "version": 1,
+          "status": "active"
+        },
+        {
+          "version": 2,
+          "status": "revoked"
+        }
+      ],
+      "C_revocation": {
+        "actor_account_id": "demo-patient-a",
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+      },
+      "unrelated_family_grant": "active",
+      "formal_services": 0,
+      "a_tasks": 0,
+      "change_notices": 0,
+      "foreign_keys": "ok",
+      "observations": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/browser-observations.json",
+      "foreground_manual": false
+    },
+    "grant_verification": {
+      "direct_demo_recipients": 5,
+      "scope": "direct patient consent for explicitly registered non-family demo recipients",
+      "live_household_grant": "O scopes and actual household Grant checked for preparation",
+      "dependent_grant_cases": "isolated O resolver injection with real test Grant, verifying missing or expired authority and exact version"
+    },
+    "limitations": [
+      "First-party direct demo recipient registrations only; no household recipient or formal service delivery.",
+      "Known confirmation references are read from O/C; no new server history-list API.",
+      "In-editor text survives conflict recovery. A full page reload restores saved state from the authority.",
+      "B23 and C execution remain outside this batch."
+    ],
+    "preserved_markdown": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 231722,
+        "sha256": "76f9701246dc1cdf91a03f9525ed9882667acab30936ff1f90ec40d89c177886"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 28240,
+        "sha256": "4fcbaecbf2e4d2a2e7344dd48bfd0c8682f2e0790f98f6c0f2a05eb80a97475d"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 4702,
+        "sha256": "1ec7d30ece069b4fa3a5d1c62228fd038e962136b22e28cde940a179d8a15aa8"
+      }
+    },
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch1.json",
+      "bytes": 12301,
+      "sha256": "e1f347c3d8a5908acc2f2c15a318db778b3caf711c126e8a11b864ce35182505"
+    },
+    "local_evidence_index": "test-output/s05-batch2-20261118T112307-2a0875/evidence-index.json"
+  }
 }

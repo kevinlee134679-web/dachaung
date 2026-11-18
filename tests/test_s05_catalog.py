@@ -75,7 +75,8 @@ class CatalogTests(unittest.TestCase):
 
     def test_exact_routes_registered_and_public_shapes(self):
         registry = self.s.app.state.registry
-        self.assertEqual({n for n in registry.names if n.startswith("C")}, {"C01", "C02", "C03"})
+        self.assertEqual({n for n in registry.names if n.startswith("C")},
+                         {"C01", "C02", "C03", "C04", "C05", "C06", "C34", "C35", "C36"})
         self.assertEqual(seed_catalog(self.s.db), 7)
         self.assertEqual(seed_catalog(self.s.db), 0)
         result = self.request(CATALOG)

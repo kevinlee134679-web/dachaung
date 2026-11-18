@@ -81,11 +81,13 @@ function setup(fetch, crypto = webcrypto) {
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
   const support = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's04.js'), 'utf8');
   const social = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's05.js'), 'utf8');
+  const drafts = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's05_drafts.js'), 'utf8');
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   assert.ok(cutoff > 0);
   vm.runInContext(source.slice(0, cutoff), context);
   vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,identity,navigate,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
   vm.runInContext(social, context);
+  vm.runInContext(drafts + '\nObject.assign(globalThis.frontend, {restoreServicePage});', context);
   const app = context.frontend;
   function choose(patient = 'pa', account = 'account-a') {
     const access = { patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' }, relationship: 'self',
@@ -549,4 +551,137 @@ test('S05 patient can explicitly grant and remove support:read independently of 
   supportCheck().checked = false;
   await byText(main, 'button', '明确确认并保存授权').click();
   assert.deepEqual(env.writes[1].scopes, ['patient:read']);
+});
+
+function draftPage({family = false, conflict = false, lost = false} = {}) {
+  const calls = [];
+  const resource = {...catalogResource, service_kind: 'pharmacist_consultation'};
+  let draft = {
+    service_draft_id: 'draft-a', patient_id: 'pa', draft_revision: 1, ...resource,
+    request_text: '原问题', status: 'preparing', confirmation_ref_id: null, meta: {revision: 1}
+  };
+  let consent = {
+    confirmation_ref_id: 'confirm-a', resource_version: resource.resource_version, status: 'active',
+    confirmed_at: '2026-11-18T00:00:00Z', valid_until: '2026-11-19T00:00:00Z', meta: {revision: 1},
+    sharing_scope: {
+      recipient_id: 'mock-subject', purpose_code: 'pharmacist_consultation', data_categories: ['support_question']
+    }
+  };
+  const env = setup(async (url, options) => {
+    const body = options.body ? JSON.parse(options.body) : null;
+    calls.push({url, method: options.method, body, key: options.headers['Idempotency-Key']});
+    if (url.endsWith('/demo-resource')) return success(resource);
+    if (url.endsWith('/support-resources')) return success({items: [resource], next_cursor: null});
+    if (url.endsWith('/service-drafts')) {
+      if (lost) { lost = false; throw new Error('网络断开'); }
+      draft = {...draft, ...body};
+      return success(draft);
+    }
+    if (url.endsWith('/service-drafts/draft-a') && options.method === 'PUT') {
+      if (conflict) {
+        conflict = false;
+        draft = {...draft, request_text: '服务器较新内容', draft_revision: 2, meta: {revision: 2}};
+        return failure(409, 'SERVICE_DRAFT_REVISION_CONFLICT', '草稿已更新');
+      }
+      draft = {...draft, ...body.content, draft_revision: draft.draft_revision + 1, meta: {revision: draft.meta.revision + 1}};
+      return success(draft);
+    }
+    if (url.endsWith('/service-drafts/draft-a')) return success(draft);
+    if (url.endsWith('/service-confirmations')) {
+      consent = {...consent, sharing_scope: {...consent.sharing_scope, data_categories: body.shared_categories}};
+      draft = {...draft, confirmation_ref_id: 'confirm-a'};
+      return success(consent);
+    }
+    if (url.endsWith('/service-confirmations/confirm-a/revoke')) {
+      consent = {...consent, status: 'revoked', meta: {revision: 2}};
+      draft = {...draft, confirmation_ref_id: null};
+      return success(consent);
+    }
+    if (url.endsWith('/service-confirmations/confirm-a')) return success(consent);
+    throw new Error('Unexpected request ' + url);
+  });
+  env.app.state.patient.relationship = family ? 'family' : 'self';
+  env.app.state.patient.effective_scopes.push('support:read', 'services:prepare');
+  return {...env, calls};
+}
+
+async function prepareDraft(env) {
+  await env.app.navigate('support', 'social');
+  const main = env.roots['#main'];
+  await byText(main, 'button', '查看资源详情').click();
+  await byText(main, 'button', '准备服务问题').click();
+  return main;
+}
+
+function checkboxFor(main, label) {
+  return byText(main, 'label', label).children[0];
+}
+
+test('S05 family prepares a manual draft and restores it without confirmation or revoke controls', async () => {
+  const env = draftPage({family: true}), main = await prepareDraft(env);
+  fieldControl(main, '本次服务问题').value = '家属据实代录';
+  await byText(main, 'button', '保存草稿').click();
+  assert.match(main.textContent, /草稿编号 draft-a/);
+  assert.doesNotMatch(main.textContent, /明确确认共享范围|撤销共享授权/);
+  assert.deepEqual(env.calls.find(c => c.method === 'POST').body,
+    {resource_id: 'demo-resource', resource_version: 'demo-v2', request_text: '家属据实代录'});
+  env.app.state.page = 'home'; env.app.state.tab = 'overview';
+  assert.equal(await env.app.restoreServicePage(), true);
+  assert.equal(fieldControl(main, '本次服务问题').value, '家属据实代录');
+});
+
+test('S05 stale draft edit reloads revisions while preserving the unsaved text', async () => {
+  const env = draftPage({conflict: true}), main = await prepareDraft(env);
+  fieldControl(main, '本次服务问题').value = '首次录入';
+  await byText(main, 'button', '保存草稿').click();
+  fieldControl(main, '本次服务问题').value = '此项修改应保留';
+  await byText(main, 'button', '保存草稿修改').click();
+  assert.equal(fieldControl(main, '本次服务问题').value, '此项修改应保留');
+  assert.match(main.textContent, /内容修订 2/);
+  await byText(main, 'button', '保存草稿修改').click();
+  const writes = env.calls.filter(c => c.method === 'PUT');
+  assert.deepEqual(writes.map(c=>c.body.expected_revision), [1, 2]);
+  assert.equal(writes[1].body.content.request_text, '此项修改应保留');
+});
+
+test('S05 explicit patient confirmation submits only checked options and retains revoked history', async () => {
+  const env = draftPage(), main = await prepareDraft(env);
+  fieldControl(main, '本次服务问题').value = '本人核对的演示问题';
+  await byText(main, 'button', '保存草稿').click();
+  assert.equal(checkboxFor(main, '正式用药安排').checked, false);
+  await byText(main, 'button', '明确确认共享范围').click();
+  assert.equal(env.calls.some(c=>c.url.endsWith('/service-confirmations')), false);
+  checkboxFor(main, '正式用药安排').checked = true;
+  checkboxFor(main, '我已核对本次问题、接收主体和共享范围').checked = true;
+  await byText(main, 'button', '明确确认共享范围').click();
+  const issued = env.calls.find(c => c.url.endsWith('/service-confirmations'));
+  assert.deepEqual(issued.body.shared_categories, ['medication_plan', 'support_question']);
+  assert.equal(issued.body.draft_revision, 1);
+  await byText(main, 'button', '查看确认及历史').click();
+  fieldControl(main, '撤销原因').value = '只限演示';
+  checkboxFor(main, '明确撤销此共享范围').checked = true;
+  await byText(main, 'button', '撤销共享授权').click();
+  assert.match(main.textContent, /共享确认：已撤销/);
+  assert.doesNotMatch(main.textContent, /撤销共享授权/);
+  await byText(main, 'button', 'confirm-a').click();
+  assert.match(main.textContent, /共享确认：已撤销/);
+});
+
+test('S05 unknown draft write uses the original key and blocks a changed request', async () => {
+  const env = draftPage({lost: true}), main = await prepareDraft(env);
+  const text = fieldControl(main, '本次服务问题');
+  const send = byText(main, 'button', '保存草稿');
+  text.value = '原提交正文';
+  await send.click();
+  text.value = '另一个正文';
+  await send.click();
+  const posted = () => env.calls.filter(c => c.method === 'POST');
+  assert.equal(posted().length, 1);
+  assert.match(env.roots['#notice'].textContent, /上一次提交结果尚未核实/);
+  text.value = '原提交正文';
+  await send.click();
+  assert.equal(posted().length, 2);
+  assert.equal(posted()[0].key, posted()[1].key);
+  assert.match(main.textContent, /草稿编号 draft-a/);
+  assert.ok([...env.stored.values()].every(value => !value.includes('原提交正文')));
 });

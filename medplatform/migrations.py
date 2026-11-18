@@ -67,6 +67,12 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             raise SchemaError('S04必要数据表缺失')
         if current >= 8 and not {'c_support_resources', 'c_support_resource_versions'} <= tables:
             raise SchemaError('S05资源目录表缺失')
+        if current >= 9 and not {
+            'o_demo_support_recipients', 'o_sharing_scopes', 'o_sharing_scope_history',
+            'c_service_drafts', 'c_service_draft_revisions', 'c_service_confirmations',
+            'c_draft_confirmations', 'c_confirmation_revocations',
+        } <= tables:
+            raise SchemaError('S05草稿或共享范围表缺失')
         return current
 
 

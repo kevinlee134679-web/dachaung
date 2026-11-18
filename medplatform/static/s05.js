@@ -24,6 +24,7 @@ async function socialSupportView() {
   const result = el("div", {"aria-live": "polite"});
   const detail = el("section", {"aria-label": "资源详情", "aria-live": "polite", hidden: true, tabIndex: -1});
   const directory = el("div", {});
+  const preparation = scope("services:prepare") ? serviceDraftPreparation(view) : null;
   const startMatch = readGate(), startDetail = readGate();
 
   function clearDetail() {
@@ -45,7 +46,8 @@ async function socialSupportView() {
       p(`版本 ${doc.resource_version} · mock/demo`, "muted"),
       p(`${doc.provider.display_name} · ${qualificationLabels[doc.provider.qualification_status]}`),
       p(`潜在的必要共享类别　${labels(doc.required_shared_categories)}`),
-      p(`潜在的可选共享类别　${labels(doc.optional_shared_categories)}`));
+      p(`潜在的可选共享类别　${labels(doc.optional_shared_categories)}`),
+      ...(preparation ? [button("准备服务问题", () => preparation.prepare(doc), "primary")] : []));
     detail.hidden = false;
     detail.focus();
   }
@@ -95,7 +97,9 @@ async function socialSupportView() {
         throw error;
       }
     }, "primary"), result);
-  main.append(form, detail, el("section", {}, el("h2", {}, "可用资源"), directory));
+  main.append(form, detail);
+  if (preparation) main.append(preparation.node);
+  main.append(el("section", {}, el("h2", {}, "可用资源"), directory));
 
   async function load(cursor = null) {
     const query = cursor ? "?cursor=" + encodeURIComponent(cursor) : "";
@@ -110,5 +114,5 @@ async function socialSupportView() {
     if (page.next_cursor) directory.append(button("下一页资源", () => load(page.next_cursor)));
     if (cursor) directory.append(button("返回资源首页", () => load()));
   }
-  await load();
+  await Promise.all([load(), preparation?.restore()]);
 }

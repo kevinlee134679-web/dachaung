@@ -1,0 +1,37 @@
+[
+  {
+    "resource_id": "resource-pharmacist-demo",
+    "resource_version": "resource-demo-v2",
+    "recipient_id": "provider-pharmacist-demo",
+    "recipient_type": "pharmacist",
+    "purpose_code": "pharmacist_consultation"
+  },
+  {
+    "resource_id": "resource-community-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-community-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "community_assistance"
+  },
+  {
+    "resource_id": "resource-community-access-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-community-access-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "community_assistance"
+  },
+  {
+    "resource_id": "resource-companionship-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-companionship-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "emotional_companionship"
+  },
+  {
+    "resource_id": "resource-encouragement-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-encouragement-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "emotional_companionship"
+  }
+]

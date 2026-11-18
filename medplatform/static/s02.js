@@ -52,6 +52,7 @@ const grantOptions = [
   ["feedback:read", "获准来源的反馈概况"],
   ["dialogue:read", "支持对话历史（只读）"],
   ["support:read", "社会支持目录和候选（只读）"],
+  ["services:prepare", "协助准备服务草稿"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -396,6 +397,7 @@ function loginView() {
 }
 async function render() {
   const epoch = state.epoch;
+  if (typeof rememberServicePage === "function") rememberServicePage();
   main.replaceChildren();
   if (!state.context) {
     loginView();
@@ -448,6 +450,7 @@ async function render() {
     ["questionnaire", "八题问卷"],
     ["assessment", "画像结果"],
     ["family", "家庭授权"],
+    ...(own() ? [["service-consents", "服务授权"]] : []),
     ["report", "用药报告"],
     ["devices", "设备关联"],
     ...(isDemoAdmin() ? [["demo", "演示控制台"]] : [])
@@ -483,6 +486,7 @@ async function render() {
       questionnaire: questionnaireView,
       assessment: profileView,
       family: familyView,
+      "service-consents": () => serviceConsentView(),
       report: reportView,
       devices: deviceView,
       demo: demoView
@@ -1759,5 +1763,5 @@ document.querySelector("#refresh").addEventListener("click", checkHealth);
     state.context = null;
     identity();
   }
-  await render();
+  if (typeof restoreServicePage !== "function" || !await restoreServicePage()) await render();
 })();

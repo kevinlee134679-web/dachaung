@@ -51,11 +51,17 @@ class S04Tests(unittest.TestCase):
     def test_registered_cards_and_guarded_mock_config(self):
         registry = self.s.app.state.registry
         self.assertEqual({f"B{n:02d}" for n in range(1, 40)}, {name for name in registry.names if name.startswith("B")})
-        # S05 batch 1 authorizes precisely three additional read routes.
+        # The two S05 batches authorize precisely these additional routes.
         c_routes = {
             ("GET", "/api/v1/patients/{}/support-recommendations"),
             ("GET", "/api/v1/support-resources"),
             ("GET", "/api/v1/support-resources/{}"),
+            ("POST", "/api/v1/patients/{}/service-drafts"),
+            ("GET", "/api/v1/service-drafts/{}"),
+            ("PUT", "/api/v1/service-drafts/{}"),
+            ("POST", "/api/v1/patients/{}/service-confirmations"),
+            ("GET", "/api/v1/service-confirmations/{}"),
+            ("POST", "/api/v1/service-confirmations/{}/revoke"),
         }
         self.assertEqual(registry.routes & c_routes, c_routes)
         self.assertEqual(len(registry.routes - c_routes), 114)

@@ -36,15 +36,17 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_api import router as s02_router
     from . import s03_records, s03_analytics, s03_execution
     from .s03_api import router as s03_router
-    from . import s04_api, s05_api
+    from . import s04_api, s05_api, s05_draft_api
     from .s04_service import S04Service
     from .s05_catalog import S05Catalog, catalog_registered
+    from .s05_drafts import S05Drafts
     service = S02Service(db,clock or now)
     records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
     analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
     execution = s03_execution.S03Execution(db,service.auth,service.receipts,clock or now,analytics=analytics)
     support = S04Service(db, service.auth, service.receipts, clock or now, settings, analytics, execution)
     catalog = S05Catalog(db, service, clock or now)
+    drafts = S05Drafts(db, service, clock or now)
     execution.support_state = support.state
     analytics.support_feedback = support.feedback_source
     authority = authority if authority is not None else service.auth
@@ -56,6 +58,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.s03_records, app.state.s03_analytics, app.state.s03_execution = records, analytics, execution
     app.state.s04 = support
     app.state.s05_catalog = catalog
+    app.state.s05_drafts = drafts
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -187,6 +190,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.registry.include_router(app, s03_router([
         (s03_records,records),(s03_analytics,analytics),(s03_execution,execution),(s04_api,support),
         (s05_api,catalog),
+        (s05_draft_api,drafts),
     ],envelope))
 
     @app.get("/", include_in_schema=False)
