@@ -3,12 +3,13 @@ import json
 
 from . import s04_knowledge as knowledge
 from . import s04_store as store
-from .documents import encode, fingerprint, get, stamp, uid
+from .documents import encode, fingerprint, get, meta, stamp, uid
 from .errors import AppError
 from .idempotency import Result
 from .s04_dialogue import Dialogue, assessment
 from .s04_model import MODEL_PROFILE_ID, MockModel, missing_usage
 from .s04_state import CASES, CASE_VERSION, SupportState, case
+from .s05_services import confirmation_required
 
 READS = {
     "cases", "case_get", "sessions", "session_get", "messages", "assessments", "assessment_get",
@@ -41,6 +42,7 @@ class S04Service:
         self.clock, self.settings, self.analytics = clock, settings, analytics
         self.state = SupportState(clock, execution)
         self.dialogue = Dialogue(db, auth, clock, settings, analytics, MockModel())
+        self.formal_services = None
 
     def admin(self, conn, principal):
         if not self.auth.account(principal, conn)["is_admin"]:
@@ -123,11 +125,20 @@ class S04Service:
             if action == "generation_retry":
                 session = store.session(conn, current["session_id"])
                 return self.dialogue.accept_retry(conn, session, current, body)
+            if action == "referral_create":
+                data = self.submit_referral(conn, principal, patient, body)
+                return Result(data, 201, resource_type="Referral", resource_id=data["referral_id"])
             data = self.write(conn, action, patient, current, path, body)
             expires = self.auth.session(principal, conn)["expires_at"] if action == "self_report" else None
             return Result(data, 201 if action in CREATES else 200, sensitive_until=expires)
 
-        result = self.receipts.run(scope, key, {"path": path, "query": query, "body": body}, authorize, operation)
+        def replay_referral(conn, result):
+            self.formal_services.prepared(conn, principal, patient, self.referral_request(body), stamp(self.clock()))
+            result.data = self.referral_view(conn, store.by_id(conn, "Referral", result.resource_id))
+            return result
+
+        result = self.receipts.run(scope, key, {"path": path, "query": query, "body": body}, authorize, operation,
+                                   replay_referral if action == "referral_create" else None)
         if action in {"message_send", "generation_retry"}:
             return self.dialogue.run(principal, result.data, 201 if action == "message_send" else 200)
         return result
@@ -174,7 +185,9 @@ class S04Service:
         if action == "assessments":
             items = store.records(conn, "Assessment", patient, session_id=doc["session_id"])
             return page(items, lambda d: (d["observed_at"], d["assessment_id"]))
-        if action in {"assessment_get", "intervention_get", "referral_get"}:
+        if action == "referral_get":
+            return self.referral_view(conn, doc)
+        if action in {"assessment_get", "intervention_get"}:
             return doc
         if action in {"session_invitations", "patient_invitations"}:
             items = store.records(conn, "Invitation", patient, session_id=path.get("s"))
@@ -240,11 +253,6 @@ class S04Service:
             return self.state.display(conn, doc, body)
         if action == "invitation_respond":
             return self.state.invitation_respond(conn, doc, body)
-        if action == "referral_create":
-            session = store.session(conn, body["session_id"])
-            if session["patient_id"] != patient:
-                raise AppError(404, "RESOURCE_NOT_FOUND", "会话不可访问")
-            raise AppError(503, "SOCIAL_SUPPORT_NOT_INTEGRATED", "社会支持申请尚未接入")
         if action == "trigger":
             if self.profile(conn)["requested_pipeline"] != "single_pass" or self.dialogue.adapter.mode != "mock":
                 raise AppError(403, "DEMO_TRIGGER_DISABLED", "当前模拟流水线不可用")
@@ -264,6 +272,50 @@ class S04Service:
         if action in {"probe", "model_profile"}:
             return self.model_config(conn, action, body, at)
         raise RuntimeError("unregistered B write")
+
+    @staticmethod
+    def referral_request(body):
+        return {"service_draft_id": body["service_draft_id"], "draft_revision": body["service_draft_revision"],
+                "confirmation_ref_id": body["confirmation_ref_id"], "sharing_scope_ref_id": body["sharing_scope_ref_id"]}
+
+    def referral_view(self, conn, referral):
+        if referral["service_id"] is None or self.formal_services is None:
+            return referral
+        service = self.formal_services.service(conn, referral["service_id"])
+        return dict(referral, service_status=service["status"])
+
+    def submit_referral(self, conn, principal, patient, body):
+        session = store.session(conn, body["session_id"])
+        if session["patient_id"] != patient:
+            raise AppError(404, "RESOURCE_NOT_FOUND", "会话不可访问")
+        self.guard(conn, principal, patient, "dialogue:read", True)
+        if self.formal_services is None:
+            raise AppError(503, "SOCIAL_SUPPORT_NOT_INTEGRATED", "社会支持申请尚未接入")
+        at, request = stamp(self.clock()), self.referral_request(body)
+        suggestion = body["source_suggestion_id"]
+        if suggestion is not None:
+            source = store.by_id(conn, "Suggestion", suggestion)
+            if source["patient_id"] != patient or source["session_id"] != session["session_id"]:
+                raise AppError(404, "RESOURCE_NOT_FOUND", "建议不可访问")
+            if (source["type"] != "offer_professional_support" or source["status"] != "accepted"
+                    or source["valid_until"] <= at):
+                raise confirmation_required("建议未明确接受或不属于专业支持")
+        source_key = fingerprint([session["session_id"], request["service_draft_id"], request["draft_revision"]])
+        old = store.by_source(conn, "Referral", source_key)
+        if old is not None and (old["source_suggestion_id"], old["confirmation_ref_id"], old["sharing_scope_ref_id"]) != (
+            suggestion, request["confirmation_ref_id"], request["sharing_scope_ref_id"]
+        ):
+            raise confirmation_required("会话已有该草稿修订的转介，请核对原记录")
+        identifier = old["referral_id"] if old is not None else uid()
+        service = self.formal_services.submit(conn, principal, patient, request, referral_id=identifier,
+                                              suggestion_id=suggestion, resource_id=body["resource_id"])
+        if old is not None:
+            return self.referral_view(conn, old)
+        referral = dict(referral_id=identifier, patient_id=patient, session_id=session["session_id"],
+                        source_suggestion_id=suggestion, proxy_status="linked", service_id=service["service_id"],
+                        service_status=service["status"], confirmation_ref_id=request["confirmation_ref_id"],
+                        sharing_scope_ref_id=request["sharing_scope_ref_id"], failure_reason=None, meta=meta(at, "B-v0.4"))
+        return store.insert(conn, "Referral", identifier, referral, source_key=source_key)
 
     def self_report(self, conn, session, body):
         if session["status"] != "active":

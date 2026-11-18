@@ -18,7 +18,12 @@ def router(modules, envelope):
             def endpoint(service=service, module=module, action=action, schema=schema, method=method):
                 async def handle(request: Request):
                     await run_in_threadpool(status,service.db)
-                    principal = service.auth.resolve(request.cookies.get('session'))
+                    if action == "provider_receipt":
+                        principal = getattr(request.state, "integration_principal", None)
+                        if principal is None:
+                            raise AppError(401, "AUTH_REQUIRED", "需使用独立的模拟服务方凭据")
+                    else:
+                        principal = service.auth.resolve(request.cookies.get('session'))
                     params = dict(request.path_params)
                     try:
                         if any(not 1<=len(value)<=128 for value in params.values()):

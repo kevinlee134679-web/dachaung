@@ -53,6 +53,7 @@ const grantOptions = [
   ["dialogue:read", "支持对话历史（只读）"],
   ["support:read", "社会支持目录和候选（只读）"],
   ["services:prepare", "协助准备服务草稿"],
+  ["services:read", "查看正式服务状态"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -451,6 +452,7 @@ async function render() {
     ["assessment", "画像结果"],
     ["family", "家庭授权"],
     ...(own() ? [["service-consents", "服务授权"]] : []),
+    ...(scope("services:read") ? [["formal-services", "服务记录"]] : []),
     ["report", "用药报告"],
     ["devices", "设备关联"],
     ...(isDemoAdmin() ? [["demo", "演示控制台"]] : [])
@@ -487,6 +489,7 @@ async function render() {
       assessment: profileView,
       family: familyView,
       "service-consents": () => serviceConsentView(),
+      "formal-services": () => serviceRecordsView(),
       report: reportView,
       devices: deviceView,
       demo: demoView

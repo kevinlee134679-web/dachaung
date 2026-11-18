@@ -1,0 +1,580 @@
+{
+  "application_version": "0.5.0",
+  "effective_contract": "C-v0.2",
+  "included_cards": [
+    "C01",
+    "C02",
+    "C03"
+  ],
+  "profile_integration": "Read-only O20, no C40 mutation",
+  "baseline": {
+    "branch": "develop",
+    "local_head": "11835cb51b9e95913875fd876a233ae31fbbb80c",
+    "origin_develop": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+    "local_ahead": 6,
+    "local_behind": 0,
+    "worktree_initially_clean": true,
+    "schema": "0007"
+  },
+  "history_prefix_sha256": {
+    "docs\\\u5de5\u4f5c\u8bb0\u5f55.md": "f72445d01eefa293bd3025521d186f5156693cea28b33c628d5a1ba0953d34d3",
+    "docs\\\u7248\u672c\u767b\u8bb0.md": "68b8ac604a03682e16e93b6ee2fc365718d69f45c39eb44a3ae351be6282f4de"
+  },
+  "automated": [
+    {
+      "source": "current",
+      "command": "python -B -X utf8 -m unittest discover -s tests -v",
+      "exit_code": 0,
+      "passed": 153,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/current-python.log"
+    },
+    {
+      "source": "current",
+      "command": "node --test (Get-ChildItem -Path tests -Filter 'test_*_async.cjs' | Select-Object -ExpandProperty FullName)",
+      "exit_code": 0,
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/current-node.log"
+    },
+    {
+      "source": "current",
+      "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+      "exit_code": 0,
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/current-b17.log"
+    },
+    {
+      "source": "current",
+      "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s05_catalog.py' -v",
+      "exit_code": 0,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/current-c14.log"
+    },
+    {
+      "source": "s04-baseline",
+      "command": "python -B -X utf8 -m unittest discover -s tests -v",
+      "exit_code": 0,
+      "passed": 139,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/s04-baseline-python.log"
+    },
+    {
+      "source": "s04-baseline",
+      "command": "node --test (Get-ChildItem -Path tests -Filter 'test_*_async.cjs' | Select-Object -ExpandProperty FullName)",
+      "exit_code": 0,
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/s04-baseline-node.log"
+    },
+    {
+      "source": "s03-baseline",
+      "command": "python -B -X utf8 -m unittest discover -s tests -v",
+      "exit_code": 0,
+      "passed": 121,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/s03-baseline-python.log"
+    },
+    {
+      "source": "s03-baseline",
+      "command": "node --test (Get-ChildItem -Path tests -Filter 'test_*_async.cjs' | Select-Object -ExpandProperty FullName)",
+      "exit_code": 0,
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "local_log": "test-output/s05-batch1-20261118T102526-638926/s03-baseline-node.log"
+    }
+  ],
+  "original_c_test_failure": {
+    "exit_code": 1,
+    "passed": 13,
+    "failed": 1,
+    "skipped": 0,
+    "log": "test-output/s05-batch1-20261118T102526-638926/catalog-first.log",
+    "reason": "AppError string is the machine code. Test now asserts the exact code and the separate expected message."
+  },
+  "migration": {
+    "cases": [
+      {
+        "source": "test-output\\s04-ui-fix-20261117T161148-df5efc\\browser.sqlite3",
+        "source_sha256": "32522fb65806185ed0e9d79bd0e29f66e5b584a1531dc6fc2bcad7b6d2c7e096",
+        "from_version": 7,
+        "to_version": 8,
+        "old_schema_objects_preserved": 56,
+        "business_tables_preserved": 45,
+        "row_counts": {
+          "a_delivery_receipts": 0,
+          "a_executions": 0,
+          "a_in_app_notifications": 0,
+          "a_notice_consumptions": 0,
+          "a_notification_recipients": 0,
+          "a_reminder_contents": 0,
+          "a_reminder_snooze_links": 0,
+          "a_task_history": 0,
+          "a_task_leases": 0,
+          "a_task_run_receipt_links": 0,
+          "a_tasks": 0,
+          "b_generation_runs": 1,
+          "b_generations": 1,
+          "b_intervention_revisions": 0,
+          "b_knowledge": 0,
+          "b_knowledge_history": 0,
+          "b_messages": 2,
+          "b_model_selection": 0,
+          "b_records": 1,
+          "b_sessions": 1,
+          "change_notices": 0,
+          "dose_slots": 0,
+          "event_revisions": 0,
+          "evidence_slot_links": 0,
+          "idempotency_receipts": 47,
+          "o_accounts": 4,
+          "o_binding_codes": 2,
+          "o_revocation_audit": 1,
+          "o_schedule_windows": 0,
+          "o_sessions": 18,
+          "operation_audit": 19,
+          "receipt_responses": 26,
+          "s02_document_history": 10,
+          "s02_documents": 7,
+          "s02_source_keys": 0,
+          "s03_computation_snapshots": 0,
+          "s03_device_binding_audit": 0,
+          "s03_device_binding_history": 0,
+          "s03_device_bindings": 0,
+          "s03_devices": 3,
+          "s03_invalidations": 0,
+          "s03_match_history": 0,
+          "s03_quality_history": 0,
+          "s03_results": 0,
+          "source_events": 0
+        },
+        "foreign_key_check": "ok",
+        "integrity": "ok",
+        "first_install_versions": 7,
+        "repeated_install_versions": 0
+      },
+      {
+        "source": "test-output\\handoff-20261117-132047-31e0ed71\\demo.sqlite3",
+        "source_sha256": "b32905907bbdf7e97b8c4ef2a135bc7c7ba6a767b2a494b057cc04b70f85b50a",
+        "from_version": 6,
+        "to_version": 8,
+        "old_schema_objects_preserved": 45,
+        "business_tables_preserved": 36,
+        "row_counts": {
+          "a_delivery_receipts": 0,
+          "a_executions": 1,
+          "a_in_app_notifications": 1,
+          "a_notice_consumptions": 1,
+          "a_notification_recipients": 1,
+          "a_reminder_contents": 2,
+          "a_reminder_snooze_links": 0,
+          "a_task_history": 5,
+          "a_task_leases": 1,
+          "a_task_run_receipt_links": 1,
+          "a_tasks": 2,
+          "change_notices": 71,
+          "dose_slots": 62,
+          "event_revisions": 16,
+          "evidence_slot_links": 13,
+          "idempotency_receipts": 38,
+          "o_accounts": 4,
+          "o_binding_codes": 0,
+          "o_revocation_audit": 0,
+          "o_schedule_windows": 2,
+          "o_sessions": 6,
+          "operation_audit": 1,
+          "receipt_responses": 32,
+          "s02_document_history": 9,
+          "s02_documents": 7,
+          "s02_source_keys": 0,
+          "s03_computation_snapshots": 8,
+          "s03_device_binding_audit": 1,
+          "s03_device_binding_history": 1,
+          "s03_device_bindings": 1,
+          "s03_devices": 3,
+          "s03_invalidations": 1,
+          "s03_match_history": 18,
+          "s03_quality_history": 16,
+          "s03_results": 8,
+          "source_events": 16
+        },
+        "foreign_key_check": "ok",
+        "integrity": "ok",
+        "first_install_versions": 7,
+        "repeated_install_versions": 0,
+        "historical_statistics_counts": [
+          [
+            10,
+            14
+          ],
+          [
+            11,
+            14
+          ]
+        ]
+      }
+    ],
+    "protected_originals": {
+      "test-output\\handoff-20261117-132047-31e0ed71\\demo.scenario.json": "fc8c9c2e993dedbd7392bfd56bf48228cc7d7a2120d6d65de3a01aee4d578d97",
+      "test-output\\handoff-20261117-132047-31e0ed71\\demo.sqlite3": "b32905907bbdf7e97b8c4ef2a135bc7c7ba6a767b2a494b057cc04b70f85b50a",
+      "test-output\\s04-checklist-20261117-202003-3fa4b85b\\demo.sqlite3": "f3037a48aa120b33805bb5a8850de270f7161e2aad39d43fbb5b22184551fcd2",
+      "test-output\\s04-verification-20261117\\browser-a686bf44\\demo.sqlite3": "75f12092dd24950c0e3785e2d773fb9a29d0c501ca258522e21129a652a40539",
+      "test-output\\s04-ui-fix-20261117T161148-df5efc\\browser.sqlite3": "32522fb65806185ed0e9d79bd0e29f66e5b584a1531dc6fc2bcad7b6d2c7e096",
+      "test-output\\s04-final-20261117T134839-57e841\\browser.sqlite3": "8fc726feda6378f7b18d1e1648186aa6f4dfbf2b820b2c52ca51d182a2959a5b"
+    },
+    "historical_migration_hashes": {
+      "0001_foundation.sql": "17d298d1a0f82e78725fc9ab7613843a3e0a0cb742b7224b353eb8c114e6975b",
+      "0002_event_history.sql": "a7a9761e3e906b90afd1c95bb2b721a91e149b55d3b03aa93b8c7e020e8a3846",
+      "0003_identity_and_plans.sql": "e744de2e579357bfbffe314b146c6df0c61865c55b3f1c4e94b91bb3ad0fdec9",
+      "0004_records_and_quality.sql": "c0213850e8933b0f34c1a105c0d38cb5b214f97fedf405d0bdad58fd89ed31d1",
+      "0005_analytics_snapshots.sql": "6ce413209456303ee5260df63c7a6ba298b0b3c41419b9d379d34a2c52358b09",
+      "0006_tasks_and_execution.sql": "74e3905f298b66520e025ad0cf49e9ff5f9e47f06e2cbc905ec5459f9f33155c",
+      "0007_support_dialogue.sql": "3bc14eab167a653a994d6d1e81ce691d8de40e6d6c7af3a54da480bc8aa1b27d"
+    },
+    "new_migration_sha256": "cca520bc1130894da370d260e0e3825c0eba2c7a0db5c00c09e3e95890be8af7",
+    "rollback_and_retry": {
+      "failure_rolled_back_byte_identically": true,
+      "retry_schema": 8
+    }
+  },
+  "browser": {
+    "engine": "Microsoft Edge headless Chromium",
+    "foreground_manual_completed": false,
+    "c_get_reads_200": 7,
+    "steps": [
+      {
+        "id": "01-catalog",
+        "result": "Read current resources and mock/demo disclosure",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/01-catalog.png",
+        "sha256": "22624dbb0468d5029304f974cdcf0f59c5ebd2c0fe2df3640bd53379d4602cfe"
+      },
+      {
+        "id": "02-profile",
+        "result": "Read the O profile prepared using O writes in the isolated fixture",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/02-profile.png",
+        "sha256": "986d383e8802beac1c5f41cffa7e59ab32b10360752ddb972dd4246fcd548b6c"
+      },
+      {
+        "id": "03-insufficient",
+        "result": "Unspecified need shows an insufficient-context state",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/03-insufficient.png",
+        "sha256": "bbdcc71b1526b571728cc6ed8a24010f59d30fa1c5bb118d5ca38d2f4b028fa1"
+      },
+      {
+        "id": "04-professional-match",
+        "result": "Explicit professional need, resource version and current O profile revision",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/04-professional-match.png",
+        "sha256": "321646c5e2256b0dcda22f14803f24a291c51cb65694feca93e1148c3b9a0d0d"
+      },
+      {
+        "id": "05-resource-detail",
+        "result": "Mock provider, unverified qualification and approved DTO categories",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/05-resource-detail.png",
+        "sha256": "778cc15a46cd59f58e8bb8a256242c83ab1ef0d8ba8090f9c539a63da566d7fe"
+      },
+      {
+        "id": "06-equal-candidates",
+        "result": "Two coequal emotional-support options",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/06-equal-candidates.png",
+        "sha256": "334bb47581bbcbd243eb04b33114d127f9b529a25dac9dd98bb00d5c1ccfbe79"
+      },
+      {
+        "id": "07-no-need",
+        "result": "Explicit no-support choice yields no candidates",
+        "local_screenshot": "test-output/s05-batch1-20261118T102526-638926/07-no-need.png",
+        "sha256": "9f9f2e1e2c7e0344d504a0b27443af80028f000c7f7b7f2fa17552c290de5288"
+      }
+    ],
+    "local_log": "test-output/s05-batch1-20261118T102526-638926/browser-observations.json",
+    "exact_snapshot": {
+      "profile_id": "06f4dfcb-b297-4753-8004-b3806b650491",
+      "profile_revision": 1,
+      "resource_id": "resource-pharmacist-demo",
+      "resource_version": "resource-demo-v2"
+    }
+  },
+  "limitations": [
+    "No fixture-changing C40 POST in this authorization.",
+    "Equivalent candidates have no approved ranking or tie-break.",
+    "A and B do not supply a currently confirmed typed need to this batch.",
+    "The browser role/authorization matrix was tested via API and Node, and the desktop foreground was not completed."
+  ],
+  "batch2": {
+    "application_version": "0.5.1",
+    "schema_version": "0009",
+    "effective_contracts": [
+      "C-v0.2",
+      "public-o-v0.5",
+      "flow-v0.1"
+    ],
+    "implemented_cards": [
+      "C04",
+      "C05",
+      "C06",
+      "C34",
+      "C35",
+      "C36"
+    ],
+    "work_record": "R0035",
+    "version_registry": "V0035",
+    "baseline": {
+      "branch": "develop",
+      "local_head": "e239413f3ebb5b2ab85425960d42632411ff7461",
+      "upstream_head": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+      "initial_ahead": 8,
+      "initial_behind": 0,
+      "previous_write_http": 403,
+      "this_turn_remote_writes": 0
+    },
+    "automated": [
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 166,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-python.log"
+      },
+      {
+        "command": "node --test (Get-ChildItem -Path tests -Filter 'test_*_async.cjs' | Select-Object -ExpandProperty FullName)",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-node.log"
+      },
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-c.log"
+      },
+      {
+        "command": "python -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch2-20261118T112307-2a0875/final-b.log"
+      }
+    ],
+    "prior_failed_run": {
+      "python_failed": 1,
+      "node_failed": 5,
+      "original_exits": "test-output/s05-batch2-20261118T112307-2a0875/current-exits.json",
+      "reason": "Optional null nodes reached replaceChildren, including in a prior catalog Node test. The production DOM code now omits those nodes."
+    },
+    "migration": {
+      "from_schema": 8,
+      "to_schema": 9,
+      "isolated_source": "test-output/s05-batch1-20261118T102526-638926/schema0007-to-0008.sqlite3",
+      "source_sha256": "ea34faf85a65ea04eff40bd2bbd8bc38a0c667e6246c7617c81d5d5563345be8",
+      "old_business_tables": 47,
+      "old_schema_objects": 60,
+      "schema_ledger_rows_preserved": 8,
+      "new_migration_sha256": "a50fa8a71a093eb7169258d8f2ec4c429325a332a76d6655013e3b7eea29e606",
+      "new_tables": [
+        "c_confirmation_revocations",
+        "c_draft_confirmations",
+        "c_service_confirmations",
+        "c_service_draft_revisions",
+        "c_service_drafts",
+        "o_demo_support_recipients",
+        "o_sharing_scope_history",
+        "o_sharing_scopes"
+      ],
+      "integrity": "ok",
+      "foreign_key_check": "ok",
+      "injected_failure_byte_identical": true,
+      "retry_schema": 9,
+      "explicit_seed": 5,
+      "seed_replay": 0,
+      "unchanged_batch_one_databases": 4,
+      "unchanged_historical_snapshots_or_manifests": 6
+    },
+    "browser": {
+      "engine": "Microsoft Edge headless Chromium",
+      "browser_steps": [
+        {
+          "id": "01-family-grant",
+          "sha256": "0251803a0e9e09ec1fdc8ed5c0e9b7efc8458f6f7bf1af8586236d882cc95f7d",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/01-family-grant.png"
+        },
+        {
+          "id": "02-family-draft",
+          "sha256": "1ae4541d2cd2f0af2838dd76a49d3ed4d5b1bccc7856b7bcc5011b78f7838f0c",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/02-family-draft.png"
+        },
+        {
+          "id": "03-review",
+          "sha256": "e9784657db4c035f61c7984d5b687f680128f8f3fcd79a6a815465caf940af55",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/03-review.png"
+        },
+        {
+          "id": "04-selected",
+          "sha256": "71a760507cb79ac98a32adbeff1773fd9e2302b75b1cc684664d4bdd804ecf74",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/04-selected.png"
+        },
+        {
+          "id": "05-confirmed",
+          "sha256": "96204a7c0a0701ea3821ce1035c3d28d4d28aa46b32d0410ba3ac2fe820bebc1",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/05-confirmed.png"
+        },
+        {
+          "id": "06-refresh",
+          "sha256": "c2dfe8d71b5c80642ffef4bbd7916e6256f219e14f1e8f781b4947540cb6c4cd",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/06-refresh.png"
+        },
+        {
+          "id": "07-reused",
+          "sha256": "f546154a77671ca91f1f6c3eee29073300b8fdcd240d7cb846c16d82b00a84f8",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/07-reused.png"
+        },
+        {
+          "id": "08-revoked",
+          "sha256": "e633e02b11fdac7f989e9fe124204522466a724b9854b00c2f1f2d7f9682fb5e",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/08-revoked.png"
+        },
+        {
+          "id": "09-after-revocation",
+          "sha256": "1bd61cb36cfe2b75ae5e14574d69831998fa73fa57d6557c9c3fd71a07606bcf",
+          "screenshot": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/09-after-revocation.png"
+        }
+      ],
+      "business_writes": [
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-drafts",
+          "status": 201
+        },
+        {
+          "method": "PUT",
+          "path": "/api/v1/service-drafts/ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-confirmations",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-drafts",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/service-confirmations",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/service-confirmations/234dec5a-975d-4455-8a84-ff31ddca686a/revoke",
+          "status": 200
+        }
+      ],
+      "draft_revisions": [
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 1,
+          "author_account_id": "demo-family"
+        },
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 2,
+          "author_account_id": "demo-family"
+        },
+        {
+          "service_draft_id": "e4c501bd-fb7c-429b-9b65-51e1c77085bc",
+          "draft_revision": 1,
+          "author_account_id": "demo-patient-a"
+        }
+      ],
+      "links": [
+        {
+          "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+          "draft_revision": 2,
+          "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+        },
+        {
+          "service_draft_id": "e4c501bd-fb7c-429b-9b65-51e1c77085bc",
+          "draft_revision": 1,
+          "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+        }
+      ],
+      "confirmation": {
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a",
+        "origin_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+        "origin_draft_revision": 2,
+        "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+        "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+        "valid_until": "2026-11-19T03:47:59.785140+00:00"
+      },
+      "O_versions": [
+        {
+          "version": 1,
+          "status": "active"
+        },
+        {
+          "version": 2,
+          "status": "revoked"
+        }
+      ],
+      "C_revocation": {
+        "actor_account_id": "demo-patient-a",
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a"
+      },
+      "unrelated_family_grant": "active",
+      "formal_services": 0,
+      "a_tasks": 0,
+      "change_notices": 0,
+      "foreign_keys": "ok",
+      "observations": "test-output/s05-batch2-20261118T112307-2a0875/browser-final/browser-observations.json",
+      "foreground_manual": false
+    },
+    "grant_verification": {
+      "direct_demo_recipients": 5,
+      "scope": "direct patient consent for explicitly registered non-family demo recipients",
+      "live_household_grant": "O scopes and actual household Grant checked for preparation",
+      "dependent_grant_cases": "isolated O resolver injection with real test Grant, verifying missing or expired authority and exact version"
+    },
+    "limitations": [
+      "First-party direct demo recipient registrations only; no household recipient or formal service delivery.",
+      "Known confirmation references are read from O/C; no new server history-list API.",
+      "In-editor text survives conflict recovery. A full page reload restores saved state from the authority.",
+      "B23 and C execution remain outside this batch."
+    ],
+    "preserved_markdown": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 231722,
+        "sha256": "76f9701246dc1cdf91a03f9525ed9882667acab30936ff1f90ec40d89c177886"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 28240,
+        "sha256": "4fcbaecbf2e4d2a2e7344dd48bfd0c8682f2e0790f98f6c0f2a05eb80a97475d"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 4702,
+        "sha256": "1ec7d30ece069b4fa3a5d1c62228fd038e962136b22e28cde940a179d8a15aa8"
+      }
+    },
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch1.json",
+      "bytes": 12301,
+      "sha256": "e1f347c3d8a5908acc2f2c15a318db778b3caf711c126e8a11b864ce35182505"
+    },
+    "local_evidence_index": "test-output/s05-batch2-20261118T112307-2a0875/evidence-index.json"
+  }
+}

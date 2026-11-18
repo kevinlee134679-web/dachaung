@@ -354,4 +354,5 @@ async function supportConsole() {
       }, v);
       output.replaceChildren(p("已重置 " + result.affected_session_ids.length + " 个会话。"));
     }, "danger"), output));
+  if (typeof serviceDemoControls === "function") main.append(serviceDemoControls());
 }

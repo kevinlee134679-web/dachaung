@@ -148,3 +148,12 @@ class SharingAuthority:
         )
         conn.execute("INSERT INTO o_sharing_scope_history VALUES (?,?,?,?,?,?)",
                      (identifier, scope["scope_version"], raw, principal.account_id, at, reason))
+
+    @staticmethod
+    def deadline(conn, scope, grant_versions):
+        cutoffs = [scope["valid_until"]]
+        for identifier in grant_versions:
+            grant = get(conn, "Grant", identifier)
+            if grant["valid_until"] is not None:
+                cutoffs.append(grant["valid_until"])
+        return min(cutoffs)

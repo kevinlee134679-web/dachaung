@@ -13,6 +13,8 @@ function rememberServicePage() {
     sessionStorage.setItem(key, "drafts");
   } else if (state.page === "profile" && state.tab === "service-consents" && own()) {
     sessionStorage.setItem(key, "consents");
+  } else if (state.page === "profile" && state.tab === "formal-services" && scope("services:read")) {
+    sessionStorage.setItem(key, "formal-services");
   } else {
     sessionStorage.removeItem(key);
   }
@@ -29,11 +31,16 @@ async function restoreServicePage() {
     await navigate("profile", "service-consents");
     return true;
   }
+  if (page === "formal-services" && scope("services:read")) {
+    await navigate("profile", "formal-services");
+    return true;
+  }
   return false;
 }
 
 function serviceWriteKey(path, method) {
-  return referenceKey("service-write") + ":" + method + ":" + path;
+  const {accountId, patientId} = captureView();
+  return `reference:${accountId}:${patientId || "console"}:service-write:${method}:${path}`;
 }
 
 function pendingServiceWrite(path, method) {
@@ -141,6 +148,14 @@ function serviceDraftPreparation(view) {
 
   function draw(draft, resource, unsaved) {
     const check = begin();
+    if (draft?.status === "submitted") {
+      editor.replaceChildren(el("h3", {}, "已提交正式服务"),
+        p(`草稿编号 ${draft.service_draft_id} · 内容修订 ${draft.draft_revision}`, "reference"),
+        p(`服务编号 ${draft.service_id}`, "reference"));
+      if (scope("services:read")) editor.append(button("查看正式服务", () => openServiceRecord(draft.service_id)));
+      if (own()) clearKnownServiceSubmission(draft);
+      return;
+    }
     const textArea = el("textarea", {maxLength: 2000, rows: 4, value: unsaved ?? draft?.request_text ?? ""});
     const changedVersion = !!draft && !!resource && resource.resource_version !== draft.resource_version;
     const [upgradeLabel, upgrade] = checkbox("采用上面显示的当前目录版本");
@@ -179,6 +194,7 @@ function serviceDraftPreparation(view) {
     if (draft.confirmation_ref_id) {
       rememberServiceConsent(draft.confirmation_ref_id);
       consent.append(p("此修订已有共享确认。"), button("查看确认及历史", () => navigate("profile", "service-consents")));
+      consent.append(serviceSubmissionControls(draft, textArea, view, open));
       return;
     }
     if (!resource || changedVersion) return;
@@ -204,6 +220,10 @@ function serviceDraftPreparation(view) {
           rememberServiceConsent(value.confirmation_ref_id);
           consent.replaceChildren(serviceConsentText(value), p("草稿仍处于准备阶段。"),
             button("查看确认及历史", () => navigate("profile", "service-consents")));
+          if (value.status === "active") {
+            consent.append(serviceSubmissionControls({...draft, confirmation_ref_id: value.confirmation_ref_id,
+              sharing_scope_ref_id: value.sharing_scope.sharing_scope_ref_id}, textArea, view, open));
+          }
           notice(value.status === "active" ? "已记录本次共享确认。" : "已核对原提交，当前共享范围已失效。");
         } catch (error) {
           check();

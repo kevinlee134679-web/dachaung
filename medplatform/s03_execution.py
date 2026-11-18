@@ -33,6 +33,7 @@ class S03Execution:
         self.db, self.auth, self.receipts, self.clock = db, auth, receipts, clock
         self.analytics = analytics
         self.support_state = None
+        self.service_dispatch = None
         self.instance_id = uid()
         # This local adapter performs no external effect. Tests may inject a
         # registered deterministic failure; there is no public adapter selector.
@@ -74,7 +75,7 @@ class S03Execution:
         if not self.auth.account(principal,c)['is_admin']:
             raise AppError(403,'ADMIN_REQUIRED','此操作需要受控本地执行或维护身份')
 
-    def _read_authorize(self,c,principal,patient):
+    def _read_authorize(self,c,principal,patient,task=None):
         if principal is None:
             return
         account=self.auth.account(principal,c)
@@ -82,6 +83,8 @@ class S03Execution:
             get(c,'Patient',patient)
         else:
             self.auth.require_patient(principal,patient,'tasks:read',c)
+            if task and task['owner_module']=='C':
+                self.auth.require_patient(principal,patient,'services:read',c)
 
     def _authorize(self,c,action,principal,params,body):
         if action=='delivery_receipt':
@@ -112,7 +115,7 @@ class S03Execution:
         if action in ('task_run','task_cancel'):
             self._admin(c,principal)
         else:
-            self._read_authorize(c,principal,patient)
+            self._read_authorize(c,principal,patient,task)
         return patient
 
     def handle(self,action,principal,params,q,body=None,key=None):
@@ -153,6 +156,13 @@ class S03Execution:
             return self._execution(c,params['id'])
         if action=='tasks':
             docs=[json.loads(r[0]) for r in c.execute('SELECT document_json FROM a_tasks WHERE patient_id=?',(params['p'],))]
+            if any(d['owner_module']=='C' for d in docs) and not self.auth.account(principal,c)['is_admin']:
+                try:
+                    self.auth.require_patient(principal,params['p'],'services:read',c)
+                except AppError as exc:
+                    if exc.status!=403:
+                        raise
+                    docs=[d for d in docs if d['owner_module']!='C']
             if q.get('status'):
                 docs=[d for d in docs if d['status']==q['status']]
             order=lambda d:(d['scheduled_at'],d['task_id'])
@@ -168,16 +178,21 @@ class S03Execution:
         cursor=self.auth.cursor(context,list(order(items[-1]))) if len(docs)>limit else None
         return {'items':items,'next_cursor':cursor}
 
-    def create_in_transaction(self,c,principal,body,*,internal=False,snooze=False):
+    def create_in_transaction(self,c,principal,body,*,internal=False,snooze=False,task_id=None):
         """A registered owner calls this inside its own business transaction."""
         body=inputs.TaskCreateInput.model_validate(body).model_dump()
         if not internal:
             self._admin(c,principal)
         get(c,'Patient',body['patient_id'])
         b_owned = body['owner_module'] == 'B'
-        if body['owner_module'] == 'C' or b_owned and (not internal or self.support_state is None):
+        c_owned = body['owner_module'] == 'C'
+        if c_owned and (not internal or body['kind']!='dispatch_service' or not task_id or self.service_dispatch is None):
+            raise AppError(503,'TASK_OWNER_NOT_INTEGRATED','该C业务处理器尚未接入此任务入口')
+        if b_owned and (not internal or self.support_state is None):
             raise AppError(503,'TASK_OWNER_NOT_INTEGRATED','该任务的B或C业务处理器尚未接入')
-        if b_owned:
+        if c_owned:
+            self.service_dispatch.check(c,body,task_id)
+        elif b_owned:
             self.support_state.validate_task(c,body)
         elif body['kind'].startswith('refresh_'):
             if body['payload']['data_environment']!='demo':
@@ -193,7 +208,7 @@ class S03Execution:
             if any(old[field]!=body[field] for field in body):
                 raise AppError(409,'TASK_CONTENT_CONFLICT','相同来源业务键对应不同任务内容')
             return old
-        task={'task_id':uid(),**body,'status':'pending','cancellation_requested':False,'attempt_count':0,
+        task={'task_id':task_id or uid(),**body,'status':'pending','cancellation_requested':False,'attempt_count':0,
               'max_attempts':3,'next_attempt_at':None,'failure_reason':None,'meta':meta(stamp(self.clock()),'A-v0.4')}
         if task['kind']=='deliver_reminder' and self._reminder_count(c,task['payload']['dose_slot_id'])>=3:
             raise AppError(409,'REMINDER_LIMIT_REACHED','该时段初次、重复和稍后提醒总数已达上限')
@@ -257,9 +272,10 @@ class S03Execution:
                       (task_id,self.instance_id,token,at,stamp(self.clock()+timedelta(seconds=90)),'claimed'))
             task=changed(task,at);task.update(status='running',attempt_count=task['attempt_count']+1,next_attempt_at=None)
             self._save_task(c,task)
+            channel={'deliver_reminder':'in_app','dispatch_service':'mock'}.get(task['kind'])
             execution={'execution_id':uid(),'task_id':task_id,'patient_id':task['patient_id'],'intervention_id':task['intervention_id'],
-                       'attempt':task['attempt_count'],'execution_status':'running','delivery_status':'pending' if task['kind']=='deliver_reminder' else 'not_applicable',
-                       'channel':'in_app' if task['kind']=='deliver_reminder' else None,'is_simulated':True,'result_ref':None,
+                       'attempt':task['attempt_count'],'execution_status':'running','delivery_status':'pending' if channel else 'not_applicable',
+                       'channel':channel,'is_simulated':True,'result_ref':None,
                        'error_code':None,'error_message':None,'retryable':False,'started_at':at,'finished_at':None,
                        'submitted_at':None,'delivered_at':None}
             self._save_execution(c,execution,new=True)
@@ -277,11 +293,23 @@ class S03Execution:
         worker=threading.Thread(target=heartbeat,daemon=True);worker.start()
         try:
             try:
-                outcome=self.delivery_adapter(copy.deepcopy(task),copy.deepcopy(execution)) if task['kind']=='deliver_reminder' else {}
+                if task['kind']=='dispatch_service':
+                    outcome=self.service_dispatch.attempt(task,execution)
+                elif task['kind']=='deliver_reminder':
+                    outcome=self.delivery_adapter(copy.deepcopy(task),copy.deepcopy(execution))
+                else:
+                    outcome={}
                 if not isinstance(outcome,dict):
                     raise ValueError('invalid adapter result')
+            except AppError as exc:
+                if task['kind']=='dispatch_service':
+                    outcome={'error_code':exc.code,'error_message':exc.message,'retryable':exc.status==503,
+                             'cancelled':exc.status in (403,404,409)}
+                else:
+                    outcome={'error_code':'LOCAL_EXECUTION_FAILED','error_message':'本地注册处理未完成，未提交应用内通知','retryable':True}
             except Exception:
-                outcome={'error_code':'LOCAL_EXECUTION_FAILED','error_message':'本地注册处理未完成，未提交应用内通知','retryable':True}
+                outcome=({'outcome_unknown':True} if task['kind']=='dispatch_service' else
+                         {'error_code':'LOCAL_EXECUTION_FAILED','error_message':'本地注册处理未完成，未提交应用内通知','retryable':True})
             try:
                 with self.db.transaction() as c:
                     self._assert_lease(c,task_id,token)
@@ -293,7 +321,7 @@ class S03Execution:
                     except AppError as exc:
                         outcome={'error_code':exc.code,'error_message':exc.message,'retryable':False,'cancelled':True}
                     if current['cancellation_requested']:
-                        outcome={'error_code':'CANCELLATION_REQUESTED','error_message':'任务已收到取消请求，未提交新的应用内通知','retryable':False,'cancelled':True}
+                        outcome={'error_code':'CANCELLATION_REQUESTED','error_message':'任务已收到取消请求，未提交新的业务效果','retryable':False,'cancelled':True}
                     elif current['valid_until']<=stamp(self.clock()):
                         outcome={'error_code':'TASK_EXPIRED','error_message':'执行结果提交前已超过原有效期，未提交新的业务效果','retryable':False,'expired':True}
                     return self._complete(c,current,execution,outcome,receipt['receipt_id'],token)
@@ -306,7 +334,9 @@ class S03Execution:
                     self._assert_lease(c,task_id,token)
                     current=self._task(c,task_id)
                     return self._complete(c,current,execution,{'error_code':exc.code,'error_message':exc.message,
-                                          'retryable':exc.status==503},receipt['receipt_id'],token)
+                                          'retryable':exc.status==503,
+                                          'cancelled':current['kind']=='dispatch_service' and exc.status in (403,404,409)},
+                                          receipt['receipt_id'],token)
         finally:
             stop.set();worker.join(1)
 
@@ -347,6 +377,9 @@ class S03Execution:
                     execution['result_ref']=result['summary_id']
                 elif task['kind']=='expire_b_state' and self.support_state is not None:
                     execution['result_ref']=self.support_state.run_task(c,task)
+                elif task['kind']=='dispatch_service':
+                    identifier=self.service_dispatch.persist(c,task,execution,at)
+                    execution.update(result_ref=identifier,delivery_status='submitted',submitted_at=at)
                 elif task['kind']=='deliver_reminder':
                     identifier=uid()
                     c.execute('INSERT INTO a_in_app_notifications VALUES (?,?,?,?,?,?,?)',

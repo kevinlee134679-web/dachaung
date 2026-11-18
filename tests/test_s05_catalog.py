@@ -76,7 +76,8 @@ class CatalogTests(unittest.TestCase):
     def test_exact_routes_registered_and_public_shapes(self):
         registry = self.s.app.state.registry
         self.assertEqual({n for n in registry.names if n.startswith("C")},
-                         {"C01", "C02", "C03", "C04", "C05", "C06", "C34", "C35", "C36"})
+                         {"C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09",
+                          "C10", "C11", "C12", "C34", "C35", "C36"})
         self.assertEqual(seed_catalog(self.s.db), 7)
         self.assertEqual(seed_catalog(self.s.db), 0)
         result = self.request(CATALOG)
@@ -99,7 +100,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(self.request(f"{CATALOG}/{INACTIVE}", expected=404)["code"], "RESOURCE_NOT_FOUND")
         self.assertEqual(self.request(CATALOG + "?channel=rewards"), {"items": [], "next_cursor": None})
         self.assertEqual(self.request(CATALOG, method="POST", body={}, expected=405)["code"], "METHOD_NOT_ALLOWED")
-        self.request(f"/patients/{PA}/services", expected=404)
+        self.assertEqual(self.request(f"/patients/{PA}/services"), {"items": [], "next_cursor": None})
         self.request(f"/demo/patients/{PA}/profile-fixtures", method="POST", body={}, expected=404)
 
     def test_explicit_installation_and_unavailable_dependency(self):

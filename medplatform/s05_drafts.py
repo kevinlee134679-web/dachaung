@@ -35,10 +35,21 @@ def current_resource(conn, content):
     return None
 
 
+def scope_descriptor(patient, resource, categories):
+    provider = resource["provider"]
+    return fingerprint({
+        "data_environment": "demo", "patient_id": patient, "resource_id": resource["resource_id"],
+        "resource_version": resource["resource_version"], "provider_id": provider["provider_id"],
+        "recipient_type": provider["provider_type"], "service_kind": resource["service_kind"],
+        "purpose_code": resource["service_kind"], "data_categories": categories,
+    })
+
+
 class S05Drafts:
     def __init__(self, db, o_service, clock):
         self.db, self.auth, self.receipts, self.clock = db, o_service.auth, o_service.receipts, clock
         self.sharing = SharingAuthority(self.auth)
+        self.formal_services = None
 
     def draft(self, conn, identifier):
         row = conn.execute(DRAFT, (identifier,)).fetchone()
@@ -114,14 +125,16 @@ class S05Drafts:
 
     def save_draft(self, conn, principal, patient, original, body, at):
         content = body if original is None else body["content"]
-        if original is not None and original["revision"] != body["expected_revision"]:
+        if original is not None and (original["revision"] != body["expected_revision"] or original["status"] != "preparing"):
             raise AppError(409, "SERVICE_DRAFT_REVISION_CONFLICT", "草稿已更新，请核对最新版本")
         if current_resource(conn, content) is None:
             raise AppError(422, "INVALID_SERVICE_DRAFT", "请选择当前可访问的目录版本")
         identifier = uid() if original is None else original["service_draft_id"]
         revision = 1 if original is None else original["draft_revision"] + 1
         if original is None:
-            conn.execute("INSERT INTO c_service_drafts VALUES (?,?,1,1,?,?)", (identifier, patient, at, at))
+            conn.execute("""INSERT INTO c_service_drafts
+                            (service_draft_id,patient_id,draft_revision,revision,created_at,updated_at)
+                            VALUES (?,?,1,1,?,?)""", (identifier, patient, at, at))
         else:
             conn.execute(
                 """UPDATE c_service_drafts SET draft_revision=?, revision=revision+1, updated_at=?
@@ -155,7 +168,7 @@ class S05Drafts:
             "service_draft_id", "patient_id", "draft_revision", "resource_id", "resource_version", "request_text",
         )}
         view.update(
-            peer_group_id=None, source_suggestion_id=None, status="preparing", service_id=None,
+            peer_group_id=None, source_suggestion_id=None, status=draft["status"], service_id=draft["service_id"],
             confirmation_ref_id=link["confirmation_ref_id"] if link else None,
             sharing_scope_ref_id=link["sharing_scope_ref_id"] if link else None,
             meta=dict(meta(draft["created_at"], CONTRACT), updated_at=draft["updated_at"], revision=draft["revision"]),
@@ -181,6 +194,8 @@ class S05Drafts:
         return view
 
     def confirm(self, conn, principal, draft, body, now):
+        if draft["status"] != "preparing":
+            raise needs_confirmation("请为新申请准备独立草稿")
         if draft["draft_revision"] != body["draft_revision"]:
             raise needs_confirmation("草稿内容已更新，请本人重新核对")
         resource = current_resource(conn, draft)
@@ -192,13 +207,7 @@ class S05Drafts:
         grants = self.sharing.terms(conn, principal, patient, resource, categories)
         if self.sharing.grant_status(conn, patient, grants, at) != "active":
             raise needs_confirmation("必要 O 授权已失效，请重新核对")
-        provider = resource["provider"]
-        descriptor = fingerprint({
-            "data_environment": "demo", "patient_id": patient, "resource_id": draft["resource_id"],
-            "resource_version": draft["resource_version"], "provider_id": provider["provider_id"],
-            "recipient_type": provider["provider_type"], "service_kind": resource["service_kind"],
-            "purpose_code": resource["service_kind"], "data_categories": categories,
-        })
+        descriptor = scope_descriptor(patient, resource, categories)
 
         def active(row):
             return self.confirmation_view(conn, row, at)["status"] == "active"
@@ -233,7 +242,7 @@ class S05Drafts:
             identifier = uid()
             conn.execute(
                 "INSERT INTO c_service_confirmations VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (identifier, patient, draft["resource_id"], draft["resource_version"], provider["provider_id"],
+                (identifier, patient, draft["resource_id"], draft["resource_version"], resource["provider"]["provider_id"],
                  resource["service_kind"], descriptor, draft["service_draft_id"], draft["draft_revision"],
                  scope["sharing_scope_ref_id"], at, stamp(now + VALIDITY)),
             )
@@ -258,5 +267,7 @@ class S05Drafts:
             self.sharing.revoke(conn, principal, row["sharing_scope_ref_id"], patient, at, body["reason"])
             conn.execute("INSERT INTO c_confirmation_revocations VALUES (?,?,?,?)",
                          (identifier, principal.account_id, at, body["reason"]))
+            if self.formal_services is not None:
+                self.formal_services.stop_scope_dispatches(conn, row["sharing_scope_ref_id"], at)
         return Result(self.confirmation_view(conn, self.confirmation(conn, identifier), at),
                       resource_type="ServiceConfirmation", resource_id=identifier)

@@ -576,5 +576,304 @@
       "sha256": "e1f347c3d8a5908acc2f2c15a318db778b3caf711c126e8a11b864ce35182505"
     },
     "local_evidence_index": "test-output/s05-batch2-20261118T112307-2a0875/evidence-index.json"
+  },
+  "batch3": {
+    "application_version": "0.5.2",
+    "schema_version": "0010",
+    "work_record": "R0036",
+    "version": "V0036",
+    "implemented_cards": [
+      "C07",
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12",
+      "B23",
+      "B24",
+      "A36(dispatch_service)"
+    ],
+    "contracts": [
+      "C-v0.2",
+      "C-v0.1 CQ03",
+      "B-v0.2/B-v0.4",
+      "A-v0.4",
+      "public-o-v0.5",
+      "flow-v0.1"
+    ],
+    "baseline": {
+      "local_head": "bfae4b7598809d9ce4ba6049b4b8c1c94e11dbc9",
+      "branch": "develop",
+      "upstream_head": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+      "initial_ahead": 9,
+      "initial_behind": 0,
+      "previous_write_http": 403,
+      "remote_writes": 0,
+      "read_only_evidence": "test-output/s05-batch3-20261118T125237-785215/remote-before-docs.log"
+    },
+    "second_batch_confirmation_links": [
+      {
+        "service_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+        "draft_revision": 2,
+        "origin_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+        "origin_draft_revision": 2,
+        "resource_id": "resource-pharmacist-demo",
+        "resource_version": "resource-demo-v2",
+        "service_kind": "pharmacist_consultation",
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a",
+        "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+        "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+        "valid_until": "2026-11-19T03:47:59.785140+00:00",
+        "sharing_scope": {
+          "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+          "data_categories": [
+            "medication_plan",
+            "support_question"
+          ],
+          "is_simulated": true,
+          "patient_id": "demo-patient-a-self",
+          "purpose_code": "pharmacist_consultation",
+          "recipient_id": "provider-pharmacist-demo",
+          "recipient_type": "pharmacist",
+          "related_grant_ids": [],
+          "scope_version": 2,
+          "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+          "status": "revoked",
+          "valid_until": "2026-11-19T03:47:59.785140+00:00"
+        },
+        "grant_versions": {}
+      },
+      {
+        "service_draft_id": "e4c501bd-fb7c-429b-9b65-51e1c77085bc",
+        "draft_revision": 1,
+        "origin_draft_id": "ef8d4813-ad47-4f31-a11a-6b6da1fccc74",
+        "origin_draft_revision": 2,
+        "resource_id": "resource-pharmacist-demo",
+        "resource_version": "resource-demo-v2",
+        "service_kind": "pharmacist_consultation",
+        "confirmation_ref_id": "234dec5a-975d-4455-8a84-ff31ddca686a",
+        "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+        "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+        "valid_until": "2026-11-19T03:47:59.785140+00:00",
+        "sharing_scope": {
+          "confirmed_at": "2026-11-18T03:47:59.785140+00:00",
+          "data_categories": [
+            "medication_plan",
+            "support_question"
+          ],
+          "is_simulated": true,
+          "patient_id": "demo-patient-a-self",
+          "purpose_code": "pharmacist_consultation",
+          "recipient_id": "provider-pharmacist-demo",
+          "recipient_type": "pharmacist",
+          "related_grant_ids": [],
+          "scope_version": 2,
+          "sharing_scope_ref_id": "fc797577-63e7-4291-bc32-89907bc4eed3",
+          "status": "revoked",
+          "valid_until": "2026-11-19T03:47:59.785140+00:00"
+        },
+        "grant_versions": {}
+      }
+    ],
+    "automated": [
+      {
+        "category": "python",
+        "command": "./.venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "exit_code": 0,
+        "passed": 177,
+        "failed": 0,
+        "skipped": 0,
+        "log": "test-output/s05-batch3-20261118T125237-785215/final-python.log"
+      },
+      {
+        "category": "node",
+        "command": "D:/nodejs/node.exe --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "exit_code": 0,
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "log": "test-output/s05-batch3-20261118T125237-785215/final-node.log"
+      },
+      {
+        "category": "c",
+        "command": "./.venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "exit_code": 0,
+        "passed": 38,
+        "failed": 0,
+        "skipped": 0,
+        "log": "test-output/s05-batch3-20261118T125237-785215/final-c.log"
+      },
+      {
+        "category": "b",
+        "command": "./.venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+        "exit_code": 0,
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "log": "test-output/s05-batch3-20261118T125237-785215/final-b.log"
+      }
+    ],
+    "migration": {
+      "source": "test-output\\s05-batch2-20261118T112307-2a0875\\browser-final\\browser.sqlite3",
+      "source_sha256": "65938085025e205779acf8c2297d7daa2c7e9385a218e4b3c9c345991508c28a",
+      "from_schema": "0009",
+      "to_schema": "0010",
+      "prior_tables": 55,
+      "prior_migrations": 9,
+      "new_tables": [
+        "c_service_dispatches",
+        "c_service_history",
+        "c_service_provider_receipts",
+        "c_services"
+      ],
+      "original_drafts": 2,
+      "original_draft_revisions": 3,
+      "original_confirmations": 1,
+      "original_scope_history": 2,
+      "new_migration_sha256": "61b9241f01af49a39c6fb61662780e03e2f326c369c5e1f51bdc8186acb9e27c",
+      "data_preserved": true,
+      "failed_copy_byte_identical": true,
+      "retry_completed": true,
+      "original_unchanged": true,
+      "integrity_check": "ok",
+      "foreign_key_check": "ok"
+    },
+    "browser": {
+      "steps": [
+        {
+          "step": "01-confirmed-draft",
+          "description": "Patient confirms the scope, then must affirm a separate C07 action.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/01-confirmed-draft.png",
+          "sha256": "0c0f5c6660b5a20a9f3d90a86c1460d008b03f14cee20987786ef58b76263048"
+        },
+        {
+          "step": "02-submitted-recovered",
+          "description": "Browser dropped committed C07 reply. It recovered from C05 without resubmitting.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/02-submitted-recovered.png",
+          "sha256": "d9e6a30bb8c75ec96266774625e30016eeb2e8c67d45d97c995d83d56fff2bae"
+        },
+        {
+          "step": "03-dispatch",
+          "description": "Admin uses explicit A36. Mock dispatch submission is independently displayed.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/03-dispatch.png",
+          "sha256": "2171f2a82523e062198afe7600baebdea177948bd57720ef9a89ce9965f32ffd"
+        },
+        {
+          "step": "04-submitted-after-dispatch",
+          "description": "Authoritative C status remains submitted after successful A dispatch.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/04-submitted-after-dispatch.png",
+          "sha256": "88e7868408e9a3d69cbf5c75a487b162ba871c8193a021763a73b34922052cc2"
+        },
+        {
+          "step": "05-in-progress",
+          "description": "Controlled mock receipt starts the service at revision 2.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/05-in-progress.png",
+          "sha256": "a5a6044b6955dd52be2ff597496dcbbb218a9ddc31c69c0c8afdc19ff0700784"
+        },
+        {
+          "step": "06-completed",
+          "description": "A separate simulated completion advances the service to revision 3.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/06-completed.png",
+          "sha256": "6ba227cbbdd18d8f34ca4e047e15b6f416f5d59daf481ff29a2b2ed5312f29e1"
+        },
+        {
+          "step": "07-history-after-refresh",
+          "description": "Patient reload restores the same service and prior timestamps without an extra write.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/07-history-after-refresh.png",
+          "sha256": "374bfd420f4f5a0c064f3d356d39a2620386289810d5a6d13b5f2c2a9dc58dfe"
+        },
+        {
+          "step": "08-family-minimized",
+          "description": "Family with services:read can see status, without body or submit/cancel controls.",
+          "screenshot": "test-output/s05-batch3-20261118T125237-785215/browser-run2/08-family-minimized.png",
+          "sha256": "06fd16cd9ae2d9018cb4f05807ab6683a655958ee23f0f33ce09d2d2b996aec2"
+        }
+      ],
+      "browser": "Microsoft Edge Chromium via real DOM",
+      "automated_browser": true,
+      "ids": {
+        "draft_id": "284d1be6-752a-4e54-ac6e-e9073ea0b9d4",
+        "service_id": "e7fb228a-a657-49b2-8ac3-a28da01b188b",
+        "dispatch_task_id": "5535e463-0d81-4ae6-acea-7acba3149759"
+      },
+      "revisions": [
+        [
+          1,
+          "submitted",
+          "patient_submit"
+        ],
+        [
+          2,
+          "in_progress",
+          "demo_transition"
+        ],
+        [
+          3,
+          "completed",
+          "demo_transition"
+        ]
+      ],
+      "business_writes": [
+        {
+          "method": "POST",
+          "path": "/api/v1/patients/demo-patient-a-self/services",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/tasks/5535e463-0d81-4ae6-acea-7acba3149759/run",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/demo/services/e7fb228a-a657-49b2-8ac3-a28da01b188b/transitions",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/demo/services/e7fb228a-a657-49b2-8ac3-a28da01b188b/transitions",
+          "status": 200
+        }
+      ],
+      "formal_services": 1,
+      "tasks": 1,
+      "dispatches": 1,
+      "executions": 1,
+      "schema": "0010",
+      "local_process_stopped": true,
+      "db_sha256": "be7c14b07018cbab7e612701e96531e5c8e345f2f1938be80bae9cfa947ec2ff",
+      "observations": "test-output/s05-batch3-20261118T125237-785215/browser-run2/browser-observations.json",
+      "manual_foreground": false
+    },
+    "failures_preserved": {
+      "initial_python": "test-output/s05-batch3-20261118T125237-785215/early-python.log",
+      "first_service_suite": "test-output/s05-batch3-20261118T125237-785215/early-services.log",
+      "first_browser": "test-output/s05-batch3-20261118T125237-785215/browser/browser-failure-01.json"
+    },
+    "limitations": [
+      "Mock only. C11 requires explicitly configured independent simulated provider credentials.",
+      "B27 external receipts and fulfill_reward are deferred; no general runner.",
+      "Browser verified main flow and access; unknown and late provider callbacks exercised by API tests."
+    ],
+    "markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 235745,
+        "sha256": "ee9814ef0759e329771d1a9c6f2c326f6e8b10e975f8ce9e950a387f88371019"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 28764,
+        "sha256": "d8440dec9c8d1d1f2ce377f5a2432baf51d5125e5b683e8cdd373bef227e1341"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 8541,
+        "sha256": "0d9c3c06d62c1bc541f1e1cf17d3402cae4abdb0fe0695413c21e3d6cc04c52e"
+      }
+    },
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch2.json",
+      "bytes": 22321,
+      "sha256": "b2c921b31e406911b47bb5cc566392b024bf05af41ec401a3a2ae06a6c7bbc70"
+    },
+    "evidence_index": "test-output/s05-batch3-20261118T125237-785215/evidence-index.json"
   }
 }

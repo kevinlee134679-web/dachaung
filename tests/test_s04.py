@@ -51,7 +51,7 @@ class S04Tests(unittest.TestCase):
     def test_registered_cards_and_guarded_mock_config(self):
         registry = self.s.app.state.registry
         self.assertEqual({f"B{n:02d}" for n in range(1, 40)}, {name for name in registry.names if name.startswith("B")})
-        # The two S05 batches authorize precisely these additional routes.
+        # The three S05 batches authorize precisely these additional routes.
         c_routes = {
             ("GET", "/api/v1/patients/{}/support-recommendations"),
             ("GET", "/api/v1/support-resources"),
@@ -62,6 +62,12 @@ class S04Tests(unittest.TestCase):
             ("POST", "/api/v1/patients/{}/service-confirmations"),
             ("GET", "/api/v1/service-confirmations/{}"),
             ("POST", "/api/v1/service-confirmations/{}/revoke"),
+            ("POST", "/api/v1/patients/{}/services"),
+            ("GET", "/api/v1/patients/{}/services"),
+            ("GET", "/api/v1/services/{}"),
+            ("POST", "/api/v1/services/{}/cancel"),
+            ("POST", "/api/v1/integrations/service-receipts"),
+            ("POST", "/api/v1/demo/services/{}/transitions"),
         }
         self.assertEqual(registry.routes & c_routes, c_routes)
         self.assertEqual(len(registry.routes - c_routes), 114)
@@ -450,14 +456,14 @@ class S04Tests(unittest.TestCase):
             "patient_id": PA, "case_id": CASE_A, "entry_source": "accepted_invitation", "invitation_id": accepted,
         }, expected=409)["code"], "INVITATION_NOT_ACCEPTED")
 
-    def test_missing_c_and_external_identity_cannot_fabricate_success(self):
+    def test_missing_c_draft_and_external_identity_cannot_fabricate_success(self):
         session = self.create()
         error = self.api("POST", "/referrals", {
             "patient_id": PA, "session_id": session["session_id"], "resource_id": "resource",
             "service_draft_id": "draft", "service_draft_revision": 1,
             "confirmation_ref_id": "confirm", "sharing_scope_ref_id": "scope",
-        }, expected=503)
-        self.assertEqual(error["code"], "SOCIAL_SUPPORT_NOT_INTEGRATED")
+        }, expected=404)
+        self.assertEqual(error["code"], "RESOURCE_NOT_FOUND")
         error = self.api("POST", "/integrations/state-events", {
             "source_event_id": "untrusted", "patient_id": PA, "event_type": "consent_revoked",
             "summary_ref": None, "occurred_at": stamp(self.s.clock()), "rule_version": "test",

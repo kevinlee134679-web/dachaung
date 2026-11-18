@@ -73,6 +73,10 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             'c_draft_confirmations', 'c_confirmation_revocations',
         } <= tables:
             raise SchemaError('S05草稿或共享范围表缺失')
+        if current >= 10 and not {
+            'c_services', 'c_service_history', 'c_service_dispatches', 'c_service_provider_receipts',
+        } <= tables:
+            raise SchemaError('S05正式服务或派发记录表缺失')
         return current
 
 
