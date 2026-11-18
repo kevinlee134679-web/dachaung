@@ -65,6 +65,8 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             'b_intervention_revisions', 'b_knowledge', 'b_knowledge_history', 'b_model_selection',
         } <= tables:
             raise SchemaError('S04必要数据表缺失')
+        if current >= 8 and not {'c_support_resources', 'c_support_resource_versions'} <= tables:
+            raise SchemaError('S05资源目录表缺失')
         return current
 
 

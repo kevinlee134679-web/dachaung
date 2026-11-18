@@ -39,6 +39,7 @@ class Element {
   click() { return this.events.click?.({ currentTarget: this }); }
   change() { return this.events.change?.({ currentTarget: this }); }
   input() { return this.events.input?.({ currentTarget: this }); }
+  focus() {}
 }
 class Form {
   constructor() { this.fields = new Map(); }
@@ -79,10 +80,12 @@ function setup(fetch, crypto = webcrypto) {
       querySelector: selector => roots[selector], querySelectorAll: () => [] } });
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
   const support = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's04.js'), 'utf8');
+  const social = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's05.js'), 'utf8');
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   assert.ok(cutoff > 0);
   vm.runInContext(source.slice(0, cutoff), context);
   vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,identity,navigate,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
+  vm.runInContext(social, context);
   const app = context.frontend;
   function choose(patient = 'pa', account = 'account-a') {
     const access = { patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' }, relationship: 'self',
@@ -454,4 +457,96 @@ test('an explicit grant expiration change is sent with its timezone', async () =
   deadline.value = '2031-01-02T15:16'; await deadline.input();
   await byText(env.roots['#main'], 'button', '明确确认并保存授权').click();
   assert.equal(env.writes[0].valid_until, '2031-01-02T07:16:00.000Z');
+});
+
+const catalogResource = {
+  resource_id: 'demo-resource', resource_version: 'demo-v2', name: '药学咨询资源（模拟）',
+  description: '演示资源介绍', provider: {display_name: '虚构主体（模拟）', qualification_status: 'not_verified'},
+  required_shared_categories: ['support_question'], optional_shared_categories: ['medication_plan']
+};
+const recommendation = {
+  need_status: 'needed', primary_action: {resource_id: 'demo-resource', title: catalogResource.name, reason: '符合本次需求。'},
+  secondary_actions: [], missing_items: [],
+  source_refs: [
+    {module: 'O', record_kind: 'profile', record_id: 'o-profile-a', version: '1'},
+    {module: 'C', record_kind: 'support_resource', record_id: 'demo-resource', version: 'demo-v2'}
+  ]
+};
+
+test('S05 catalog and matching show exact source versions and browse only with GET', async () => {
+  const gets = [];
+  const env = setup(async (url, options) => {
+    gets.push([url, options.method, options.headers['Idempotency-Key']]);
+    if (url.endsWith('need=professional')) return success(recommendation);
+    if (url.endsWith('/demo-resource')) return success(catalogResource);
+    return success({items: [catalogResource], next_cursor: null});
+  });
+  env.app.state.patient.effective_scopes.push('support:read', 'profile:read');
+  await env.app.navigate('support', 'social');
+  const main = env.roots['#main'];
+  byText(main, 'button', '查看已登记画像');
+  const need = fieldControl(main, '本次支持需求');
+  need.value = 'professional';
+  await byText(main, 'button', '查看匹配').click();
+  assert.match(main.textContent, /O 画像 o-profile-a · 修订 1/);
+  assert.match(main.textContent, /符合本次需求。版本 demo-v2 · mock\/demo/);
+  await byText(main, 'button', '查看候选详情').click();
+  assert.match(main.textContent, /资质未核验/);
+  assert.match(main.textContent, /潜在的必要共享类别　支持问题/);
+  assert.deepEqual(gets, [
+    ['/api/v1/support-resources', 'GET', undefined],
+    ['/api/v1/patients/pa/support-recommendations?need=professional', 'GET', undefined],
+    ['/api/v1/support-resources/demo-resource', 'GET', undefined]
+  ]);
+});
+
+test('S05 ignores a delayed matching result after the selected need or patient changes', async () => {
+  const response = deferred();
+  const env = setup(async url => url.includes('support-recommendations') ? response.promise :
+    success({items: [], next_cursor: null}));
+  env.app.state.patient.effective_scopes.push('support:read');
+  await env.app.navigate('support', 'social');
+  const main = env.roots['#main'];
+  const need = fieldControl(main, '本次支持需求');
+  const pending = byText(main, 'button', '查看匹配').click();
+  need.value = 'none';
+  need.change();
+  response.resolve(success(recommendation));
+  await pending;
+  assert.doesNotMatch(main.textContent, /o-profile-a|匹配结果/);
+  const button = byText(main, 'button', '查看匹配');
+  env.choose('pb');
+  await env.app.navigate('support', 'social');
+  await button.click();
+  assert.doesNotMatch(main.textContent, /o-profile-a|本次支持需求/);
+  assert.match(main.textContent, /获准查看社会支持/);
+});
+
+test('S05 stale resource version is reported and never labeled as the prior match', async () => {
+  const env = setup(async url => {
+    if (url.includes('support-recommendations')) return success(recommendation);
+    if (url.endsWith('/demo-resource')) return success({...catalogResource, resource_version: 'demo-v3'});
+    return success({items: [catalogResource], next_cursor: null});
+  });
+  env.app.state.patient.effective_scopes.push('support:read');
+  await env.app.navigate('support', 'social');
+  const main = env.roots['#main'];
+  await byText(main, 'button', '查看匹配').click();
+  await byText(main, 'button', '查看候选详情').click();
+  assert.match(env.roots['#notice'].textContent, /版本已更新/);
+  assert.doesNotMatch(main.textContent, /演示资源介绍|demo-v3/);
+});
+
+test('S05 patient can explicitly grant and remove support:read independently of profile:read', async () => {
+  const env = await grantEnvironment();
+  const main = env.roots['#main'];
+  const supportCheck = () => find(main, n => n.tagName === 'LABEL' && n.children[1]?.textContent === '社会支持目录和候选（只读）').children[0];
+  assert.equal(supportCheck().checked, false);
+  supportCheck().checked = true;
+  await byText(main, 'button', '明确确认并保存授权').click();
+  assert.deepEqual(env.writes[0].scopes, ['patient:read', 'support:read']);
+  assert.equal(supportCheck().checked, true);
+  supportCheck().checked = false;
+  await byText(main, 'button', '明确确认并保存授权').click();
+  assert.deepEqual(env.writes[1].scopes, ['patient:read']);
 });

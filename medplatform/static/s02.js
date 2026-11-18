@@ -51,6 +51,7 @@ const grantOptions = [
   ["summary:read", "近期状态摘要"],
   ["feedback:read", "获准来源的反馈概况"],
   ["dialogue:read", "支持对话历史（只读）"],
+  ["support:read", "社会支持目录和候选（只读）"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -403,7 +404,13 @@ async function render() {
   main.append(el("h1", {}, titles[state.page]));
   if (state.page === "support") {
     try {
-      await supportView();
+      if (scope("support:read")) {
+        main.append(el("div", {class: "subnav", "aria-label": "支持服务功能"},
+          button("支持对话", () => navigate("support"), state.tab !== "social" ? "primary" : ""),
+          button("社会支持", () => navigate("support", "social"), state.tab === "social" ? "primary" : "")));
+      }
+      if (state.tab === "social") await socialSupportView();
+      else await supportView();
     } catch (error) {
       if (epoch === state.epoch && !(error instanceof ViewChanged)) main.append(p(error.message, "error"));
     }
@@ -500,6 +507,7 @@ async function homeView() {
   main.append(p(`当前对象：${state.patient.patient.display_name}。这里先整理你的回答、资料与安排，不评价是否足够自律。`), el("div", {
     class: "actions"
   }, button("填写八题问卷", () => navigate("profile", "questionnaire"), "primary", !scope("questionnaire:assist")), button("核对用药资料", () => navigate("medication", "drafts"), "", !scope("drafts:read")), button("设置提醒", () => navigate("medication", "reminders"), "", !scope("reminder:read")), button("查看用药报告", () => navigate("profile", "report"), "", !scope("statistics:read") && !scope("summary:read"))), p("CAS、患者分类方法尚未适配。本人报告与家人、开盒等证据分别保存；提醒需显式执行，不保证关闭网页后送达。", "muted"));
+  if (scope("support:read")) main.append(button("查找社会支持", () => navigate("support", "social")));
   if (scope("plan:read")) await scheduleView();
   if (scope("interventions:read")) await homeSupportInvitations();
   if (scope("summary:read")) {

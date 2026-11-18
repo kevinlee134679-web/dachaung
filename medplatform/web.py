@@ -36,13 +36,15 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     from .s02_api import router as s02_router
     from . import s03_records, s03_analytics, s03_execution
     from .s03_api import router as s03_router
-    from . import s04_api
+    from . import s04_api, s05_api
     from .s04_service import S04Service
+    from .s05_catalog import S05Catalog, catalog_registered
     service = S02Service(db,clock or now)
     records = s03_records.S03Records(db,service.auth,service.receipts,clock or now)
     analytics = s03_analytics.S03Analytics(db,service.auth,service.receipts,clock or now,records)
     execution = s03_execution.S03Execution(db,service.auth,service.receipts,clock or now,analytics=analytics)
     support = S04Service(db, service.auth, service.receipts, clock or now, settings, analytics, execution)
+    catalog = S05Catalog(db, service, clock or now)
     execution.support_state = support.state
     analytics.support_feedback = support.feedback_source
     authority = authority if authority is not None else service.auth
@@ -53,6 +55,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
     app.state.s02 = service
     app.state.s03_records, app.state.s03_analytics, app.state.s03_execution = records, analytics, execution
     app.state.s04 = support
+    app.state.s05_catalog = catalog
 
     def error_response(request, error):
         return JSONResponse(envelope(request, code=error.code, message=error.message), status_code=error.status)
@@ -154,6 +157,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
         schema = ready()
         with db.connection(readonly=True) as conn:
             profile = support.profile(conn)
+            directory_ready = catalog_registered(conn)
         dialogue_ready = profile["configuration_status"] == "ready"
         return envelope(request, {"auth_mode": settings.AUTH_MODE, "llm_mode": settings.LLM_MODE,
             "requested_pipeline": profile["requested_pipeline"],
@@ -168,17 +172,21 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
                 {"code":"support_intensity_mapping","available":False,"reason":"支持强度方法尚未接入"},
                 {"code":"demo_login","available":True,"reason":None},
                 {"code":"in_app_notification","available":True,"reason":"仅显式执行的本地模拟提交；不等于送达、展示或响应"},
-                {"code":"s03_data_loop","available":True,"reason":None}],
+                {"code":"s03_data_loop","available":True,"reason":None},
+                {"code":"support_catalog","available":directory_ready,
+                 "reason":"本地虚构资源目录与候选" if directory_ready else "模拟资源目录尚未显式登记"}],
             "version_refs": [{"kind": "application", "version": __version__},
                              {"kind": "schema", "version": f"{schema:04d}"},
                              {"kind": "contract", "version": "flow-v0.1"},
                              {"kind": "contract", "version": "B-v0.4"},
+                             {"kind": "contract", "version": "C-v0.2"},
                              {"kind": "model_config", "version": profile["model_config_version"]}]})
 
     app.state.registry.include_router(app, router)
     app.state.registry.include_router(app, s02_router(service,envelope))
     app.state.registry.include_router(app, s03_router([
         (s03_records,records),(s03_analytics,analytics),(s03_execution,execution),(s04_api,support),
+        (s05_api,catalog),
     ],envelope))
 
     @app.get("/", include_in_schema=False)

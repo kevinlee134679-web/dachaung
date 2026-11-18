@@ -14,7 +14,9 @@ from .migrations import migrate, status
 
 def main():
     parser = argparse.ArgumentParser(description="Shared platform: explicit lifecycle and S03 maintenance")
-    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "expire-receipts", "s03-maintain", "run-task", "serve", "journal-snapshot", "journal-append"])
+    parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "seed-support-catalog",
+                                          "expire-receipts", "s03-maintain", "run-task", "serve",
+                                          "journal-snapshot", "journal-append"])
     parser.add_argument("--target", type=int)
     parser.add_argument("--journal", type=Path, default=Path("docs/工作记录.md"))
     parser.add_argument("--entry", type=Path)
@@ -47,6 +49,9 @@ def main():
             elif args.command == 'seed-demo':
                 from .s02_service import seed_demo
                 print(json.dumps({'demo_version':seed_demo(db),'outcome':'ready','is_simulated':True}))
+            elif args.command == 'seed-support-catalog':
+                from .s05_catalog import seed_catalog
+                print(json.dumps({'versions_added':seed_catalog(db),'outcome':'ready','is_simulated':True}))
             elif args.command == 'expire-receipts':
                 from .idempotency import expire_receipts
                 from .documents import now

@@ -1,0 +1,205 @@
+[
+  {
+    "resource": {
+      "resource_id": "resource-pharmacist-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "pharmacist_consultation",
+      "name": "药学咨询资源（模拟）",
+      "description": "药学咨询目录的虚构初版，用于保留历史版本。",
+      "provider": {
+        "provider_id": "provider-pharmacist-demo",
+        "provider_type": "pharmacist",
+        "display_name": "虚构药师目录主体（模拟）",
+        "qualification_status": "not_verified",
+        "is_simulated": true
+      },
+      "availability": "unavailable",
+      "access_mode": "support_free",
+      "is_essential": true,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [
+        "medication_plan"
+      ],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": []
+  },
+  {
+    "resource": {
+      "resource_id": "resource-pharmacist-demo",
+      "resource_version": "resource-demo-v2",
+      "service_kind": "pharmacist_consultation",
+      "name": "药学咨询资源（模拟）",
+      "description": "供查看模拟药学咨询资源和可能的共享类别。没有接入真实药师，页面只展示目录。",
+      "provider": {
+        "provider_id": "provider-pharmacist-demo",
+        "provider_type": "pharmacist",
+        "display_name": "虚构药师目录主体（模拟）",
+        "qualification_status": "not_verified",
+        "is_simulated": true
+      },
+      "availability": "available",
+      "access_mode": "support_free",
+      "is_essential": true,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [
+        "medication_plan"
+      ],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": "resource-demo-v1",
+    "review_status": "not_reviewed",
+    "profile_types": []
+  },
+  {
+    "resource": {
+      "resource_id": "resource-community-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "community_assistance",
+      "name": "日常社区协助（模拟）",
+      "description": "查看日常实际困难相关的虚构社区资源。",
+      "provider": {
+        "provider_id": "provider-community-demo",
+        "provider_type": "volunteer",
+        "display_name": "虚构社区志愿资源（模拟）",
+        "qualification_status": "not_required",
+        "is_simulated": true
+      },
+      "availability": "available",
+      "access_mode": "support_free",
+      "is_essential": false,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": []
+  },
+  {
+    "resource": {
+      "resource_id": "resource-community-access-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "community_assistance",
+      "name": "取药与补充协助（模拟）",
+      "description": "面向 O 已登记的操作与外部条件受限型或社会情境与生活冲突型，展示虚构社区协助。",
+      "provider": {
+        "provider_id": "provider-community-access-demo",
+        "provider_type": "volunteer",
+        "display_name": "虚构社区志愿资源（模拟）",
+        "qualification_status": "not_required",
+        "is_simulated": true
+      },
+      "availability": "available",
+      "access_mode": "support_free",
+      "is_essential": false,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": [
+      "B2",
+      "D1"
+    ]
+  },
+  {
+    "resource": {
+      "resource_id": "resource-companionship-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "emotional_companionship",
+      "name": "情感陪伴资源（模拟）",
+      "description": "查看长期用药感到疲惫时可以考虑的虚构志愿陪伴。",
+      "provider": {
+        "provider_id": "provider-companionship-demo",
+        "provider_type": "volunteer",
+        "display_name": "虚构社区志愿资源（模拟）",
+        "qualification_status": "not_required",
+        "is_simulated": true
+      },
+      "availability": "available",
+      "access_mode": "support_free",
+      "is_essential": false,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": []
+  },
+  {
+    "resource": {
+      "resource_id": "resource-encouragement-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "emotional_companionship",
+      "name": "日常关怀资源（模拟）",
+      "description": "查看虚构的志愿问候和鼓励资源。",
+      "provider": {
+        "provider_id": "provider-encouragement-demo",
+        "provider_type": "volunteer",
+        "display_name": "虚构社区志愿资源（模拟）",
+        "qualification_status": "not_required",
+        "is_simulated": true
+      },
+      "availability": "available",
+      "access_mode": "support_free",
+      "is_essential": false,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": []
+  },
+  {
+    "resource": {
+      "resource_id": "resource-community-inactive-demo",
+      "resource_version": "resource-demo-v1",
+      "service_kind": "community_assistance",
+      "name": "社区协助备选资源（模拟）",
+      "description": "已停用的虚构目录条目，用于演示可用性过滤。",
+      "provider": {
+        "provider_id": "provider-community-inactive-demo",
+        "provider_type": "volunteer",
+        "display_name": "虚构社区志愿资源（模拟）",
+        "qualification_status": "not_required",
+        "is_simulated": true
+      },
+      "availability": "unavailable",
+      "access_mode": "support_free",
+      "is_essential": false,
+      "required_shared_categories": [
+        "support_question"
+      ],
+      "optional_shared_categories": [],
+      "peer_group_id": null,
+      "is_simulated": true
+    },
+    "previous_version": null,
+    "review_status": "not_reviewed",
+    "profile_types": []
+  }
+]
