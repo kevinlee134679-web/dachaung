@@ -38,7 +38,7 @@ async function socialSupportView() {
     const check = startDetail();
     const doc = await api("/support-resources/" + encodeURIComponent(id), "GET", null, view);
     check();
-    if (doc.resource_version !== version) {
+    if (version && doc.resource_version !== version) {
       throw new Error("资源版本已更新，请刷新目录或重新匹配。");
     }
     const labels = names => names.map(name => sharedCategoryLabels[name]).join("、") || "无";
@@ -47,7 +47,9 @@ async function socialSupportView() {
       p(`${doc.provider.display_name} · ${qualificationLabels[doc.provider.qualification_status]}`),
       p(`潜在的必要共享类别　${labels(doc.required_shared_categories)}`),
       p(`潜在的可选共享类别　${labels(doc.optional_shared_categories)}`),
-      ...(preparation ? [button("准备服务问题", () => preparation.prepare(doc), "primary")] : []));
+      ...(preparation && (!doc.peer_group_id || own()) ? [
+        button(doc.peer_group_id ? "准备入组草稿" : "准备服务问题", () => preparation.prepare(doc), "primary")
+      ] : []));
     detail.hidden = false;
     detail.focus();
   }
@@ -66,8 +68,10 @@ async function socialSupportView() {
         p(`版本 ${ref.version} · mock/demo`, "muted"),
         button("查看候选详情", () => openDetail(ref.record_id, ref.version))));
     }
-    if (!actions.length && refs.length) {
-      result.append(el("ul", {}, ...refs.map(ref => el("li", {},
+    const remaining = refs.filter(ref => !actions.some(action => action.resource_id === ref.record_id));
+    if (remaining.length) {
+      result.append(p("同级候选按资源编号展示。", "muted"));
+      result.append(el("ul", {}, ...remaining.map(ref => el("li", {},
         button(`${ref.record_id} · ${ref.version}`, () => openDetail(ref.record_id, ref.version))))));
     }
     if (data.missing_items.length) result.append(issuesView(data.missing_items));
@@ -115,4 +119,9 @@ async function socialSupportView() {
     if (cursor) directory.append(button("返回资源首页", () => load()));
   }
   await Promise.all([load(), preparation?.restore()]);
+  const peerResource = sessionStorage.getItem(referenceKey("peer-prepare-resource"));
+  if (peerResource && own()) {
+    sessionStorage.removeItem(referenceKey("peer-prepare-resource"));
+    await openDetail(peerResource);
+  }
 }

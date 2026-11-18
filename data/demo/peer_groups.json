@@ -1,0 +1,32 @@
+[
+  {
+    "group": {
+      "group_id": "group-peer-routine-demo",
+      "resource_id": "resource-peer-routine-demo",
+      "title": "日常安排同伴小组（模拟）",
+      "description": "分享整理日程和互相鼓励的虚构体验。交流限短文字，不提供医疗咨询。",
+      "matching_tags": ["演示作息", "日程整理"],
+      "moderator_label": "演示管理员（模拟审核）",
+      "availability": "available",
+      "is_simulated": true
+    },
+    "provider_id": "provider-peer-routine-demo",
+    "moderator_account_id": "demo-admin",
+    "resource_version": "resource-demo-v1"
+  },
+  {
+    "group": {
+      "group_id": "group-peer-start-demo",
+      "resource_id": "resource-peer-start-demo",
+      "title": "入门经验同伴小组（模拟）",
+      "description": "暂未安排模拟审核的虚构候选小组。",
+      "matching_tags": ["演示用药阶段", "经验整理"],
+      "moderator_label": "暂未登记模拟审核者",
+      "availability": "unavailable",
+      "is_simulated": true
+    },
+    "provider_id": "provider-peer-start-demo",
+    "moderator_account_id": null,
+    "resource_version": "resource-demo-v1"
+  }
+]

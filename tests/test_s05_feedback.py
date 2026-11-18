@@ -200,6 +200,10 @@ class FeedbackTests(unittest.TestCase):
         self.assertNotEqual(response.json()["data"]["records"][0]["record_id"],
                             next_page.json()["data"]["records"][0]["record_id"])
         self.assertNotIn("Link", next_page.headers)
+        foreign = self.s.b.get(cursor_path.replace(PA, existing.PB))
+        self.assertEqual((foreign.status_code, foreign.json()["error"]["code"]), (422, "INVALID_CURSOR"))
+        amended = self.s.a.get(cursor_path.replace("limit=1", "limit=2") + "&data_environment=demo")
+        self.assertEqual(amended.status_code, 422)
         self.assertEqual(self.s.db.path.read_bytes(), start)
         for window in [dict(self.range, window_end=self.range["window_start"]), dict(self.range, window_start="naive")]:
             self.projection(window=window, expected=422)

@@ -38,7 +38,7 @@ class DemoProvider(Input):
 class DemoResource(Input):
     resource_id: ID
     resource_version: ID
-    service_kind: Literal["community_assistance", "emotional_companionship", "pharmacist_consultation"]
+    service_kind: Literal["community_assistance", "emotional_companionship", "pharmacist_consultation", "peer_support"]
     name: Short
     description: Text
     provider: DemoProvider
@@ -47,12 +47,14 @@ class DemoResource(Input):
     is_essential: bool
     required_shared_categories: list[SharedCategory]
     optional_shared_categories: list[SharedCategory]
-    peer_group_id: None
+    peer_group_id: ID | None
     is_simulated: Literal[True]
 
     @model_validator(mode="after")
     def validate_fixture(self):
         pharmacist = self.service_kind == "pharmacist_consultation"
+        if (self.peer_group_id is not None) != (self.service_kind == "peer_support"):
+            raise ValueError("Demo peer resources require a precise group")
         if (self.provider.provider_type == "pharmacist") != pharmacist:
             raise ValueError("Demo provider does not match the service")
         if pharmacist and self.provider.qualification_status != "not_verified":
@@ -85,39 +87,42 @@ class ResourceFixture(Input):
 def register_catalog(db, fixtures, clock=now):
     """Install versioned fictional fixtures via the explicit local command."""
     status(db)
-    written = 0
     with db.transaction() as conn:
-        at = stamp(clock())
-        for fixture in fixtures:
-            doc = fixture.resource
-            identity = (doc.resource_id, doc.resource_version)
-            source = f"{FIXTURE_FILE}#{doc.resource_id}/{doc.resource_version}"
-            payload = (fixture.previous_version, source, fixture.review_status,
-                       encode(doc.model_dump()), encode(sorted(fixture.profile_types)))
-            saved = conn.execute(
-                """SELECT previous_version, fixture_source, review_status, resource_json, profile_types_json
-                   FROM c_support_resource_versions WHERE resource_id=? AND resource_version=?""", identity,
-            ).fetchone()
-            if saved is not None:
-                if tuple(saved) != payload:
-                    raise AppError(409, "RESOURCE_VERSION_CONFLICT", "该资源版本已登记不同内容")
-                continue
-            current = conn.execute(
-                "SELECT current_version FROM c_support_resources WHERE resource_id=?", (doc.resource_id,),
-            ).fetchone()
-            if (current[0] if current else None) != fixture.previous_version:
-                raise AppError(409, "RESOURCE_VERSION_CONFLICT", "资源当前版本已变更，请核对版本前序")
-            conn.execute(
-                """INSERT INTO c_support_resource_versions
-                   (resource_id, resource_version, recorded_at, previous_version, fixture_source,
-                    review_status, resource_json, profile_types_json) VALUES (?,?,?,?,?,?,?,?)""",
-                (*identity, at, *payload),
-            )
-            conn.execute(
-                """INSERT INTO c_support_resources (resource_id, current_version) VALUES (?,?)
-                   ON CONFLICT(resource_id) DO UPDATE SET current_version=excluded.current_version""", identity,
-            )
-            written += 1
+        return install_catalog(conn, fixtures, stamp(clock()), FIXTURE_FILE)
+
+
+def install_catalog(conn, fixtures, at, fixture_file):
+    written = 0
+    for fixture in fixtures:
+        doc = fixture.resource
+        identity = (doc.resource_id, doc.resource_version)
+        source = f"{fixture_file}#{doc.resource_id}/{doc.resource_version}"
+        payload = (fixture.previous_version, source, fixture.review_status,
+                   encode(doc.model_dump()), encode(sorted(fixture.profile_types)))
+        saved = conn.execute(
+            """SELECT previous_version, fixture_source, review_status, resource_json, profile_types_json
+               FROM c_support_resource_versions WHERE resource_id=? AND resource_version=?""", identity,
+        ).fetchone()
+        if saved is not None:
+            if tuple(saved) != payload:
+                raise AppError(409, "RESOURCE_VERSION_CONFLICT", "该资源版本已登记不同内容")
+            continue
+        current = conn.execute(
+            "SELECT current_version FROM c_support_resources WHERE resource_id=?", (doc.resource_id,),
+        ).fetchone()
+        if (current[0] if current else None) != fixture.previous_version:
+            raise AppError(409, "RESOURCE_VERSION_CONFLICT", "资源当前版本已变更，请核对版本前序")
+        conn.execute(
+            """INSERT INTO c_support_resource_versions
+               (resource_id, resource_version, recorded_at, previous_version, fixture_source,
+                review_status, resource_json, profile_types_json) VALUES (?,?,?,?,?,?,?,?)""",
+            (*identity, at, *payload),
+        )
+        conn.execute(
+            """INSERT INTO c_support_resources (resource_id, current_version) VALUES (?,?)
+               ON CONFLICT(resource_id) DO UPDATE SET current_version=excluded.current_version""", identity,
+        )
+        written += 1
     return written
 
 
@@ -277,7 +282,7 @@ class S05Catalog:
 
         own = self.auth.is_self(principal, patient, conn)
         actions, unresolved = [], False
-        for row in conn.execute(CURRENT):
+        for row in conn.execute(CURRENT + " ORDER BY v.resource_id"):
             doc = json.loads(row["resource_json"])
             if doc["access_mode"] != "support_free" or NEED_BY_KIND.get(doc["service_kind"]) != need:
                 continue
@@ -307,8 +312,8 @@ class S05Catalog:
             elif len(actions) == 2:
                 data["secondary_actions"] = actions
             else:
-                problems.append(issue("candidate_order_unconfirmed",
-                                      "符合条件的同级资源超过可同时展示的数量。请查看资源版本，暂未指定推荐顺序。"))
+                problems.append(issue("candidate_details_available",
+                                      "全部同级候选按资源编号展示，可分别打开详情。"))
         elif not unresolved:
             data["need_status"] = "needed"
             problems.append(issue("no_matching_resource", "当前目录没有符合本次需求及适用条件的可用资源。"))

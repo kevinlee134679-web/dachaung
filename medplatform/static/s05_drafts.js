@@ -3,13 +3,16 @@
 const servicePurposes = {
   community_assistance: "社区协助",
   emotional_companionship: "情感陪伴",
-  pharmacist_consultation: "药学咨询"
+  pharmacist_consultation: "药学咨询",
+  peer_support: "模拟同辈入组"
 };
 
 function rememberServicePage() {
   if (!state.patient) return;
   const key = referenceKey("service-page");
-  if (state.page === "support" && state.tab === "social" && scope("services:prepare") && scope("support:read")) {
+  if (state.page === "support" && state.tab === "peer" && scope("peer:read")) {
+    sessionStorage.setItem(key, "peer");
+  } else if (state.page === "support" && state.tab === "social" && scope("services:prepare") && scope("support:read")) {
     sessionStorage.setItem(key, "drafts");
   } else if (state.page === "profile" && state.tab === "service-consents" && own()) {
     sessionStorage.setItem(key, "consents");
@@ -23,6 +26,10 @@ function rememberServicePage() {
 async function restoreServicePage() {
   if (!state.patient) return false;
   const page = sessionStorage.getItem(referenceKey("service-page"));
+  if (page === "peer" && scope("peer:read")) {
+    await navigate("support", "peer");
+    return true;
+  }
   if (page === "drafts" && scope("services:prepare") && scope("support:read")) {
     await navigate("support", "social");
     return true;
@@ -153,6 +160,7 @@ function serviceDraftPreparation(view) {
         p(`草稿编号 ${draft.service_draft_id} · 内容修订 ${draft.draft_revision}`, "reference"),
         p(`服务编号 ${draft.service_id}`, "reference"));
       if (scope("services:read")) editor.append(button("查看正式服务", () => openServiceRecord(draft.service_id)));
+      if (draft.peer_group_id && own()) editor.append(button("核对原入组申请", () => peerResumeFromDraft(draft)));
       if (own()) clearKnownServiceSubmission(draft);
       return;
     }
@@ -172,6 +180,7 @@ function serviceDraftPreparation(view) {
         const content = {
           resource_id: resource.resource_id, resource_version: resource.resource_version, request_text: textArea.value.trim()
         };
+        if (resource.peer_group_id) content.peer_group_id = resource.peer_group_id;
         const body = draft ? {expected_revision: draft.meta.revision, content} : content;
         const typed = textArea.value;
         try {
@@ -194,7 +203,7 @@ function serviceDraftPreparation(view) {
     if (draft.confirmation_ref_id) {
       rememberServiceConsent(draft.confirmation_ref_id);
       consent.append(p("此修订已有共享确认。"), button("查看确认及历史", () => navigate("profile", "service-consents")));
-      consent.append(serviceSubmissionControls(draft, textArea, view, open));
+      consent.append(draft.peer_group_id ? peerJoinControls(draft, textArea, view) : serviceSubmissionControls(draft, textArea, view, open));
       return;
     }
     if (!resource || changedVersion) return;
@@ -221,8 +230,10 @@ function serviceDraftPreparation(view) {
           consent.replaceChildren(serviceConsentText(value), p("草稿仍处于准备阶段。"),
             button("查看确认及历史", () => navigate("profile", "service-consents")));
           if (value.status === "active") {
-            consent.append(serviceSubmissionControls({...draft, confirmation_ref_id: value.confirmation_ref_id,
-              sharing_scope_ref_id: value.sharing_scope.sharing_scope_ref_id}, textArea, view, open));
+            const confirmed = {...draft, confirmation_ref_id: value.confirmation_ref_id,
+              sharing_scope_ref_id: value.sharing_scope.sharing_scope_ref_id};
+            consent.append(draft.peer_group_id ? peerJoinControls(confirmed, textArea, view) :
+              serviceSubmissionControls(confirmed, textArea, view, open));
           }
           notice(value.status === "active" ? "已记录本次共享确认。" : "已核对原提交，当前共享范围已失效。");
         } catch (error) {

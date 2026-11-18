@@ -1123,5 +1123,256 @@
       }
     },
     "local_evidence_index": "test-output/s05-batch4-20261118T065528-967Z/evidence-index.json"
+  },
+  "batch5": {
+    "application": "0.5.4",
+    "schema": "0012",
+    "work_record": "R0038",
+    "version": "V0038",
+    "implemented_cards": [
+      "C16",
+      "C17",
+      "C18",
+      "C19",
+      "C20",
+      "C21",
+      "C37",
+      "C41"
+    ],
+    "baseline": {
+      "head": "6c46f7aace2ca5e2adff9e6b6ba86918809cd88e",
+      "branch": "develop",
+      "upstream": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+      "ahead": 11,
+      "behind": 0,
+      "previous_write_http": 403,
+      "this_turn_remote_writes": 0
+    },
+    "automation": [
+      {
+        "group": "python",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 192,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-python.log"
+      },
+      {
+        "group": "node",
+        "command": "& 'D:/nodejs/node.exe' --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-node.log"
+      },
+      {
+        "group": "c",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-c.log"
+      },
+      {
+        "group": "b",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s04.py' -v",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-b.log"
+      },
+      {
+        "group": "peer",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_peer.py -v",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-peer.log"
+      },
+      {
+        "group": "feedback",
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s05_feedback.py -v",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/s05-batch5-20261118T074402-078Z/delivery-feedback.log"
+      }
+    ],
+    "migration": {
+      "from_schema": "0011",
+      "to_schema": "0012",
+      "prior_tables": 60,
+      "prior_migrations": 11,
+      "source": "test-output/s05-batch4-20261118T065528-967Z/browser-delivery/browser.sqlite3",
+      "source_sha256": "796253fac836b9cb69da8db4af77860b008087de8215f08676fc9e5baf7e43c4",
+      "new_tables": [
+        "c_peer_groups",
+        "c_peer_membership_history",
+        "c_peer_memberships",
+        "c_peer_moderators",
+        "c_peer_post_history",
+        "c_peer_posts"
+      ],
+      "new_migration_sha256": "8e9326c31d0ce6e1b3232b972b31fadd85dc0416b9bb496096a4de6b2b6de400",
+      "failed_copy_byte_identical": true,
+      "retry_completed": true,
+      "integrity_check": "ok",
+      "foreign_key_check": "ok",
+      "originals_unchanged": 4
+    },
+    "browser": {
+      "schema": "0012",
+      "engine": "Microsoft Edge headless Chromium",
+      "foreground_manual": false,
+      "service_stopped": true,
+      "ids": {
+        "a": {
+          "member": "81aa8460-00cb-4e58-9ed8-9ed3bb3d4c84",
+          "service": "1b76129a-f20b-4ee8-b1ff-22f2e0080af9",
+          "task": "880d62e4-e866-48c4-a905-b7288d6c759e",
+          "consent": "72c9fd72-1f91-467a-8cee-abcdfde894e6"
+        },
+        "b": {
+          "member": "38e15223-0511-4bdb-b4bd-9ece6c3e16f5",
+          "service": "fbbfb6ee-0f90-4c5f-a491-d809005a65c7",
+          "task": "5981dbeb-50f6-4b36-828f-b650617b228f",
+          "consent": "839ec705-fde6-4044-a043-011f3869589d"
+        }
+      },
+      "member_histories": {
+        "a": [
+          "pending",
+          "active",
+          "left"
+        ],
+        "b": [
+          "pending",
+          "active"
+        ]
+      },
+      "post_histories": {
+        "\u865a\u6784\u5206\u4eab\u7532": [
+          "pending",
+          "visible"
+        ],
+        "\u865a\u6784\u5206\u4eab\u4e59": [
+          "pending",
+          "hidden"
+        ]
+      },
+      "new_peer_services": 2,
+      "new_posts": 2,
+      "family_c41_denied": true,
+      "completed_services_preserved": true,
+      "old_feedback_unchanged": true,
+      "sanitized_process_logs": true,
+      "db_sha256": "15f4ac031e2caebcf93f47d683bebd9041402cf93e5ea0ba70d21d97c86ebb36",
+      "observations": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/browser-observations.json",
+      "steps": [
+        {
+          "step": "01-c01-order",
+          "description": "Two existing C01 same-level candidates remain reachable in stable order.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/01-c01-order.png",
+          "sha256": "cb35153e2004f5d50c04421ef5bb584eacb451132fe31aa5e79a7ba4aa3be74a"
+        },
+        {
+          "step": "pending-a",
+          "description": "Explicit consent and join create a pending membership; posts stay unavailable.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/pending-a.png",
+          "sha256": "34a7c45e77c351216d924364b92878f884fd7652de9bf78cccea4dfbd2733d0c"
+        },
+        {
+          "step": "02-cross-session",
+          "description": "Empty browser storage and a new login recover the same server membership and revision automatically.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/02-cross-session.png",
+          "sha256": "469f87e83514abd80ba0177389e3ac0529e7451f8141d4a52f89eda17f49cd2c"
+        },
+        {
+          "step": "03-own-pending",
+          "description": "Author sees own pending posts. Public fields show only a random group alias.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/03-own-pending.png",
+          "sha256": "40fa73d0a60d2c9428bfe2aa476b14453857fdede8a2185655e25144af1196f5"
+        },
+        {
+          "step": "pending-b",
+          "description": "Explicit consent and join create a pending membership; posts stay unavailable.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/pending-b.png",
+          "sha256": "c941ae65bce56983951bcebbdb55dde622d43265527b939c37acc0aef4f43a08"
+        },
+        {
+          "step": "04-other-before-review",
+          "description": "A second active patient sees no unmoderated post.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/04-other-before-review.png",
+          "sha256": "2480992704166a286d0662357cf04db7187846e177c0f1dd16265cbe712b1292"
+        },
+        {
+          "step": "05-moderated",
+          "description": "Scoped mock moderator explicitly records visible and hidden outcomes.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/05-moderated.png",
+          "sha256": "d6869767ee9bea0a6f8f3c6ff1042b1357bd4d6614ecbada220453327f5bfc0a"
+        },
+        {
+          "step": "06-anonymous-visible",
+          "description": "Second patient sees only the moderated anonymous post after reload.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/06-anonymous-visible.png",
+          "sha256": "49e4500889e26ee1d06e99d85cc40289da5cd5a81fe19a04677fd606a4b9bdde"
+        },
+        {
+          "step": "07-family-boundary",
+          "description": "Family can see group introduction while C41 denies access to the represented patient.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/07-family-boundary.png",
+          "sha256": "79c2552020d3e5e8d3038c481412d284092586468ba31f56820c2f0bab7cb2e9"
+        },
+        {
+          "step": "08-scope-revoked",
+          "description": "After C36 revocation the membership history remains findable, with no feed access.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/08-scope-revoked.png",
+          "sha256": "b363854f67878d6af4f0e3bd22630742246edafea4cfff245455f87dd31932eb"
+        },
+        {
+          "step": "09-left",
+          "description": "Voluntary leave persists, with completed formal service preserved in C.",
+          "screenshot": "test-output/s05-batch5-20261118T074402-078Z/browser-accepted/09-left.png",
+          "sha256": "fb0d0e1bc6922865a7502caa9d8a26e1f9eda7f3179244bad0e9eea325006c0f"
+        }
+      ]
+    },
+    "confirmations": {
+      "own_membership": "C41 with authoritative O session and no membership browser cache",
+      "c01_order": "stable resource ID, all eligible refs available, no ranking",
+      "suggestion_drafts": "deferred; source_suggestion_id remains unavailable in C drafts; B23/B24 retained"
+    },
+    "contract": "docs/contracts/C_v0.3_\u672c\u4eba\u540c\u8f88\u6062\u590d\u4e0e\u8d44\u6e90\u5c55\u793a\u589e\u91cf.md",
+    "pending_items": "docs/S05/\u5f85\u786e\u8ba4\u4e8b\u9879.md",
+    "limitations": [
+      "Synthetic groups and reviewer only",
+      "C41 lifecycle and current access shown independently"
+    ],
+    "prior_verification_archive": {
+      "path": "docs/S05/verification.batch4.json",
+      "bytes": 44038,
+      "sha256": "cb74bb80c288ab24ff152729fb11aecec55bacd6d9262bb4a02db252fd2d9ef0"
+    },
+    "markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 244836,
+        "sha256": "cf3e07c8c16b1ed7d77fc6a1c072021e81fd0f9b88c848aa1721ce919f31f382"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 29862,
+        "sha256": "14d4c4fc6b4a8e4ef8fc61bdbb832b6e93cab7740b14ed6fb81894e69726cae0"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 15304,
+        "sha256": "b38066ce83412ed0bc61c378d11fccb6562c11ef82d56c14c4a1939c179d5bed"
+      }
+    },
+    "local_evidence_index": "test-output/s05-batch5-20261118T074402-078Z/evidence-index.json"
   }
 }

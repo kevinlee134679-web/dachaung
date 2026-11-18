@@ -54,6 +54,7 @@ const grantOptions = [
   ["support:read", "社会支持目录和候选（只读）"],
   ["services:prepare", "协助准备服务草稿"],
   ["services:read", "查看正式服务状态"],
+  ["peer:read", "查看同辈小组介绍"],
   ["tasks:read", "提醒与执行状态"]
 ];
 const statusLabels = {
@@ -407,12 +408,14 @@ async function render() {
   main.append(el("h1", {}, titles[state.page]));
   if (state.page === "support") {
     try {
-      if (scope("support:read")) {
+      if (scope("support:read") || scope("peer:read")) {
         main.append(el("div", {class: "subnav", "aria-label": "支持服务功能"},
-          button("支持对话", () => navigate("support"), state.tab !== "social" ? "primary" : ""),
-          button("社会支持", () => navigate("support", "social"), state.tab === "social" ? "primary" : "")));
+          button("支持对话", () => navigate("support"), !["social", "peer"].includes(state.tab) ? "primary" : ""),
+          scope("support:read") ? button("社会支持", () => navigate("support", "social"), state.tab === "social" ? "primary" : "") : null,
+          scope("peer:read") ? button("匿名同辈", () => navigate("support", "peer"), state.tab === "peer" ? "primary" : "") : null));
       }
       if (state.tab === "social") await socialSupportView();
+      else if (state.tab === "peer") await peerSupportView();
       else await supportView();
     } catch (error) {
       if (epoch === state.epoch && !(error instanceof ViewChanged)) main.append(p(error.message, "error"));
@@ -517,6 +520,7 @@ async function homeView() {
   if (scope("support:read")) main.append(button("查找社会支持", () => navigate("support", "social")));
   if (scope("plan:read")) await scheduleView();
   if (scope("interventions:read")) await homeSupportInvitations();
+  if (own() && scope("peer:read") && typeof peerHomeMembership === "function") await peerHomeMembership();
   if (scope("summary:read")) {
     const view = captureView();
     const day = today() + "T00:00:00+08:00", window_end = new Date(new Date(day).getTime() + 86400000).toISOString(),

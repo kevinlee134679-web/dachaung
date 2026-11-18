@@ -8,9 +8,11 @@ from .o_sharing import SharingAuthority, VALIDITY
 from .s05_catalog import CURRENT
 
 CONTRACT = "C-v0.2"
-DRAFT = """SELECT d.*, r.resource_id, r.resource_version, r.request_text
+DRAFT = """SELECT d.*, r.resource_id, r.resource_version, r.request_text,
+                  json_extract(v.resource_json,'$.peer_group_id') AS peer_group_id
            FROM c_service_drafts d JOIN c_service_draft_revisions r
              USING (service_draft_id, draft_revision)
+           JOIN c_support_resource_versions v ON v.resource_id=r.resource_id AND v.resource_version=r.resource_version
            WHERE d.service_draft_id=?"""
 CONFIRMATION = """SELECT c.*, r.revoked_at FROM c_service_confirmations c
                   LEFT JOIN c_confirmation_revocations r USING (confirmation_ref_id)"""
@@ -76,6 +78,8 @@ class S05Drafts:
         if action in {"create", "draft", "edit"}:
             self.auth.require_patient(principal, patient, "services:prepare", conn)
             self.auth.require_patient(principal, patient, "support:read", conn)
+            if doc is not None and doc["peer_group_id"] is not None:
+                self.auth.require_patient(principal, patient, "peer:participate", conn, self_only=True)
         else:
             self.auth.require_patient(principal, patient, "", conn, self_only=True)
         if action == "confirm":
@@ -127,8 +131,17 @@ class S05Drafts:
         content = body if original is None else body["content"]
         if original is not None and (original["revision"] != body["expected_revision"] or original["status"] != "preparing"):
             raise AppError(409, "SERVICE_DRAFT_REVISION_CONFLICT", "草稿已更新，请核对最新版本")
-        if current_resource(conn, content) is None:
+        resource = current_resource(conn, content)
+        if resource is None:
             raise AppError(422, "INVALID_SERVICE_DRAFT", "请选择当前可访问的目录版本")
+        group = resource["peer_group_id"]
+        if content.get("peer_group_id") is not None and content["peer_group_id"] != group:
+            raise AppError(422, "INVALID_SERVICE_DRAFT", "小组与当前资源版本不一致")
+        if group is not None:
+            self.auth.require_patient(principal, patient, "peer:participate", conn, self_only=True)
+            if not conn.execute("SELECT 1 FROM c_peer_groups WHERE group_id=? AND resource_id=?",
+                                (group, content["resource_id"])).fetchone():
+                raise AppError(422, "INVALID_SERVICE_DRAFT", "小组与当前资源版本不一致")
         identifier = uid() if original is None else original["service_draft_id"]
         revision = 1 if original is None else original["draft_revision"] + 1
         if original is None:
@@ -168,7 +181,7 @@ class S05Drafts:
             "service_draft_id", "patient_id", "draft_revision", "resource_id", "resource_version", "request_text",
         )}
         view.update(
-            peer_group_id=None, source_suggestion_id=None, status=draft["status"], service_id=draft["service_id"],
+            peer_group_id=draft["peer_group_id"], source_suggestion_id=None, status=draft["status"], service_id=draft["service_id"],
             confirmation_ref_id=link["confirmation_ref_id"] if link else None,
             sharing_scope_ref_id=link["sharing_scope_ref_id"] if link else None,
             meta=dict(meta(draft["created_at"], CONTRACT), updated_at=draft["updated_at"], revision=draft["revision"]),

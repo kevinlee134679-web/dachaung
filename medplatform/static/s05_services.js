@@ -111,6 +111,12 @@ async function serviceRecordsView() {
     }
     if (value.provider_response) detail.append(p("模拟答复 · " + value.provider_response.text));
     detail.append(button("刷新服务状态", async () => { await list(); await load(id); }));
+    if (own() && value.service_kind === "peer_support") {
+      detail.append(button("核对原入组申请", async v => {
+        const draft = await api("/service-drafts/" + encodeURIComponent(value.service_draft_id), "GET", null, v);
+        await peerResumeFromDraft(draft);
+      }));
+    }
     if (scope("services:read") && scope("feedback:read")) {
       const feedback = serviceFeedbackHistory(value, view);
       detail.append(feedback.node);

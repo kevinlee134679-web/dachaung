@@ -29,23 +29,27 @@ def seed_support_recipients(db):
     """Explicit fixture installation. A C catalog seed alone never registers an O recipient."""
     status(db)
     fixtures = json.loads(DEMO_RECIPIENTS.read_bytes())
-    added = 0
     with db.transaction() as conn:
-        for fixture in fixtures:
-            entry = tuple(fixture[key] for key in REGISTRATION_FIELDS)
-            resource = load_resource(conn, *entry[:2])
-            if resource is None or resource["is_simulated"] is not True or recipient_identity(resource) != entry[2:]:
-                raise AppError(409, "SHARING_CONFIRMATION_REQUIRED", "请先登记与 O 演示主体匹配的目录版本")
-            old = conn.execute(
-                """SELECT recipient_id,recipient_type,purpose_code FROM o_demo_support_recipients
-                   WHERE resource_id=? AND resource_version=?""", entry[:2],
-            ).fetchone()
-            if old is not None:
-                if tuple(old) != entry[2:]:
-                    raise AppError(409, "SHARING_CONFIRMATION_REQUIRED", "O 演示接收主体登记不一致")
-                continue
-            conn.execute("INSERT INTO o_demo_support_recipients VALUES (?,?,?,?,?)", entry)
-            added += 1
+        return install_demo_recipients(conn, fixtures)
+
+
+def install_demo_recipients(conn, fixtures):
+    added = 0
+    for fixture in fixtures:
+        entry = tuple(fixture[key] for key in REGISTRATION_FIELDS)
+        resource = load_resource(conn, *entry[:2])
+        if resource is None or resource["is_simulated"] is not True or recipient_identity(resource) != entry[2:]:
+            raise AppError(409, "SHARING_CONFIRMATION_REQUIRED", "请先登记与 O 演示主体匹配的目录版本")
+        old = conn.execute(
+            """SELECT recipient_id,recipient_type,purpose_code FROM o_demo_support_recipients
+               WHERE resource_id=? AND resource_version=?""", entry[:2],
+        ).fetchone()
+        if old is not None:
+            if tuple(old) != entry[2:]:
+                raise AppError(409, "SHARING_CONFIRMATION_REQUIRED", "O 演示接收主体登记不一致")
+            continue
+        conn.execute("INSERT INTO o_demo_support_recipients VALUES (?,?,?,?,?)", entry)
+        added += 1
     return added
 
 
@@ -148,6 +152,17 @@ class SharingAuthority:
         )
         conn.execute("INSERT INTO o_sharing_scope_history VALUES (?,?,?,?,?,?)",
                      (identifier, scope["scope_version"], raw, principal.account_id, at, reason))
+
+    def membership_authorized(self, conn, service, at):
+        """An accepted membership uses current revocation and dependent grants.
+
+        The application deadline still controls initial dispatch/acceptance.
+        """
+        scope, versions = self.scope(conn, service["sharing_scope_ref_id"], service["patient_id"])
+        resource = load_resource(conn, service["resource_id"], service["resource_version"])
+        return (scope["status"] == "active" and resource is not None and self.registered(conn, resource)
+                and (scope["recipient_id"], scope["recipient_type"], scope["purpose_code"]) == recipient_identity(resource)
+                and self.grant_status(conn, service["patient_id"], versions, at) == "active")
 
     @staticmethod
     def deadline(conn, scope, grant_versions):

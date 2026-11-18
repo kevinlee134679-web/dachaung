@@ -79,6 +79,9 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             raise SchemaError('S05正式服务或派发记录表缺失')
         if current >= 11 and 'c_service_feedback' not in tables:
             raise SchemaError('S05服务反馈表缺失')
+        if current >= 12 and not {'c_peer_groups','c_peer_moderators','c_peer_memberships','c_peer_membership_history',
+                                  'c_peer_posts','c_peer_post_history'} <= tables:
+            raise SchemaError('S05匿名同辈表缺失')
         return current
 
 

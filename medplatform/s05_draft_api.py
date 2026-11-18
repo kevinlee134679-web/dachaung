@@ -11,7 +11,7 @@ class DraftInput(Input):
     resource_id: ID
     resource_version: ID
     request_text: Text
-    peer_group_id: None = None
+    peer_group_id: ID | None = None
     source_suggestion_id: None = None
 
 

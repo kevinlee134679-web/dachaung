@@ -21,6 +21,7 @@ class S05Services:
     def __init__(self, db, drafts, execution, settings, clock):
         self.db, self.auth, self.receipts = db, drafts.auth, drafts.receipts
         self.clock, self.drafts, self.execution, self.settings = clock, drafts, execution, settings
+        self.peer = None
 
     def authenticate_provider(self, header):
         secret = self.settings.DEMO_SERVICE_RECEIPT_TOKEN.get_secret_value()
@@ -190,6 +191,11 @@ class S05Services:
             ):
                 raise confirmation_required("草稿已有正式服务，请核对原申请")
             return old
+        group = resource["peer_group_id"]
+        if group is not None:
+            if self.peer is None:
+                raise AppError(503, "PEER_GROUPS_UNAVAILABLE", "模拟小组能力暂不可用")
+            self.peer.check_submission(conn, principal, patient, resource)
 
         identifier, task_id = uid(), uid()
         doc = dict(
@@ -217,6 +223,8 @@ class S05Services:
             """UPDATE c_service_drafts SET status='submitted', service_id=?, revision=revision+1, updated_at=?
                WHERE service_draft_id=?""", (identifier, at, draft["service_draft_id"]),
         )
+        if group is not None:
+            self.peer.attach(conn, principal, doc, group, at)
         return doc
 
     @staticmethod
@@ -277,6 +285,8 @@ class S05Services:
         if response is not None:
             result["provider_response"] = response
         self.record(conn, result, origin, actor, occurred, at, event)
+        if target == "in_progress" and doc["service_kind"] == "peer_support":
+            self.peer.accept(conn, result, actor, occurred, at)
         if target in {"cancelled", "failed"}:
             self.stop_dispatch(conn, doc["dispatch_task_id"], at)
         return result

@@ -1,0 +1,16 @@
+[
+  {
+    "resource_id": "resource-peer-routine-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-peer-routine-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "peer_support"
+  },
+  {
+    "resource_id": "resource-peer-start-demo",
+    "resource_version": "resource-demo-v1",
+    "recipient_id": "provider-peer-start-demo",
+    "recipient_type": "volunteer",
+    "purpose_code": "peer_support"
+  }
+]
