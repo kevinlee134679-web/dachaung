@@ -223,8 +223,15 @@ class Dialogue:
             profile = get(conn, "Profile", snap["profile_id"], required=False)
             if profile is not None and profile["patient_id"] == gen["patient_id"]:
                 msgs.append({"role": "system", "content": "本人问卷的描述性背景：" + encode(profile["factors"])})
-        if snap["plan_refs"]:
-            msgs.append({"role": "system", "content": "当前正式计划引用：" + encode(snap["plan_refs"])})
+        at = stamp(self.clock())
+        current_plan_refs = []
+        for ref in snap["plan_refs"]:
+            plan = get(conn, "PlanVersion", f"{ref['plan_id']}:{ref['plan_version']}", required=False)
+            if (plan is not None and plan["patient_id"] == gen["patient_id"]
+                    and plan["effective_from"] <= at and (plan["effective_until"] is None or at < plan["effective_until"])):
+                current_plan_refs.append(ref)
+        if current_plan_refs:
+            msgs.append({"role": "system", "content": "当前正式计划引用：" + encode(current_plan_refs)})
         summary = snap["summary_ref"]
         if (summary is not None and summary["data_status"] == "fresh" and summary["valid_until"] > stamp(self.clock())
                 and self.analytics.summary_feedback_current(conn, principal, gen["patient_id"], summary)):

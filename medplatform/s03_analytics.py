@@ -336,17 +336,20 @@ class S03Analytics:
                 'reason':'B业务尚未接入，本阶段不生成服务效果'}
 
     def summary_feedback_current(self, c, principal, patient, summary):
-        """A live consumer rechecks C; historical A31 reads keep their cutoff."""
-        if summary['schema_version'] != SUMMARY_VERSION:
-            return True
+        """A live consumer rechecks A and C; historical A31 reads keep their cutoff."""
         row = c.execute("""
-            SELECT r.result_json,s.source_refs FROM s03_results r
+            SELECT r.result_json,s.source_refs,r.as_of,r.data_environment FROM s03_results r
             JOIN s03_computation_snapshots s USING(snapshot_id)
             WHERE r.result_id=? AND r.patient_id=? AND r.kind='summary' AND r.authorization_context_hash=?
         """, (summary['summary_id'],patient,self.auth_hash(c,principal,patient))).fetchone()
         if row is None:
             return False
         window = {name:summary[name] for name in ('window_start','window_end')}
+        historical = dict(window, data_environment=row['data_environment'], as_of=row['as_of'])
+        if self.signature(c,patient,historical) != self.signature(c,patient,dict(historical,as_of=stamp(self.clock()))):
+            return False
+        if summary['schema_version'] != SUMMARY_VERSION:
+            return True
         current, refs = self.c_feedback(c,principal,patient,window)
         saved = next(source for source in json.loads(row['result_json'])['feedback_overview']['sources']
                      if source['source_module']=='C')

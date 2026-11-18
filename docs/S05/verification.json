@@ -1943,5 +1943,282 @@
     },
     "log": "test-output/s05-batch7-20261118T121008200Z/ui-recheck-node.log",
     "handoff_prefix_sha256": "174cadfc01daa8aecabd7265c7390b050c491f93d98a066000cddde9b262e6bf"
+  },
+  "platform_audit": {
+    "record_id": "R0041",
+    "version_id": "V0041",
+    "base": "02cf5d9a98409d4f700fa6f5e29f016ce6a2b5d0",
+    "remote_opening_head": "5239304c3e34d8f8c8843ef0e28fbfeef2ba3daa",
+    "application": "0.5.6",
+    "schema": "0014",
+    "api_count": 154,
+    "report": "docs/\u5168\u5e73\u53f0/S04-S05\u6574\u4f53\u5ba1\u8ba1\u4e0eS00-S03\u56de\u5f52\u9a8c\u6536.md",
+    "tests": {
+      "python": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v",
+        "passed": 214,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/final-python.log"
+      },
+      "node": {
+        "command": "& D:/nodejs/node.exe --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs",
+        "passed": 51,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/baseline-node.log"
+      },
+      "s00_s04": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 test-output/s05-batch6-20261118T085452-988Z/run-prior-tests.py",
+        "passed": 141,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/final-prior.log"
+      },
+      "b": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p test_s04.py -v",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/source-defect-after.log"
+      },
+      "c": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -p 'test_s05*.py' -v",
+        "passed": 73,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/final-c.log"
+      },
+      "integrated": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 test-output/platform-audit-20261118T125307848Z/integrated-api.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/integrated-recheck.log"
+      },
+      "archive_python": {
+        "command": "& .venv/Scripts/python.exe -B -X utf8 -m unittest discover -s tests -v (\u56fa\u5b9a S03 \u5bfc\u51fa\u76ee\u5f55)",
+        "passed": 121,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/s03-archived-python.log"
+      },
+      "archive_node": {
+        "command": "& D:/nodejs/node.exe --test tests/test_s02_ui_async.cjs tests/test_s03_ui_async.cjs (\u56fa\u5b9a S03 \u5bfc\u51fa\u76ee\u5f55)",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "exit_code": 0,
+        "log": "test-output/platform-audit-20261118T125307848Z/s03-archived-node.log"
+      }
+    },
+    "browser": {
+      "core": {
+        "steps": 10,
+        "requests": 249,
+        "database": {
+          "statistics": "12ba25c0-c499-4650-a281-944dfacc5d1e",
+          "fictional_counts": [
+            1,
+            1,
+            0,
+            0,
+            1,
+            3
+          ],
+          "execution": "cfe139ab-05d1-4186-a291-5b3a0904481c",
+          "session": "bd6c45ce-91c4-42fa-85a8-ebd1f9bfd651"
+        },
+        "db_sha256": "0c1c0e1641e8c82a407801e0c97e0642e02f9c49595560096d25306e3b7e8bc2",
+        "browser_evidence": "test-output/platform-audit-20261118T125307848Z/browser-core-accepted/browser-observations.json"
+      },
+      "service": {
+        "steps": 8,
+        "requests": 121,
+        "database": {
+          "service_id": "e7c4158c-df14-413d-9f06-c032f85efe04",
+          "status_history": [
+            "submitted",
+            "in_progress",
+            "completed"
+          ]
+        },
+        "db_sha256": "48d1cd316dcb49e2750c4c5e9918e85790e4fae12ee754e39b3be3ad532854ec",
+        "browser_evidence": "test-output/platform-audit-20261118T125307848Z/browser-service/browser-observations.json"
+      },
+      "feedback": {
+        "steps": 8,
+        "requests": 77,
+        "database": {
+          "service_id": "e7c4158c-df14-413d-9f06-c032f85efe04",
+          "revisions": [
+            1,
+            2
+          ]
+        },
+        "db_sha256": "a0c283cc067fac5d589c7c1f2b77774d3870ba52c3f77568b967ecde6987bdde",
+        "browser_evidence": "test-output/platform-audit-20261118T125307848Z/browser-feedback/browser-observations.json"
+      },
+      "peer": {
+        "steps": 11,
+        "requests": 210,
+        "database": {
+          "memberships": 2,
+          "posts": 2,
+          "member_states": [
+            "active",
+            "left"
+          ]
+        },
+        "db_sha256": "6295b0d2560cdf064dd69effc72fdec6db27a75d9bb3f06a5703bc45311f45f0",
+        "browser_evidence": "test-output/platform-audit-20261118T125307848Z/browser-peer/browser-observations.json"
+      },
+      "rewards": {
+        "steps": 9,
+        "requests": 189,
+        "database": {
+          "ledger": {
+            "award": 83,
+            "redemption_debit": -70,
+            "redemption_refund": 40
+          },
+          "balance": 53,
+          "orders": 2
+        },
+        "db_sha256": "d606289c8e7cb02b296f1932c5b70865cb4435857fc651bd0034ea180392f01f",
+        "browser_evidence": "test-output/platform-audit-20261118T125307848Z/browser-rewards/browser-observations.json"
+      }
+    },
+    "migration": {
+      "chains": [
+        {
+          "old_schema": 6,
+          "latest": 14,
+          "source": "handoff-20261117-131223-e62dbe8d/demo.sqlite3",
+          "source_sha": "537462175acef8222bb6db0c01693fad54dd75024d4296f9dc0da7a47265dd3b",
+          "tables": 36,
+          "fault_rollback": "byte_identical",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        },
+        {
+          "old_schema": 7,
+          "latest": 14,
+          "source": "s04-final-20261117T134839-57e841/browser.sqlite3",
+          "source_sha": "8fc726feda6378f7b18d1e1648186aa6f4dfbf2b820b2c52ca51d182a2959a5b",
+          "tables": 45,
+          "fault_rollback": "byte_identical",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        },
+        {
+          "old_schema": 10,
+          "latest": 14,
+          "source": "s05-batch3-20261118T125237-785215/browser-run2/browser.sqlite3",
+          "source_sha": "be7c14b07018cbab7e612701e96531e5c8e345f2f1938be80bae9cfa947ec2ff",
+          "tables": 59,
+          "fault_rollback": "byte_identical",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        },
+        {
+          "old_schema": 12,
+          "latest": 14,
+          "source": "s05-batch5-20261118T074402-078Z/browser-accepted/browser.sqlite3",
+          "source_sha": "15f4ac031e2caebcf93f47d683bebd9041402cf93e5ea0ba70d21d97c86ebb36",
+          "tables": 66,
+          "fault_rollback": "byte_identical",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        },
+        {
+          "old_schema": 13,
+          "latest": 14,
+          "source": "s05-batch6-20261118T085452-988Z/browser-delivery/browser.sqlite3",
+          "source_sha": "048dfd8d399faee1f0b6dfe031ed396f664aeca2d7aa5f86c7b0cb0c16df8038",
+          "tables": 72,
+          "fault_rollback": "byte_identical",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        },
+        {
+          "old_schema": 14,
+          "latest": 14,
+          "source": "s05-batch7-20261118T121008200Z/browser-recheck/browser.sqlite3",
+          "source_sha": "61e57d38e22b40b4a311487b3874661bcef097df272bfd1bc856246452b62cc2",
+          "tables": 80,
+          "fault_rollback": "latest_readiness",
+          "integrity": "ok",
+          "foreign_keys": "ok"
+        }
+      ],
+      "fresh_schema": 14,
+      "legacy": [
+        {
+          "original_schema": "0006",
+          "as_of": "2026-11-17T12:00:00.000000+00:00",
+          "unchanged": true
+        },
+        {
+          "original_schema": "0010",
+          "as_of": "2026-11-17T12:00:00.000000+00:00",
+          "unchanged": true
+        }
+      ]
+    },
+    "earlier_schema": [
+      {
+        "stage": "S01",
+        "commit": "c80d2263ae7f02c05ff8a6779b359af5ea2ec84d",
+        "from_schema": 2,
+        "to_schema": 14,
+        "source_reconstituted": true,
+        "prior_tables": 5,
+        "original_sha256": "40145e56f8932b008280815d4631ede1a694adf60260e96054e0bca94fe47aeb",
+        "rows_equal": true
+      },
+      {
+        "stage": "S02",
+        "commit": "2c37c4dafc09456174d10f85c4439fa5638a85f6",
+        "from_schema": 3,
+        "to_schema": 14,
+        "source_reconstituted": true,
+        "prior_tables": 16,
+        "original_sha256": "16e9aa3aa4ddb63ac008afc8c91c58b5e61ba38f49bff2547869b5e0ca727133",
+        "rows_equal": true
+      }
+    ],
+    "safety_at_base": 15,
+    "old_markdown_prefixes": {
+      "docs/\u5de5\u4f5c\u8bb0\u5f55.md": {
+        "bytes": 258336,
+        "sha256": "7d1a57673e9afd74b49b9bf9f5bfd3807e3143e62ff05ec17edc3212cb6eff86"
+      },
+      "docs/\u7248\u672c\u767b\u8bb0.md": {
+        "bytes": 31588,
+        "sha256": "114ae1d1acadc14b385a8082065d01dd22ad6dd5a01d158c0b4a5e403a56856b"
+      },
+      "docs/S05/\u8fd0\u884c\u4e0e\u4ea4\u63a5.md": {
+        "bytes": 27221,
+        "sha256": "d785a42fdd76695c5e4e869a058bb7b62624191d7a5c20556781732af6e129e0"
+      },
+      "docs/S05/\u5f85\u786e\u8ba4\u4e8b\u9879.md": {
+        "bytes": 3227,
+        "sha256": "b613924ddfc2c7d7c7e82582e686f59771916103a9597feca956e9f89b452e99"
+      }
+    },
+    "old_verification": {
+      "bytes": 78879,
+      "sha256": "f1dd0d839afb9a9ae17be0f7cb0752924da790332124e84a608e9366a38b7aa1"
+    },
+    "protected_sources": 71,
+    "index": "test-output/platform-audit-20261118T125307848Z/evidence-index.json"
   }
 }

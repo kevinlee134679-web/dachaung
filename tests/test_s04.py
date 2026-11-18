@@ -185,6 +185,42 @@ class S04Tests(unittest.TestCase):
         saved = self.api("GET", self.path(s, "/messages"), client=fresh)["items"]
         self.assertEqual(len(saved), 2)
 
+    def test_retry_keeps_audit_snapshot_without_reusing_superseded_plan(self):
+        plan = self.s.confirm(effective_from=stamp(self.s.clock()))
+        session = self.create()
+        self.trigger("empty_response", session=session)
+        number = existing.key()
+        self.send(session, number=number, expected=502)
+        message = self.api("GET", self.path(session, "/messages?client_message_id=" + number))["items"][0]
+        self.s.confirm(existing_plan_id=plan["plan_id"], expected_plan_version=1,
+                       effective_from=stamp(self.s.clock() + timedelta(seconds=2)))
+        self.s.time[0] += timedelta(seconds=3)
+        with patch.object(self.b.dialogue.adapter, "complete", wraps=self.b.dialogue.adapter.complete) as attempted:
+            result = self.api("POST", f"/messages/{message['message_id']}/generation-retries",
+                              {"generation_id": message["generation_id"], "expected_turn_count": 1})
+        self.assertEqual(result["generation"]["input_snapshot"]["plan_refs"],
+                         [{"plan_id": plan["plan_id"], "plan_version": 1}])
+        self.assertFalse(any("当前正式计划引用" in part["content"] for part in attempted.call_args.args[0]))
+
+    def test_live_summary_rechecks_source_correction_without_rewriting_history(self):
+        when = stamp(self.s.clock())
+        event = self.api("POST", f"/patients/{PA}/medication-events", {
+            "source_event_id": existing.key(), "occurred_at": when, "reported_status": "unknown"
+        }, expected=201)
+        window = dict(window_start=stamp(self.s.clock() - timedelta(days=1)),
+                      window_end=stamp(self.s.clock() + timedelta(days=1)), data_environment="demo")
+        summary = self.api("POST", f"/patients/{PA}/summary-refresh", window)
+        analytics = self.s.app.state.s03_analytics
+        principal = analytics.auth.resolve(self.s.a.cookies.get("session"))
+        with self.s.db.connection(readonly=True) as conn:
+            self.assertTrue(analytics.summary_feedback_current(conn, principal, PA, summary))
+        self.s.time[0] += timedelta(seconds=1)
+        self.api("POST", f"/events/{event['event_id']}/withdrawals",
+                 {"expected_revision": 1, "reason": "虚构来源撤回"})
+        with self.s.db.connection(readonly=True) as conn:
+            self.assertFalse(analytics.summary_feedback_current(conn, principal, PA, summary))
+        self.assertEqual(self.api("GET", f"/patients/{PA}/summary?" + urlencode(dict(window, as_of=when))), summary)
+
     def test_unknown_result_never_retries(self):
         session = self.create()
         self.trigger("llm_timeout", session=session)
