@@ -189,6 +189,7 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
         with db.connection(readonly=True) as conn:
             profile = support.profile(conn)
             directory_ready = catalog_registered(conn)
+            rule_version = support.state.rule_reference(conn)
         dialogue_ready = profile["configuration_status"] == "ready"
         return envelope(request, {"auth_mode": settings.AUTH_MODE, "llm_mode": settings.LLM_MODE,
             "requested_pipeline": profile["requested_pipeline"],
@@ -198,8 +199,9 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
                 *[{"code": code, "available": False, "reason": "尚未到对应业务阶段或真实依赖未接入"}
                   for code in ("system_notification", "external_auth", "cas")],
                 {"code":"dialogue","available":dialogue_ready,
-                 "reason":"本地 mock single_pass" if dialogue_ready else "已请求的流水线尚未接入"},
+                 "reason":f"本地 mock {profile['requested_pipeline']}" if dialogue_ready else "已请求的流水线尚未接入"},
                 {"code":"real_model","available":False,"reason":"真实模型尚未接入"},
+                {"code":"explicit_runner","available":True,"reason":"通过 run-worker 明确启动；网页启动不自动运行任务"},
                 {"code":"support_intensity_mapping","available":False,"reason":"支持强度方法尚未接入"},
                 {"code":"demo_login","available":True,"reason":None},
                 {"code":"in_app_notification","available":True,"reason":"仅显式执行的本地模拟提交；不等于送达、展示或响应"},
@@ -211,6 +213,8 @@ def create_app(settings: Settings | None = None, authority: DemoAuthority | None
                              {"kind": "contract", "version": "flow-v0.1"},
                              {"kind": "contract", "version": "B-v0.4"},
                              {"kind": "contract", "version": "C-v0.2"},
+                             {"kind": "runner", "version": "s06-runner-v1"},
+                             {"kind": "rule", "version": rule_version},
                              {"kind": "model_config", "version": profile["model_config_version"]}]})
 
     app.state.registry.include_router(app, router)

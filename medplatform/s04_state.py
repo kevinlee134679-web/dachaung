@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 
 from . import s04_store as store
+from . import s06_rules as rules
 from .documents import changed, encode, expected, fingerprint, get, meta, stamp, uid
 from .errors import AppError
 from .s04_knowledge import CONTRACT
@@ -18,7 +19,7 @@ CASES = {
         ("case-fatigue", "demo-family-self", "长期用药倦怠", "treatment_fatigue", "我吃药吃累了，想让日常安排简单一点。"),
     )
 }
-FAULTS = {"llm_timeout", "empty_response", "invalid_json", "knowledge_empty"}
+FAULTS = {"llm_timeout", "empty_response", "invalid_json", "knowledge_empty", "star_mid_failure"}
 EXPIRY_MAINTENANCE_LIMIT = "9999-12-31T23:59:59.999999+00:00"
 
 
@@ -31,8 +32,15 @@ def case(conn, identifier):
 
 
 class SupportState:
-    def __init__(self, clock, execution):
+    def __init__(self, clock, execution, settings=None):
         self.clock, self.execution = clock, execution
+        self.settings = settings
+
+    def policy(self, conn):
+        return rules.policy(conn, getattr(self.settings, 'SUPPORT_RULE_PROFILE', 'support-default'))
+
+    def rule_reference(self, conn):
+        return rules.reference(self.policy(conn))
 
     def new_session(self, conn, body):
         patient, case_id, invitation_id = body["patient_id"], body["case_id"], body["invitation_id"]
@@ -131,7 +139,8 @@ class SupportState:
             self.change_mode(conn, session, state, "normal", "expiry")
             state = store.by_id(conn, "UIState", session["session_id"])
             current = state["ui_mode"]
-        valid = stamp(when + timedelta(hours=2)) if requested == "simplified" else None
+        policy = self.policy(conn)
+        valid = stamp(when + timedelta(seconds=policy['mode_seconds'])) if requested == "simplified" else None
         revision = state["revision"] + 1
         identifier = session["session_id"]
         next_state = dict(state, ui_mode=requested, revision=revision, changed_at=at, valid_until=valid,
@@ -145,15 +154,29 @@ class SupportState:
             self.execution.create_in_transaction(conn, None, {
                 "patient_id": session["patient_id"], "kind": "expire_b_state", "owner_module": "B",
                 "owner_operation_key": f"b-ui-expiry:{identifier}:{revision}", "scheduled_at": valid,
-                "valid_until": EXPIRY_MAINTENANCE_LIMIT, "intervention_id": None, "rule_version": RULE_VERSION,
+                "valid_until": EXPIRY_MAINTENANCE_LIMIT, "intervention_id": None, "rule_version": rules.reference(policy),
                 "payload": {"session_id": identifier, "target_kind": "ui_mode",
                             "target_id": identifier, "expected_revision": revision},
             }, internal=True)
         return change["mode_change_id"]
 
     def validate_task(self, conn, task):
+        if task['kind'] == 'check_in_node':
+            policy = rules.by_reference(conn, task['rule_version'])
+            patient = get(conn, 'Patient', task['patient_id'])
+            payload = task['payload']
+            delay = {'week_1':7, 'week_4':28}.get(payload['node_code'])
+            enrolled = patient['enrollment_at']
+            if (delay is None or enrolled is None or not patient['meta']['is_simulated']
+                    or payload['cycle_id'] != fingerprint([task['patient_id'], enrolled])
+                    or payload['rule_version'] != task['rule_version']):
+                raise AppError(409, 'B_TARGET_CONFLICT', '周期节点来源或规则不匹配')
+            start = datetime.fromisoformat(enrolled) + timedelta(days=delay)
+            if task['scheduled_at'] != stamp(start) or task['valid_until'] != stamp(start + timedelta(seconds=policy['node_window_seconds'])):
+                raise AppError(409, 'B_TARGET_CONFLICT', '周期节点必须保留原起点和24小时时窗')
+            return
         if task["kind"] != "expire_b_state":
-            raise AppError(503, "TASK_OWNER_NOT_INTEGRATED", "本阶段仅接入 B 模式到期任务")
+            raise AppError(503, "TASK_OWNER_NOT_INTEGRATED", "该自动分级干预依赖的决策或支持强度方法尚未适配")
         payload = task["payload"]
         session = store.session(conn, payload["session_id"])
         state = store.by_id(conn, "UIState", payload["target_id"])
@@ -163,6 +186,11 @@ class SupportState:
             raise AppError(409, "B_TARGET_CONFLICT", "B 到期目标或版本不匹配")
 
     def run_task(self, conn, task):
+        if task['kind'] == 'check_in_node':
+            self.validate_task(conn, task)
+            delay = {'week_1':7, 'week_4':28}[task['payload']['node_code']]
+            related = self.periodic(conn, task['patient_id'], None, stamp(self.clock()), offsets=(delay,), policy=rules.by_reference(conn, task['rule_version']))
+            return related[0] if related else None
         payload = task["payload"]
         state = store.by_id(conn, "UIState", payload["target_id"], required=False)
         if state is None or state["revision"] != payload["expected_revision"]:
@@ -208,16 +236,17 @@ class SupportState:
                 expired += 1
         return expired
 
-    def invitation(self, conn, patient, session_id, trigger_type, trigger_ref, at):
+    def invitation(self, conn, patient, session_id, trigger_type, trigger_ref, at, *, policy=None):
         key = fingerprint([patient, trigger_type, trigger_ref])
         existing = store.by_source(conn, "Invitation", key)
         if existing is not None:
             return existing
+        policy = policy or self.policy(conn)
         doc = dict(invitation_id=uid(), patient_id=patient, session_id=session_id, trigger_type=trigger_type,
                    trigger_ref=trigger_ref, status="pending", title="可选的支持对话",
                    description="如果你愿意，可以聊聊最近想得到哪方面的支持。", created_at=at,
-                   valid_until=stamp(datetime.fromisoformat(at) + timedelta(hours=24)), displayed_at=None,
-                   resolved_session_id=None, rule_version=RULE_VERSION, is_simulated=True)
+                   valid_until=stamp(datetime.fromisoformat(at) + timedelta(seconds=policy['invitation_seconds'])), displayed_at=None,
+                   resolved_session_id=None, rule_version=rules.reference(policy), is_simulated=True)
         return store.insert(conn, "Invitation", doc["invitation_id"], doc, source_key=key)
 
     @staticmethod
@@ -247,14 +276,44 @@ class SupportState:
         self.update_invitation(conn, invitation, status=data["choice"], resolved_session_id=target)
         return data
 
-    def periodic(self, conn, patient, session_id, at):
+    def prepare_checkins(self, conn, patient):
+        enrolled = get(conn, 'Patient', patient)['enrollment_at']
+        if enrolled is None:
+            return 0
+        cycle = fingerprint([patient, enrolled])
+        policy = self.policy(conn)
+        rule_ref = rules.reference(policy)
+        created = 0
+        for offset, code in ((7, 'week_1'), (28, 'week_4')):
+            key = fingerprint([patient, enrolled, offset])
+            if store.by_source(conn, 'CheckinNode', key) is not None:
+                continue
+            start = datetime.fromisoformat(enrolled) + timedelta(days=offset)
+            end = start + timedelta(seconds=policy['node_window_seconds'])
+            if stamp(end) <= stamp(self.clock()):
+                self.periodic(conn, patient, None, stamp(self.clock()), offsets=(offset,))
+                continue
+            operation = f'b-node:{cycle}:{offset}'
+            existing = conn.execute("SELECT 1 FROM a_tasks WHERE owner_module='B' AND owner_operation_key=? AND data_environment='demo'", (operation,)).fetchone()
+            if existing:
+                continue  # Existing nodes retain their original immutable rule snapshot.
+            self.execution.create_in_transaction(conn, None, dict(
+                patient_id=patient, kind='check_in_node', owner_module='B', owner_operation_key=operation,
+                scheduled_at=stamp(start), valid_until=stamp(end), intervention_id=None, rule_version=rule_ref,
+                payload=dict(cycle_id=cycle, node_code=code, rule_version=rule_ref),
+            ), internal=True)
+            created += existing is None
+        return created
+
+    def periodic(self, conn, patient, session_id, at, *, offsets=(7, 28), policy=None):
         enrolled = get(conn, "Patient", patient)["enrollment_at"]
         related = []
+        policy = policy or self.policy(conn)
         if enrolled is None:
             return related
-        for delay in (7, 28):
+        for delay in offsets:
             start = datetime.fromisoformat(enrolled) + timedelta(days=delay)
-            first, last = stamp(start), stamp(start + timedelta(hours=24))
+            first, last = stamp(start), stamp(start + timedelta(seconds=policy['node_window_seconds']))
             if at < first:
                 continue
             key = fingerprint([patient, enrolled, delay])
@@ -264,11 +323,11 @@ class SupportState:
                     related.append(existing["invitation_id"])
                 continue
             node_id = uid()
-            invite = self.invitation(conn, patient, session_id, "periodic", node_id, at) if at < last else None
+            invite = self.invitation(conn, patient, session_id, "periodic", node_id, at, policy=policy) if at < last else None
             store.insert(conn, "CheckinNode", node_id, dict(
                 node_id=node_id, patient_id=patient, enrollment_at=enrolled, offset_days=delay,
                 opened_at=first, closed_at=last, outcome="invited" if invite else "missed",
-                invitation_id=invite["invitation_id"] if invite else None, checked_at=at, rule_version=RULE_VERSION,
+                invitation_id=invite["invitation_id"] if invite else None, checked_at=at, rule_version=rules.reference(policy),
             ), source_key=key)
             if invite is not None:
                 related.append(invite["invitation_id"])
@@ -288,7 +347,7 @@ class SupportState:
                 raise AppError(409, "DEMO_TRIGGER_CONFLICT", "同一场景号对应不同内容")
             return previous["result"]
         scenario, at = body["scenario"], body["occurred_at"]
-        if scenario == "star_mid_failure" or at > stamp(self.clock()):
+        if at > stamp(self.clock()):
             raise AppError(403, "DEMO_TRIGGER_DISABLED", "场景尚未启用或时间晚于演示时钟")
         trigger_id, related = uid(), []
         if scenario == "state_event":
@@ -323,6 +382,7 @@ class SupportState:
         return data
 
     def consume_notices(self, conn, patient):
+        self.process_support_needs(conn, patient)
         for notice in conn.execute("""
             SELECT n.* FROM change_notices n LEFT JOIN a_notice_consumptions x
             ON n.notice_id=x.notice_id AND x.consumer='B'
@@ -339,11 +399,37 @@ class SupportState:
                 exists = conn.execute("""
                     SELECT 1 FROM s03_results WHERE result_id=? AND patient_id=? AND data_environment='demo' AND kind='summary'
                 """, (ref["resource_id"], patient)).fetchone() is not None
-            reason = "S04 无已启用的自动触发规则" if exists else "权威来源不匹配或不可用"
+            reason = "仅记录权威来源；支持邀请由已登记的明确自报规则判断" if exists else "权威来源不匹配或不可用"
             ack = self.audit(conn, "A_notice", patient, notice["notice_id"], ref, False, reason)
             conn.execute("INSERT INTO a_notice_consumptions VALUES (?,?,?,?,?,?)", (
                 notice["notice_id"], "B", "ignored", ack["integration_event_id"], reason, stamp(self.clock()),
             ))
+
+    def process_support_needs(self, conn, patient):
+        policy = self.policy(conn)
+        if not policy['state_events']:
+            return
+        at = stamp(self.clock())
+        since = stamp(self.clock() - timedelta(seconds=policy['offer_cooldown_seconds']))
+        assessments = sorted(store.records(conn, 'Assessment', patient), key=lambda a:(a['observed_at'], a['assessment_id']))
+        for assessment in assessments:
+            if (assessment['kind'] != 'self_report' or not since <= assessment['observed_at'] <= at
+                    or not any(i['dimension']=='support_need' for i in assessment['self_report_items'])):
+                continue
+            source = assessment['assessment_id']
+            key = fingerprint(['support_need_rule', patient, source])
+            if store.by_source(conn, 'Integration', key) is not None:
+                continue
+            session = store.session(conn, assessment['session_id'])
+            recent = [i for i in store.records(conn, 'Invitation', patient) if
+                      i['status']=='pending' and i['valid_until']>at or i['trigger_type']=='state_event' and i['created_at']>=since]
+            related = []
+            if session['status']=='active' and not recent:
+                invite = self.invitation(conn, patient, session['session_id'], 'state_event', source, at, policy=policy)
+                related.append(invite['invitation_id'])
+            self.audit(conn, 'support_need_rule', patient, source,
+                       {'assessment_id':source,'rule_version':rules.reference(policy)}, bool(related),
+                       None if related else '已有邀请、仍在频控间隔或会话已结束', related)
 
     def touch_intervention(self, conn, doc):
         at = stamp(self.clock())

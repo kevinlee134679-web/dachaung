@@ -70,14 +70,14 @@ function fieldControl(root, label) {
 }
 function setup(fetch, crypto = webcrypto) {
   const roots = Object.fromEntries(['#main', '#identity', '#notice', '#health', '#refresh'].map(k => [k, new Element('div')]));
-  const stored = new Map(), savedSession = new Map();
+  const stored = new Map(), savedSession = new Map(), navButtons = [];
   const storage = values => ({ getItem: key => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) });
   const context = vm.createContext({ Node: Element, FormData: Form, TextEncoder, Uint8Array, ArrayBuffer,
     AbortController, setTimeout, clearTimeout, URL, Blob, Intl, crypto, fetch,
     localStorage: storage(stored), sessionStorage: storage(savedSession),
     document: { createElement: tag => new Element(tag), createTextNode: text => new Element('#text', String(text)),
-      querySelector: selector => roots[selector], querySelectorAll: () => [] } });
+      querySelector: selector => roots[selector], querySelectorAll: selector => selector === 'nav button' ? navButtons : [] } });
   const source = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's02.js'), 'utf8');
   const support = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's04.js'), 'utf8');
   const social = fs.readFileSync(path.join(__dirname, '..', 'medplatform', 'static', 's05.js'), 'utf8');
@@ -85,7 +85,7 @@ function setup(fetch, crypto = webcrypto) {
   const cutoff = source.lastIndexOf('for (const b of document.querySelectorAll');
   assert.ok(cutoff > 0);
   vm.runInContext(source.slice(0, cutoff), context);
-  vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,identity,navigate,render,fileView,questionnaireView,familyView,supportMessage,invitationList};', context);
+  vm.runInContext(support + '\nglobalThis.frontend = {state,api,button,identity,navigate,render,fileView,questionnaireView,familyView,supportMessage,invitationList,homeSupportOverview};', context);
   vm.runInContext(social, context);
   vm.runInContext(drafts + '\nObject.assign(globalThis.frontend, {restoreServicePage});', context);
   const app = context.frontend;
@@ -96,7 +96,7 @@ function setup(fetch, crypto = webcrypto) {
     app.state.patient = access;
   }
   choose();
-  return { app, roots, stored, savedSession, choose };
+  return { app, roots, stored, savedSession, choose, navButtons };
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -684,4 +684,83 @@ test('S05 unknown draft write uses the original key and blocks a changed request
   assert.equal(posted()[0].key, posted()[1].key);
   assert.match(main.textContent, /草稿编号 draft-a/);
   assert.ok([...env.stored.values()].every(value => !value.includes('原提交正文')));
+});
+
+test('S07 home reads authoritative support and service status without writes or markup execution', async () => {
+  const calls=[];
+  const env=setup(async (url,options)=>{
+    calls.push([url,options.method]);
+    if(url.includes('support-recommendations')) return success({need_status:'identified',primary_action:{title:'<img src=x onerror=evil()>',reason:'明确需求'},secondary_actions:[]});
+    return success({items:[{service_id:'service-a',service_name:'虚构服务',status:'in_progress'}],next_cursor:null});
+  });
+  env.app.state.patient.effective_scopes.push('support:read','services:read');
+  await env.app.homeSupportOverview();
+  assert.match(env.roots['#main'].textContent,/虚构服务 · 模拟处理中/);
+  assert.match(env.roots['#main'].textContent,/<img src=x onerror=evil\(\)>/);
+  assert.equal(find(env.roots['#main'],n=>n.tagName==='IMG'),null);
+  assert.ok(calls.every(([,method])=>method==='GET'));
+});
+
+test('S07 home does not request support facts without their exact scopes', async () => {
+  const calls=[];
+  const env=setup(async url=>{calls.push(url);return success({});});
+  await env.app.homeSupportOverview();
+  assert.deepEqual(calls,[]);
+});
+
+test('S07 home discards delayed service content after switching patient', async () => {
+  const response=deferred(),calls=[];
+  const env=setup(async url=>{calls.push(url);return response.promise;});
+  env.app.state.patient.effective_scopes.push('services:read');
+  const pending=env.app.homeSupportOverview();
+  env.choose('pb');env.app.state.epoch++;env.roots['#main'].replaceChildren();
+  response.resolve(success({items:[{service_id:'old',service_name:'PRIVATE_OLD_PATIENT',status:'completed'}],next_cursor:null}));
+  await assert.rejects(pending,error=>error.constructor.name==='ViewChanged');
+  assert.doesNotMatch(env.roots['#main'].textContent,/PRIVATE_OLD_PATIENT/);
+  assert.deepEqual(calls,['/api/v1/patients/pa/services?limit=3&order=desc']);
+});
+
+test('S07 navigation cannot interrupt a pending patient switch and retain the previous own controls', async () => {
+  const sent=deferred(), reply=deferred();
+  let changed=false;
+  const env=setup(async (url,options)=>{
+    if(url.endsWith('/auth/current-patient')){sent.resolve();const result=await reply.promise;changed=true;return result;}
+    if(url.endsWith('/auth/me')){
+      assert.equal(changed,true);
+      const access={patient:{patient_id:'pb',display_name:'family target',timezone:'Asia/Shanghai'},relationship:'family',effective_scopes:[]};
+      return success({...env.app.state.context,current_patient_id:'pb',patients:[access]});
+    }
+    return success({items:[],next_cursor:null});
+  });
+  env.app.state.page='profile';
+  const nav=new Element('button');nav.dataset={page:'support'};env.navButtons.push(nav);
+  env.app.identity();
+  const picker=find(env.roots['#identity'],n=>n.tagName==='SELECT');picker.value='pb';
+  const pending=picker.change();await sent.promise;
+  assert.equal(nav.disabled,true);
+  const epoch=env.app.state.epoch;
+  await env.app.navigate('support');
+  const afterNavigation=env.app.state.epoch;
+  reply.resolve(success({outcome:'selected'}));await pending;
+  assert.equal(afterNavigation,epoch,'navigation must not invalidate the switch response');
+  assert.equal(env.app.state.patient.patient.patient_id,'pb');
+  assert.equal(env.app.state.patient.relationship,'family');
+  assert.equal(nav.disabled,false);
+  assert.doesNotMatch(env.roots['#main'].textContent,/开始自由对话|打开虚构案例会话/);
+  await env.app.navigate('support');
+  assert.equal(env.app.state.page,'support','navigation resumes after switch');
+});
+
+test('S07 rejected patient switch releases navigation and preserves the last authorized context', async () => {
+  const env=setup(async ()=>failure(403,'FORBIDDEN','无该对象权限'));
+  env.app.state.page='profile';
+  const nav=new Element('button');nav.dataset={page:'support'};env.navButtons.push(nav);
+  env.app.identity();
+  const picker=find(env.roots['#identity'],n=>n.tagName==='SELECT');picker.value='pb';
+  await picker.change();
+  assert.equal(env.app.state.switchingPatient,false);
+  assert.equal(nav.disabled,false);
+  assert.equal(env.app.state.patient.patient.patient_id,'pa');
+  await env.app.navigate('support');
+  assert.equal(env.app.state.page,'support');
 });

@@ -9,6 +9,8 @@ try {
         & $Python -X utf8 -m venv .venv
         if ($LASTEXITCODE -ne 0) { throw 'Virtual environment creation failed.' }
     }
+    & ./.venv/Scripts/python.exe -X utf8 -c "import sys; assert sys.version_info[:2] == (3,14), 'Existing environment must be CPython 3.14'"
+    if ($LASTEXITCODE -ne 0) { throw 'Existing virtual environment has the wrong Python version; choose another environment.' }
     & ./.venv/Scripts/python.exe -X utf8 -m pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
     & ./.venv/Scripts/python.exe -X utf8 -m pip check

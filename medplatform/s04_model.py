@@ -102,6 +102,11 @@ class MockModel:
     output_parameter = None
 
     def complete(self, messages, *, timeout, output_limit, scenario=None):
+        if scenario == 'star_mid_failure' and any(
+            m['content'].startswith('STAR_STAGE_DATA:') and '"stage":"strategy"' in m['content']
+            for m in messages if m['role'] == 'system'
+        ):
+            return Completion(None, 'STAR_STEP_FAILED')
         if scenario == "llm_timeout":
             return Completion(None, "PROVIDER_RESULT_UNKNOWN", outcome_unknown=True)
         if scenario == "empty_response":
@@ -155,10 +160,11 @@ class MockModel:
             reply = "听起来你想先有个简单的着手点。可以只写下今天最需要帮助的一件事。"
             focus, strategies = "action_support", ["reflection", "permission_based_advice"]
             action = dict(type="small_step", description="只写下一件今天希望得到帮助的事")
-        return Completion(json.dumps(dict(
+        from .s06_star import mock_payload
+        return Completion(json.dumps(mock_payload(dict(
             assistant_reply=reply, support_focus=focus, communication_strategy=strategies,
             difficulty_cues=cues, suggested_action=action, knowledge_citations=citations, change_readiness=None,
-        ), ensure_ascii=False))
+        ), messages, scenario), ensure_ascii=False))
 
 
 def validate_completion(raw, allowed_user_messages, citations):

@@ -381,7 +381,7 @@ class S03Execution:
                 elif task['kind']=='refresh_summary':
                     result=self.analytics.refresh_in_transaction(c,None,task['patient_id'],{**task['payload'],'as_of':at})
                     execution['result_ref']=result['summary_id']
-                elif task['kind']=='expire_b_state' and self.support_state is not None:
+                elif task['kind'] in ('expire_b_state', 'check_in_node') and self.support_state is not None:
                     execution['result_ref']=self.support_state.run_task(c,task)
                 elif task['kind']=='dispatch_service':
                     identifier=self.service_dispatch.persist(c,task,execution,at)
@@ -430,7 +430,7 @@ class S03Execution:
                     row=c.execute('SELECT document_json FROM a_executions WHERE task_id=? ORDER BY attempt DESC LIMIT 1',(task['task_id'],)).fetchone()
                     if not row:
                         continue
-                    execution=json.loads(row[0]);local=task['kind'] in ('refresh_statistics','refresh_summary','deliver_reminder','expire_b_state')
+                    execution=json.loads(row[0]);local=task['kind'] in ('refresh_statistics','refresh_summary','deliver_reminder','expire_b_state','check_in_node')
                     outcome={'error_code':'EXECUTION_INTERRUPTED','error_message':'本地事务未提交，原尝试已记录；按安全间隔恢复' if local else '在途副作用结果未知，必须核查',
                              'retryable':local,'outcome_unknown':not local}
                     if local and task['cancellation_requested']:

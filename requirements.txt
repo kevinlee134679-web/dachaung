@@ -1,4 +1,4 @@
-# Verified CPython 3.14.10 / Windows x64; S02 adds multipart and IANA timezones.
+# CPython 3.14.10; Windows baseline plus Linux-only local encryption dependencies.
 annotated-doc==0.0.6
 annotated-types==0.8.0
 anyio==4.16.0
@@ -20,3 +20,7 @@ typing-inspection==0.4.5
 typing_extensions==4.16.0
 tzdata==2026.6
 uvicorn==0.54.0
+# Linux payload protection; no change to Windows dependency selection.
+cryptography==50.0.2; sys_platform == "linux"
+cffi==2.1.1; sys_platform == "linux"
+pycparser==3.12; sys_platform == "linux"

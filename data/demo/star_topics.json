@@ -1,0 +1,4 @@
+{
+  "version": "s06-topics-v1",
+  "topics": ["patient_goal", "medication_concerns", "daily_barriers", "support_resources", "listening", "closing"]
+}

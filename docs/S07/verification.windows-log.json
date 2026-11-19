@@ -1,0 +1,33 @@
+{
+  "title": "Windows原日志确认服务正常退出、CMD等待导致误判",
+  "stage": "S07 Windows验收整改",
+  "status": "已确认并修正原控制器误判；r2待交付及真实Windows完整复验，尚未标总体通过",
+  "schema": "0016",
+  "evidence_file": "verification.windows-log.json",
+  "completed": [
+    "负责人提供原server.log，保留于private/s06-s07/windows-user-server-log.txt：服务进程13696正常Shutting down、Application shutdown complete、Finished server process；同一日志出现CMD的“终止批处理操作吗(Y/N)?”。",
+    "确认本次服务本身已经正常退出，外层批处理等待确认使旧控制器等待超时后误报。R0053时尚未取得原日志的未知项现已解决，保留R0053历史并追加本记录。",
+    "r2已实现分别核验应用进程句柄退出、端口释放、本轮正常关闭日志，之后才单独释放空闲命令壳。应用业务0.7.3、schema0016、API和Windows DPAPI均未改。"
+  ],
+  "remaining": [
+    "旧控制器在第一停止阶段提前结束，真实Windows重启/浏览器/worker/迁移/完整回归尚未执行；需要负责人使用r2新目录复验，不能直接把整体failed改为passed。",
+    "GitHub按负责人要求仍未上传，等S06/S07验收收尾完成后统一处理。"
+  ],
+  "verification": [
+    "原Windows日志直接证明实际服务正常关闭，CMD批处理确认等待与旧源码只等CMD退出的判据吻合。",
+    "r2前轮已通过4项退出安全边界回归，以及Linux274项Python（内含Node56）、12组实际浏览器预演；明确not_windows，非Windows通过证明。",
+    "当前仅追加真实证据及更新状态说明，没有放宽服务退出要求；强杀应用仍失败，空闲CMD只能在实际服务证据全部成立后单独释放。"
+  ],
+  "next": [
+    "封装带acceptance_revision=2的新包并私有交付；旧包及失败日志保留，新包完整解压到新目录。",
+    "负责人不必重装Python/Node，只需用现有环境运行r2入口，回传末行完整WINDOWS_ACCEPTANCE_RESULT；逐项核对真实Windows全部检查及实际跳过数。"
+  ],
+  "review": [
+    "把问题定位到验收控制器与CMD等待，没有把已经正常关闭的服务误称为业务故障，也不因单项日志通过而宣称整体完成。",
+    "用户提供的本地路径、个人网盘ID与临时签名下载地址不写入公开源码；只记录必要平台版本和退出事实。"
+  ],
+  "record": "R0054",
+  "version_record": "V0054",
+  "recorded_at": "2026-11-19T09:22:43+08:00",
+  "application": "0.7.3"
+}

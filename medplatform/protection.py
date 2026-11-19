@@ -1,6 +1,7 @@
-"""Windows per-user DPAPI. No plaintext or machine-wide fallback."""
+"""Local protected payloads: Windows DPAPI or Linux user-owned AES-GCM keys."""
 import ctypes
 import os
+import sys
 from ctypes import wintypes
 
 from .errors import AppError
@@ -16,8 +17,15 @@ def _blob(raw):
 
 
 def transform(raw: bytes, context: str, *, decrypt=False) -> bytes:
+    if sys.platform == 'linux':
+        try:
+            from .linux_protection import transform as linux_transform
+            return linux_transform(raw, context, decrypt=decrypt)
+        except (OSError, ValueError, ImportError):
+            raise AppError(503, 'SENSITIVE_RECEIPT_UNAVAILABLE',
+                           '本地加密密钥或受保护载荷不可用，请核对当前用户、文件权限及原密钥备份') from None
     if os.name != 'nt':
-        raise AppError(503, 'SENSITIVE_RECEIPT_UNAVAILABLE', '当前系统不支持本地受保护会话，请使用已验证的Windows环境')
+        raise AppError(503, 'SENSITIVE_RECEIPT_UNAVAILABLE', '当前系统不支持本地受保护会话，请使用Windows或Linux环境')
     source, keep_source = _blob(raw)
     entropy, keep_entropy = _blob(context.encode('utf8'))
     output = Blob()

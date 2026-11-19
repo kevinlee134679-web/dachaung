@@ -1,0 +1,40 @@
+{
+  "title": "S07恢复复查完成与Windows实机验收包",
+  "stage": "S07 验收收尾",
+  "status": "环境恢复复查完成；Windows验收包已预演，等待负责人在Windows运行；GitHub按新指示验收后统一上传",
+  "schema": "0016",
+  "evidence_file": "verification.closeout.json",
+  "completed": [
+    "负责人明确调整顺序：先完成S06/S07验收，再统一上传GitHub。此用户新指示覆盖R0050的远程交付门槛；不再把授权401算作当前S07验收阻塞，不改写R0050历史。",
+    "恢复的Linux环境已重新启动原演示库；85表与上次完整备份逐表一致、integrity_check/foreign_key_check通过；268项原回归再次通过。",
+    "真实Chromium13组恢复检查通过：1365/390五导航、原对话、原完成服务/三维反馈、明确重启后的原受保护Cookie会话。无脚本异常，原S06未知生成记录保留。",
+    "应用0.7.3：Windows启动分支保留父链等待子进程并透传真实退出码，POSIX保留exec；新增2项行为回归。新增WINDOWS_ACCEPTANCE.cmd、说明、隔离Python验收器和实际系统浏览器12组检查。",
+    "完整Windows验收流程已用Linux rehearsal模式预演两轮，最终270项Python（内含Node56）、12组实际Chromium、同库会话重启、显式worker、备份及0014→0016保留80表全部通过；明确标记not_windows，不当作DPAPI/Windows通过。"
+  ],
+  "remaining": [
+    "Windows实机尚未运行。负责人已确认有Windows电脑，可运行验收包；需要收到真实RESULT.json或WINDOWS_ACCEPTANCE_RESULT摘要后核查，有失败先修复复验，才关闭该项。",
+    "本会话指定下载目录/codex/browser/projectless/0001-files-mentioned-by-the-user-uploaded-file-pointe/output在当前Linux环境不可创建，OS返回Permission denied；实际不是自动审批拒绝。工作区可生成并校验源码验收ZIP，文件交付方式需客户端可下载工作区或恢复指定输出目录。",
+    "GitHub当前按负责人指示暂不上传；Windows验收完成后再统一处理官方授权、正常推送及远端复现，不提前发送源码。"
+  ],
+  "verification": [
+    "恢复原库85表及完整性/外键通过；private/s06-s07/restoration-data-before.json。恢复全量268项通过66.746秒；restoration-full-tests.log。",
+    "restoration-browser.json：13组实际浏览器通过，无pageErrors；恢复原服务、反馈、对话及受保护会话。",
+    "两项新启动器分支回归通过；首次测试文件with续行语法错误原日志保留，修正后通过。",
+    "windows-harness-linux-rehearsal-attempt2.log及对应RESULT.json：application0.7.3，270项测试、0失败/错误/跳过，12组浏览器；platform=linux，native_windows=false，status=rehearsal_passed_not_windows。",
+    "Linux直接运行原生Windows验收入口明确返回2并说明必须在Windows运行；没有冒充Windows实机证据。14个旧迁移、原Linux保护实现与追加历史前缀仍保持。"
+  ],
+  "next": [
+    "将源码验收包交付负责人，解压到新Windows目录，安装/使用CPython3.14和Node24、系统Edge/Chrome，双击WINDOWS_ACCEPTANCE.cmd；只回传结果摘要，不发密码/Cookie/原始私人日志。",
+    "核查真实Windows结果的native_windows=true、status=passed、实际测试/跳过计数、系统浏览器和原生DPAPI/启动/停止/迁移结果；有错误沿原日志修复，使用新隔离目录复验，不清原演示数据。",
+    "Windows通过后追加完成记录，再按负责人安排统一GitHub交付；当前不启动新业务阶段。"
+  ],
+  "review": [
+    "Windows命令调用保留cmd.exe原生字符串引用，避免用CRT反斜杠转义破坏含空格路径；拒绝命令元字符路径。Windows实机仍需要实际回传，静态和Linux分支测试不替代实测。",
+    "验收每次使用独立venv、随机新库、私有日志和端口，只终止自己创建的服务；不读取/重置原演示库，不含.env、密钥或运行数据。",
+    "与负责人沟通后如实保留Windows未完成状态，不因已有Linux270项通过而宣布两项均完成。"
+  ],
+  "record": "R0051",
+  "version_record": "V0051",
+  "recorded_at": "2026-11-19T08:30:42+08:00",
+  "application": "0.7.3"
+}

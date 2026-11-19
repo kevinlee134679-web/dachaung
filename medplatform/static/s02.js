@@ -5,6 +5,7 @@ const state = {
   page: "home",
   tab: "overview",
   epoch: 0,
+  switchingPatient: false,
   response: null,
   question: 0,
   definition: null,
@@ -344,7 +345,11 @@ function identity() {
     }, `${item.patient.display_name} · ${item.relationship==="self"?"本人":"家庭协助"}`));
     picker.addEventListener("change", () => act(picker, async () => {
       if (!picker.value) return;
+      if (state.switchingPatient) return;
       const selectedPatient = picker.value;
+      state.switchingPatient = true;
+      const navigation = [...document.querySelectorAll('nav button')].map(node => [node, node.disabled]);
+      for (const [node] of navigation) node.disabled = true;
       state.epoch++;
       const transition = captureView();
       state.response = null;
@@ -361,6 +366,9 @@ function identity() {
           await render();
           if (isCurrentView(transition)) actionError(error, transition);
         }
+      } finally {
+        state.switchingPatient = false;
+        for (const [node, disabled] of navigation) node.disabled = disabled;
       }
     }));
     area.append(el("label", {}, "正在管理", picker));
@@ -507,6 +515,7 @@ async function render() {
   }
 }
 async function navigate(page, tab = "overview") {
+  if (state.switchingPatient) return;
   notice("");
   state.epoch++;
   state.page = page;
@@ -526,6 +535,7 @@ async function homeView() {
   if (scope("plan:read")) await scheduleView();
   if (scope("interventions:read")) await homeSupportInvitations();
   if (own() && scope("peer:read") && typeof peerHomeMembership === "function") await peerHomeMembership();
+  await homeSupportOverview();
   if (scope("summary:read")) {
     const view = captureView();
     const day = today() + "T00:00:00+08:00", window_end = new Date(new Date(day).getTime() + 86400000).toISOString(),
@@ -538,6 +548,46 @@ async function homeView() {
       main.append(p(error.status === 409 ? "近期报告尚未准备好。请进入用药报告，在正式时段就绪后明确刷新。" : error.message, error.status === 409 ? "muted" : "error"));
     }
   }
+}
+async function homeSupportOverview() {
+  const canRecommend = scope('support:read'), canReadServices = scope('services:read');
+  if (!canRecommend && !canReadServices) return;
+  const view = captureView(), base = '/patients/' + encodeURIComponent(view.patientId);
+  const section = el('section', {'aria-label':'近期支持与服务'});
+  const recommendation = el('div', {}), services = el('div', {});
+  section.append(recommendation, services);
+  main.append(section);
+  const jobs = [];
+  if (canRecommend) jobs.push((async () => {
+    try {
+      const data = await api(base + '/support-recommendations', 'GET', null, view);
+      requireCurrentView(view);
+      const actions = [data.primary_action, ...(data.secondary_actions || [])].filter(Boolean);
+      recommendation.append(el('h2', {}, '当前支持建议'));
+      if (actions.length) for (const action of actions) recommendation.append(p(action.title), p(action.reason, 'muted'));
+      else recommendation.append(p(data.need_status === 'none' ? '本次暂无支持需求。' : '还没有足够的明确需求信息，你也可以主动查看支持资源。', 'muted'));
+      recommendation.append(button('查看社会支持资源', () => navigate('support', 'social')));
+    } catch (error) {
+      if (error instanceof ViewChanged || !isCurrentView(view)) throw new ViewChanged();
+      recommendation.append(p(error.message, 'muted'));
+    }
+  })());
+  if (canReadServices) jobs.push((async () => {
+    try {
+      const data = await api(base + '/services?limit=3&order=desc', 'GET', null, view);
+      requireCurrentView(view);
+      services.append(el('h2', {}, '近期服务'));
+      const labels = {submitted:'已提交', in_progress:'模拟处理中', completed:'模拟完成', cancelled:'已取消', failed:'处理失败'};
+      for (const doc of data.items) services.append(el('div', {class:'item'},
+        p(doc.service_name + ' · ' + labels[doc.status]), button('查看这条服务', () => openServiceRecord(doc.service_id))));
+      if (!data.items.length) services.append(p('暂无正式服务记录。', 'muted'));
+      services.append(button('查看全部服务记录', () => navigate('profile', 'formal-services')));
+    } catch (error) {
+      if (error instanceof ViewChanged || !isCurrentView(view)) throw new ViewChanged();
+      services.append(p(error.message, 'muted'));
+    }
+  })());
+  await Promise.all(jobs);
 }
 async function patientView() {
   if (!scope("patient:read")) {

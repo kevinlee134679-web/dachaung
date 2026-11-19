@@ -1,0 +1,36 @@
+{
+  "title": "Windows浏览器等待失败与r3同步诊断修订",
+  "stage": "S07 Windows验收整改",
+  "status": "r2实际退出/重启/原会话恢复通过；浏览器创建会话等待失败，r3 Linux预演通过，待Windows复验",
+  "schema": "0016",
+  "evidence_file": "verification.windows-r3.json",
+  "completed": [
+    "记录负责人r2实机截图：Windows11、Python3.14.10、Node24.22.3、源码818070012d0ed32a7dbcc73c02b76b90709002a7。前六项通过，两次应用退出/端口释放/本轮关闭日志均true，批处理确认正常释放；原会话重启恢复通过，旧CMD问题已实测解决。",
+    "负责人system-browser.log定位到脚本第30行“开始自由对话”等待POST /sessions响应30秒超时，Node出现未处理Promise异常。尚不能断定具体UI动作/请求未返回的业务根因，不能把该失败算通过。",
+    "原write先建立响应Promise，再等待点击和全页networkidle，响应先拒绝时没有即时异常处理，导致真正的点击/页面上下文丢失。r3用Promise.all即时处理两者，改为本地API就绪观测；逐步保存进度，失败最终摘要带步骤/页面提示/脱敏请求轨迹。",
+    "仍通过可见界面操作并断言实际成功响应、正确会话编辑器、single_pass与STAR业务输出；没有改用直接API伪造UI成功或放宽超时为通过。应用业务0.7.3、schema0016、API、早期迁移和DPAPI未变。"
+  ],
+  "remaining": [
+    "r3尚未真实Windows复验；r2的worker、旧库升级、完整回归未跑到，Windows整体验收仍未完成。",
+    "新源码包的Google Drive交付需在当前授权范围内完成，保持仅本人权限；GitHub按负责人要求仍未上传。"
+  ],
+  "verification": [
+    "新增5项Node回归全部通过：等待点击期间响应拒绝不会成为未处理异常、点击错误及时保留、403不算成功、诊断不读取查询/正文/请求头、本地API链请求均完成才就绪。",
+    "r3完整Linux预演275项Python通过（内含原UI Node56、验收器Node5），0失败/错误/跳过；12组实际Chromium通过，明确acceptance_revision=3、native_windows=false、rehearsal_passed_not_windows。",
+    "原r2源码/用户日志对应位置核对，实际截图部分结果记录在private/s06-s07/windows-r2-user-browser-failure.json；本地路径隐去后的日志副本明确标注redacted，不冒充原始字节日志。",
+    "py_compile与git diff --check通过；首次组合patch因同一路径重复删除/新增被工具拒绝，未改动文件；更正为单次更新后正常应用。"
+  ],
+  "next": [
+    "私有交付r3新包，负责人无需重装Python/Node，解压新目录后运行WINDOWS_ACCEPTANCE.cmd。",
+    "核查真实Windows acceptance_revision=3完整结果；如仍失败，直接依据browser_failure的步骤、错误与页面提示继续定位，不再只给笼统system-browser failed。",
+    "真正Windows全部检查通过后才追加S07验收完成，再按负责人安排统一GitHub交付。"
+  ],
+  "review": [
+    "旧r2停止误判已解决，新浏览器失败独立记录；不把两类问题混淆，也不因部分结果通过宣称总体完成。",
+    "浏览器仍无外部模型/机构调用，诊断不保存凭据；原失败目录、原包及历史均保留。"
+  ],
+  "record": "R0056",
+  "version_record": "V0056",
+  "recorded_at": "2026-11-19T09:45:25+08:00",
+  "application": "0.7.3"
+}
