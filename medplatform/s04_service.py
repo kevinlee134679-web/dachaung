@@ -10,6 +10,7 @@ from .s04_dialogue import Dialogue, assessment
 from .s04_model import MODEL_PROFILE_ID, MockModel, missing_usage
 from .s04_state import CASES, CASE_VERSION, SupportState, case
 from .s05_services import confirmation_required
+from .s06_star import PROFILES
 
 READS = {
     "cases", "case_get", "sessions", "session_get", "messages", "assessments", "assessment_get",
@@ -40,8 +41,9 @@ class S04Service:
     def __init__(self, db, auth, receipts, clock, settings, analytics, execution):
         self.db, self.auth, self.receipts = db, auth, receipts
         self.clock, self.settings, self.analytics = clock, settings, analytics
-        self.state = SupportState(clock, execution)
+        self.state = SupportState(clock, execution, settings)
         self.dialogue = Dialogue(db, auth, clock, settings, analytics, MockModel())
+        self.dialogue.rule_source = self.state
         self.formal_services = None
 
     def admin(self, conn, principal):
@@ -254,8 +256,10 @@ class S04Service:
         if action == "invitation_respond":
             return self.state.invitation_respond(conn, doc, body)
         if action == "trigger":
-            if self.profile(conn)["requested_pipeline"] != "single_pass" or self.dialogue.adapter.mode != "mock":
+            if self.dialogue.adapter.mode != "mock":
                 raise AppError(403, "DEMO_TRIGGER_DISABLED", "当前模拟流水线不可用")
+            if body['scenario'] == 'star_mid_failure' and self.profile(conn)['requested_pipeline'] != 'star':
+                raise AppError(403, 'DEMO_TRIGGER_DISABLED', '请先选择 STAR 模拟配置')
             return self.state.trigger(conn, body)
         if action == "case_reset":
             return self.reset(conn, path["id"], body)
@@ -367,9 +371,9 @@ class S04Service:
         row = conn.execute("SELECT document_json FROM b_model_selection WHERE singleton=1").fetchone()
         if row is not None:
             return json.loads(row[0])
-        return dict(profile_id=MODEL_PROFILE_ID, previous_profile_id=None, mode="mock",
+        return dict(profile_id='mock-star' if self.settings.DIALOGUE_PIPELINE == 'star' else MODEL_PROFILE_ID, previous_profile_id=None, mode="mock",
                     requested_pipeline=self.settings.DIALOGUE_PIPELINE, model_config_version=self.settings.CONFIG_VERSION,
-                    configuration_status="ready" if self.settings.DIALOGUE_PIPELINE == "single_pass" else "misconfigured",
+                    configuration_status="ready",
                     selected_at=None)
 
     def model_config(self, conn, action, body, at):
@@ -377,16 +381,16 @@ class S04Service:
         if body["expected_config_version"] != old["model_config_version"]:
             raise AppError(409, "MODEL_CONFIG_VERSION_CONFLICT", "模型配置已更新，请重新读取")
         if action == "probe":
-            if body["profile_id"] != MODEL_PROFILE_ID or old["configuration_status"] != "ready":
+            if body["profile_id"] != old['profile_id'] or old["configuration_status"] != "ready":
                 raise AppError(503, "MODEL_NOT_CONFIGURED", "当前没有可探测的已启用适配")
-            doc = dict(probe_id=uid(), profile_id=MODEL_PROFILE_ID, mode="mock",
+            doc = dict(probe_id=uid(), profile_id=old['profile_id'], mode="mock",
                        model_label=self.dialogue.adapter.model_label, model_config_version=old["model_config_version"],
                        status="available", network_attempt_count=0, elapsed_ms=0,
                        usage=missing_usage("本地模拟探测无网络用量"), checked_at=at)
             return store.insert(conn, "Probe", doc["probe_id"], doc)
-        if body["profile_id"] != MODEL_PROFILE_ID:
+        if body["profile_id"] not in PROFILES:
             raise AppError(422, "MODEL_PROFILE_NOT_READY", "该配置未登记或依赖尚未就绪")
-        doc = dict(old, previous_profile_id=old["profile_id"], requested_pipeline="single_pass",
+        doc = dict(old, profile_id=body['profile_id'], previous_profile_id=old["profile_id"], requested_pipeline=PROFILES[body['profile_id']],
                    configuration_status="ready", model_config_version=uid(), selected_at=at)
         conn.execute("""
             INSERT INTO b_model_selection VALUES (1,?)
@@ -444,15 +448,17 @@ class S04Service:
         for identifier in sorted(sessions):
             if conn.execute("""
                 SELECT 1 FROM b_generations g JOIN b_messages m ON m.message_id=g.user_message_id
-                WHERE m.session_id=? AND json_extract(g.document_json,'$.status') IN ('accepted','running')
+                WHERE m.session_id=? AND json_extract(g.document_json,'$.status') IN ('accepted','running','outcome_unknown')
             """, (identifier,)).fetchone() is not None:
-                raise AppError(409, "CASE_HAS_LINKED_RESOURCES", "案例有在途生成，请先核查")
+                raise AppError(409, "CASE_HAS_LINKED_RESOURCES", "案例有在途或结果未知的生成，请先核查")
             conn.execute("""
                 DELETE FROM b_generation_runs WHERE generation_id IN (
                     SELECT g.generation_id FROM b_generations g JOIN b_messages m ON m.message_id=g.user_message_id
                     WHERE m.session_id=?
                 )
             """, (identifier,))
+            conn.execute('DELETE FROM b_star_checkpoints WHERE generation_id IN (SELECT g.generation_id FROM b_generations g JOIN b_messages m ON m.message_id=g.user_message_id WHERE m.session_id=?)',
+                         (identifier,))
             conn.execute("DELETE FROM b_generations WHERE user_message_id IN (SELECT message_id FROM b_messages WHERE session_id=?)",
                          (identifier,))
             conn.execute("DELETE FROM b_messages WHERE session_id=? AND source_message_id IS NOT NULL", (identifier,))

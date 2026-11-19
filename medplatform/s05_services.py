@@ -108,18 +108,23 @@ class S05Services:
         if doc is not None:
             return visible(doc)
         context = [principal.account_id, "C08", patient, query.get("status")]
-        after = ["", ""]
+        descending = query.get("order", "asc") == "desc"
+        if descending:
+            context.append("desc")
+        after = ["\uffff", "\uffff"] if descending else ["", ""]
         if "cursor" in query:
             after = self.auth.read_cursor(query["cursor"], context)
             if len(after) != 2 or not all(isinstance(x, str) for x in after):
                 raise AppError(422, "INVALID_CURSOR", "分页位置无效，请重新读取列表")
         limit = query.get("limit", 20)
+        # Only internal constants enter SQL; cursors remain bound to sort direction.
+        comparison, ordering = ("<", "DESC") if descending else (">", "ASC")
         rows = conn.execute(
-            """SELECT h.document_json FROM c_services s JOIN c_service_history h ON s.service_id=h.service_id
+            f"""SELECT h.document_json FROM c_services s JOIN c_service_history h ON s.service_id=h.service_id
                AND h.revision=(SELECT MAX(r.revision) FROM c_service_history r WHERE r.service_id=s.service_id)
-               WHERE s.patient_id=? AND (s.submitted_at,s.service_id)>(?,?)
+               WHERE s.patient_id=? AND (s.submitted_at,s.service_id){comparison}(?,?)
                AND (? IS NULL OR h.status=?)
-               ORDER BY s.submitted_at,s.service_id LIMIT ?""",
+               ORDER BY s.submitted_at {ordering},s.service_id {ordering} LIMIT ?""",
             (patient, *after, query.get("status"), query.get("status"), limit + 1),
         ).fetchall()
         items = [visible(json.loads(r[0])) for r in rows[:limit]]

@@ -5,13 +5,14 @@ from time import monotonic
 
 from . import s04_knowledge as knowledge
 from . import s04_store as store
+from . import s06_star as star
 from .documents import all_docs, changed, encode, fingerprint, get, meta, stamp, uid
 from .errors import AppError
 from .idempotency import Result
 from .s04_model import Completion, PROMPT_VERSION, RULE_VERSION, SYSTEM_PROMPT, missing_usage, validate_completion
 
 LIVE = {"accepted", "running"}
-RETRYABLE_MOCK = {"PROVIDER_EMPTY_RESPONSE", "MODEL_OUTPUT_INVALID"}
+RETRYABLE_MOCK = {"PROVIDER_EMPTY_RESPONSE", "MODEL_OUTPUT_INVALID", "STAR_STEP_FAILED", "STAR_STEP_OUTPUT_INVALID"}
 SUMMARY_FIELDS = ("summary_id", "window_start", "window_end", "generated_at", "valid_until", "data_status", "schema_version")
 
 
@@ -52,8 +53,8 @@ class Dialogue:
         patient, identifier = session["patient_id"], session["session_id"]
         history = conn.execute("""
             SELECT message_id FROM b_messages WHERE session_id=? AND message_id<>?
-            ORDER BY rowid DESC LIMIT 20
-        """, (identifier, message["message_id"])).fetchall()
+            ORDER BY rowid DESC LIMIT ?
+        """, (identifier, message["message_id"], self.settings.DIALOGUE_HISTORY_LIMIT)).fetchall()
         missing = []
         profile_docs = all_docs(conn, "Profile", patient)
         plan_refs = [
@@ -80,7 +81,7 @@ class Dialogue:
         ):
             if absent:
                 missing.append({"code": code, "message": explanation})
-        versions = [{"kind": "prompt", "version": PROMPT_VERSION}, {"kind": "rule", "version": RULE_VERSION},
+        versions = [{"kind": "prompt", "version": PROMPT_VERSION}, {"kind": "rule", "version": self.rule_source.rule_reference(conn)},
                     {"kind": "model_config", "version": profile["model_config_version"]}]
         if summary is not None:
             versions.append({"kind": "summary", "version": summary["schema_version"]})
@@ -122,7 +123,7 @@ class Dialogue:
         """, (identifier,))
         if any(json.loads(row[0])["budget"]["deadline_at"] > at for row in rows):
             raise AppError(409, "OPERATION_IN_PROGRESS", "当前会话还有一轮在处理")
-        if profile["requested_pipeline"] != "single_pass":
+        if profile["requested_pipeline"] not in ('single_pass', 'star'):
             raise AppError(503, "MODEL_NOT_CONFIGURED", "当前流水线尚未接入")
         msg = dict(message_id=uid(), patient_id=patient, session_id=identifier,
                    client_message_id=body["client_message_id"], role="user", content=body["content"],
@@ -133,18 +134,22 @@ class Dialogue:
         ))
         scenario = self._scenario(conn, session)
         snapshot = self.snapshot(conn, principal, session, msg, scenario, profile, at)
-        budget = dict(max_network_attempts=self.settings.SINGLE_PASS_MAX_ATTEMPTS, used_network_attempts=0,
-                      max_candidates=1, max_output_tokens=self.settings.LLM_MAX_OUTPUT_TOKENS
+        is_star = profile['requested_pipeline'] == 'star'
+        budget = dict(max_network_attempts=self.settings.STAR_MAX_ATTEMPTS if is_star else self.settings.SINGLE_PASS_MAX_ATTEMPTS, used_network_attempts=0,
+                      max_candidates=self.settings.STAR_MAX_CANDIDATES if is_star else 1, max_output_tokens=self.settings.LLM_MAX_OUTPUT_TOKENS
                       if self.adapter.output_parameter else None,
                       deadline_at=stamp(self.clock() + timedelta(seconds=self.settings.LLM_TIMEOUT_SECONDS)))
         generation = dict(generation_id=msg["generation_id"], patient_id=patient, session_id=identifier,
                           user_message_id=msg["message_id"], status="accepted", mode=self.adapter.mode,
-                          requested_pipeline="single_pass", actual_pipeline="single_pass", fallback_reason=None,
+                          requested_pipeline=profile['requested_pipeline'], actual_pipeline=profile['requested_pipeline'], fallback_reason=None,
                           input_snapshot=snapshot, budget=budget, calls=[], error_code=None,
                           started_at=at, finished_at=None, is_simulated=True)
         conn.execute("INSERT INTO b_generations VALUES (?,?,?,?,?,NULL)", (
             generation["generation_id"], msg["message_id"], 1, scenario, encode(generation),
         ))
+        if is_star:
+            star.initialize(conn, generation, budget['max_candidates'], allow_fallback=self.settings.STAR_ALLOW_SINGLE_PASS_FALLBACK)
+            conn.execute('UPDATE b_generations SET document_json=? WHERE generation_id=?', (encode(generation), generation['generation_id']))
         conn.execute("INSERT INTO b_generation_runs VALUES (?,1,'accepted')", (generation["generation_id"],))
         store.save_session(conn, dict(changed(session, at), turn_count=session["turn_count"] + 1))
         return self.intent(generation["generation_id"], 1)
@@ -291,16 +296,34 @@ class Dialogue:
             remaining = max(0, (deadline - call_started).total_seconds())
             real = gen["mode"] == "real"
             network_attempt = None
-            if real and remaining:
-                with self.db.transaction() as conn:
-                    _, gen = store.generation(conn, identifier)
-                    if not self._live_session(conn, principal, gen):
-                        gen.update(status="cancelled", finished_at=stamp(self.clock()), error_code="GENERATION_CANCELLED")
-                        self._record_state(conn, gen, number, "cancelled")
-                        return self._result(conn, gen, None, "cancelled", request_status)
+            stage, checkpoint = 'single_pass', None
+            with self.db.transaction() as conn:
+                _, gen = store.generation(conn, identifier)
+                try:
+                    active = self._live_session(conn, principal, gen)
+                except AppError:
+                    active = False
+                if not active:
+                    gen.update(status='cancelled', finished_at=stamp(self.clock()), error_code='GENERATION_CANCELLED')
+                    self._record_state(conn, gen, number, 'cancelled')
+                    return self._result(conn, gen, None, 'cancelled', request_status)
+                if (len(gen['calls']) >= gen['budget']['max_network_attempts']
+                        or gen['budget']['used_network_attempts'] >= gen['budget']['max_network_attempts']):
+                    gen.update(status='failed', finished_at=stamp(self.clock()), error_code='GENERATION_BUDGET_EXCEEDED')
+                    self._record_state(conn, gen, number, 'failed')
+                    return self._result(conn, gen, None, 'failed', request_status)
+                msgs, allowed, retrieval, used_snippets = self._input_messages(conn, principal, gen)
+                if gen['actual_pipeline'] == 'star':
+                    try:
+                        stage, msgs, checkpoint = star.prepare(conn, gen, msgs)
+                    except ValueError:
+                        gen.update(status='failed', finished_at=stamp(self.clock()), error_code='GENERATION_CONTEXT_CHANGED')
+                        self._record_state(conn, gen, number, 'failed')
+                        return self._result(conn, gen, None, 'failed', request_status)
+                if real and remaining:
                     gen["budget"]["used_network_attempts"] += 1
                     network_attempt = gen["budget"]["used_network_attempts"]
-                    self._record_state(conn, gen, number, "running")
+                self._record_state(conn, gen, number, "running")
             start_counter = monotonic()
             if remaining:
                 try:
@@ -328,15 +351,26 @@ class Dialogue:
                     error = "KNOWLEDGE_INVALIDATED"
                 output, degraded = (None, False)
                 if error is None:
-                    output, degraded = validate_completion(
-                        attempt.content, allowed, lambda citation: knowledge.verifies_citation(citation, retrieval, snippets),
-                    )
-                    if output is None:
-                        error = "MODEL_OUTPUT_INVALID"
+                    validates = lambda citation: knowledge.verifies_citation(citation, retrieval, snippets)
+                    if checkpoint is not None:
+                        current_messages, _, _, _ = self._input_messages(conn, principal, gen) if open_session else ([], {}, None, [])
+                        if open_session and fingerprint(current_messages) != checkpoint['context_signature']:
+                            error = 'GENERATION_CONTEXT_CHANGED'
+                        else:
+                            try:
+                                output, degraded = star.consume(stage, attempt.content, checkpoint, allowed, validates)
+                                checkpoint['degraded'] = checkpoint.get('degraded', False) or degraded
+                                degraded = checkpoint['degraded']
+                            except (ValueError, TypeError, KeyError, IndexError, RecursionError):
+                                error = 'STAR_STEP_OUTPUT_INVALID'
+                    else:
+                        output, degraded = validate_completion(attempt.content, allowed, validates)
+                        if output is None:
+                            error = "MODEL_OUTPUT_INVALID"
                 config_version = next(ref["version"] for ref in gen["input_snapshot"]["version_refs"]
                                       if ref["kind"] == "model_config")
                 gen["calls"].append(dict(
-                    call_id=uid(), generation_id=identifier, stage="single_pass", attempt_number=len(gen["calls"]) + 1,
+                    call_id=uid(), generation_id=identifier, stage='candidate' if stage.startswith('candidate_') else 'select' if stage == 'selection' else 'fallback' if stage == 'single_pass' and gen['requested_pipeline'] == 'star' else stage, attempt_number=len(gen["calls"]) + 1,
                     network_attempt_number=network_attempt, mode=gen["mode"], provider_label=self.adapter.provider_label,
                     model_label=self.adapter.model_label, provider_model_version=attempt.provider_model_version,
                     model_config_version=config_version, status="outcome_unknown" if outcome_unknown else
@@ -349,6 +383,18 @@ class Dialogue:
                         and finished < gen["budget"]["deadline_at"]):
                     self._record_state(conn, gen, number, "running")
                     continue
+                if (error in RETRYABLE_MOCK and not outcome_unknown and open_session
+                        and checkpoint is not None and checkpoint.get('allow_fallback', False)
+                        and len(gen['calls']) < gen['budget']['max_network_attempts']
+                        and finished < gen['budget']['deadline_at']):
+                    gen.update(actual_pipeline='single_pass', fallback_reason=error)
+                    self._record_state(conn, gen, number, 'running')
+                    continue
+                if checkpoint is not None and not error and not outcome_unknown and open_session:
+                    star.save(conn, identifier, checkpoint)
+                    if output is None:
+                        self._record_state(conn, gen, number, 'running')
+                        continue
                 outcome = "completed"
                 if not open_session:
                     outcome, error = "cancelled", "GENERATION_CANCELLED"

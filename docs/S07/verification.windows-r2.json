@@ -1,0 +1,38 @@
+{
+  "title": "Windows实机停止阶段失败与验收器r2修订",
+  "stage": "S07 Windows验收整改",
+  "status": "Windows前五项实机通过、停止阶段整体失败；验收器r2边界回归和Linux预演通过，等待日志及真实Windows复验",
+  "schema": "0016",
+  "evidence_file": "verification.windows-r2.json",
+  "completed": [
+    "记录负责人真实截图结果：Windows11、Python3.14.10、Node24.22.3、应用0.7.3、运行源码047bbad326ef67f320088c8a43636473e6c513a8。源码哈希、新虚拟环境、实际初始化/重复拒绝、start.cmd启动和健康、原生DPAPI五项通过。",
+    "截图整体status=failed，第一次停止阶段超时后执行强制清理，重启/浏览器/worker/旧库升级/完整回归尚未运行。已请求同目录server.log；具体是应用不退还是命令壳等待，需原日志确认。",
+    "代码审核确认原验收器仅等待最外层CMD进程，无法区分应用退出与批处理确认等待。r2新增本轮实际服务PID句柄、进程退出/端口释放/正常shutdown日志三项独立验证；全部通过后单独释放空闲CMD，绝不把强杀服务算通过。",
+    "仅修改验收工具与说明，应用业务、API、schema0016、DPAPI和早期迁移不变；保留旧失败数据与原验收包，r2将作为新包交付，不覆盖原文件。"
+  ],
+  "remaining": [
+    "原Windows server.log尚待负责人复制，未断定本次失败的全部根因。",
+    "r2需要真实Windows复验；Linux成功不能替代Windows结果，S07 Windows验收仍未完成。",
+    "GitHub继续按负责人要求验收后统一上传，当前未上传。"
+  ],
+  "verification": [
+    "新增四项边界回归通过：端口关闭+日志完成但应用仍活着不通过；无正常日志的已退出应用不通过；全部服务证据成立后才释放等待的命令壳；缺少应用证据禁止靠关闭命令壳制造通过。",
+    "r2完整Linux预演：274项Python通过（内含Node56），0失败/错误/跳过；12组实际Chromium通过；两次明确重启均记录实际进程退出、端口释放、本轮shutdown日志完成。",
+    "预演status=rehearsal_passed_not_windows、acceptance_revision=2、native_windows=false，结果保留在private/s06-s07/windows-stop-r2-rehearsal-result.json。",
+    "py_compile、git diff --check通过。未将负责人之前的Python/Node缺失当成业务故障或通过；未删旧失败库或使用新的空库覆盖原业务记录。"
+  ],
+  "next": [
+    "读取负责人本次失败server.log，对照r2诊断设计确认应用/命令壳的实际状态，有新证据先修正再复验。",
+    "负责人用r2新包解压到新目录，使用现有Python和Node重新执行WINDOWS_ACCEPTANCE.cmd；检查acceptance_revision=2及完整真实Windows摘要。",
+    "若真实服务不能正常退出，仍失败并按shutdown_diagnostic继续定位；全部实机检查通过后才追加完成记录。"
+  ],
+  "review": [
+    "Windows实际应用通过OpenProcess取得当前启动PID的OS句柄，避免PID复用误判或清理其他进程；强制清理只在失败分支，且结果保持failed。",
+    "命令壳释放发生在应用已正常退出后，可先发送批处理确认，必要时只结束自己已空闲的外层壳，不结束应用树来制造成功。",
+    "新包清单与私有交付会重新核验，原Google Drive包保留；个人链接/账户与临时签名地址不进入公开源码记录。"
+  ],
+  "record": "R0053",
+  "version_record": "V0053",
+  "recorded_at": "2026-11-19T09:21:35+08:00",
+  "application": "0.7.3"
+}

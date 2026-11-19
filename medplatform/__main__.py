@@ -16,7 +16,11 @@ def main():
     parser = argparse.ArgumentParser(description="Shared platform: explicit lifecycle and S03 maintenance")
     parser.add_argument("command", choices=["init-db", "migrate", "db-status", "seed-demo", "seed-support-catalog", "seed-support-recipients", "seed-peer-groups",
                                           "seed-points", "seed-rewards", "expire-receipts", "s03-maintain", "run-task", "serve",
-                                          "journal-snapshot", "journal-append"])
+                                          "journal-snapshot", "journal-append", "run-worker", "seed-support-rules", "select-support-rule", "support-rule-status"])
+    parser.add_argument('--once', action='store_true', help='Run one explicit worker cycle, then stop')
+    parser.add_argument('--profile-id')
+    parser.add_argument('--rule-version')
+    parser.add_argument('--confirmed', action='store_true')
     parser.add_argument("--target", type=int)
     parser.add_argument("--journal", type=Path, default=Path("docs/工作记录.md"))
     parser.add_argument("--entry", type=Path)
@@ -82,6 +86,27 @@ def main():
                         parser.error('run-task requires --task-id, --expect-revision and stable --operation-key')
                     result=execution.run_once(None,args.task_id,args.expect_revision,args.operation_key).data
                 print(json.dumps(result,ensure_ascii=False))
+            elif args.command in ('seed-support-rules', 'select-support-rule', 'support-rule-status'):
+                from . import s06_rules
+                from .documents import now
+                status(db)
+                if args.command == 'support-rule-status':
+                    with db.connection(readonly=True) as conn:
+                        policy = s06_rules.policy(conn, settings.SUPPORT_RULE_PROFILE)
+                        row = conn.execute('SELECT revision FROM b_rule_selection WHERE singleton=1').fetchone()
+                        result = dict(profile_id=policy['profile_id'], rule_version=s06_rules.reference(policy), revision=row['revision'] if row else 0, is_simulated=True)
+                elif args.command == 'seed-support-rules':
+                    result = s06_rules.seed(db, now)
+                else:
+                    if not args.profile_id or args.expect_revision is None or not args.confirmed:
+                        parser.error('select-support-rule requires profile-id, expect-revision and confirmed')
+                    result = s06_rules.select(db, now, args.profile_id, args.expect_revision, confirmed=True, default_profile=settings.SUPPORT_RULE_PROFILE, version=args.rule_version)
+                print(json.dumps(result))
+            elif args.command == 'run-worker':
+                from .web import create_app
+                from .s06_runner import Runner
+                status(db)
+                Runner(create_app(settings)).run(once=args.once)
             else:
                 import uvicorn
                 from .web import create_app

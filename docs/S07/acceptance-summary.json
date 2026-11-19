@@ -1,0 +1,71 @@
+{
+  "application": "0.7.2",
+  "schema_version": "0016",
+  "runtime_source_commit": "718c42afdb8abbeda6261e90edd4be377552f874",
+  "recorded_at": "2026-11-19T00:47:08+08:00",
+  "S06": "completed_and_reviewed",
+  "S07": "local_acceptance_and_handoff_verified; remote_delivery_blocked",
+  "python_tests": 268,
+  "node_tests": 56,
+  "node_nested_in_python": true,
+  "browser_groups": 52,
+  "browser_checks": [
+    {
+      "evidence": "s07-batch1-browser.json",
+      "groups": 10,
+      "success": true
+    },
+    {
+      "evidence": "platform-browser/s07-platform-browser-resumed.json",
+      "groups": 17,
+      "success": true
+    },
+    {
+      "evidence": "fixed14-browser/fixed14-browser-checks.json",
+      "groups": 3,
+      "success": true
+    },
+    {
+      "evidence": "s07-extended-browser-attempt4.json",
+      "groups": 10,
+      "success": true
+    },
+    {
+      "evidence": "s07-clean-checkout-browser.json",
+      "groups": 12,
+      "success": true
+    }
+  ],
+  "physical_tables": 85,
+  "registered_apis": 154,
+  "old_business_tables_preserved_on_0014_upgrade": 80,
+  "clean_reproduction": {
+    "source": "new LOCAL Git checkout",
+    "remote_github_checkout": false,
+    "new_venv_install": true,
+    "new_database": true,
+    "python_tests": 268,
+    "node_tests": 56,
+    "browser_groups": 12
+  },
+  "remote_delivery": {
+    "repository": "kevinlee134679-web/dachaung",
+    "branch": "develop",
+    "pushed": false,
+    "last_observed_head": "c46a46912a8ac47c8732b824831943f6fbd23dd5",
+    "blocker": "GitHub CLI 401 Bad credentials; GitHub plugin installed=false"
+  },
+  "limitations": [
+    "real identity/model/device/provider/system notifications unavailable",
+    "clinical/CAS/support intensity mapping not configured",
+    "new Windows launcher not executed on Windows",
+    "no cross-OS migration for existing protected credentials"
+  ],
+  "final_private_backup_verified": true,
+  "history_proof": "s07-static-audit.json",
+  "raw_evidence_sha256": {
+    "s07-final-python-after-switch-fix.log": "237dd23bfc0c82ccce5a5ad766e77c5b165feb0559bfa3086d502f356c3a1d27",
+    "s07-final-node.log": "9094985e8d7045ebc7307afbd2a03619946b8abea12e333a5864557ed2e558df",
+    "s07-clean-checkout-test.log": "3ff6017d9b826fd0cbc582ad1740846d5062ba70aef239aa304fda98eb262cb0"
+  }
+}

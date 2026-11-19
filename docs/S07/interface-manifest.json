@@ -1,0 +1,5347 @@
+{
+  "application": "0.7.3",
+  "routes": [
+    {
+      "id": "O01",
+      "method": "POST",
+      "path": "/api/v1/auth/demo-session",
+      "action": "login",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "demo_account_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Demo Account Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "demo_account_id"
+        ],
+        "title": "Login",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O02",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "action": "me",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O03",
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "action": "logout",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "Empty",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O04",
+      "method": "GET",
+      "path": "/api/v1/patients",
+      "action": "patients",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O05",
+      "method": "PUT",
+      "path": "/api/v1/auth/current-patient",
+      "action": "current_patient",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "CurrentPatient",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O06",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}",
+      "action": "patient",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O07",
+      "method": "PATCH",
+      "path": "/api/v1/patients/{p}",
+      "action": "patient_patch",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Name"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timezone"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "PatientPatch",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O08",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/family-binding-codes",
+      "action": "binding_code",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "Empty",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O09",
+      "method": "POST",
+      "path": "/api/v1/family-bindings/redeem",
+      "action": "redeem",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "binding_code": {
+            "maxLength": 64,
+            "minLength": 12,
+            "title": "Binding Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "binding_code"
+        ],
+        "title": "Redeem",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O10",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/family-bindings",
+      "action": "bindings",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O11",
+      "method": "POST",
+      "path": "/api/v1/family-bindings/{id}/revoke",
+      "action": "revoke_binding",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "Revoke",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O12",
+      "method": "PUT",
+      "path": "/api/v1/family-bindings/{id}/grant",
+      "action": "grant_put",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "scopes",
+          "valid_until",
+          "confirmed"
+        ],
+        "title": "GrantPut",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O13",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/grants",
+      "action": "grants",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O14",
+      "method": "POST",
+      "path": "/api/v1/grants/{id}/revoke",
+      "action": "revoke_grant",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "Revoke",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O15",
+      "method": "GET",
+      "path": "/api/v1/questionnaires/initial",
+      "action": "definition",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O16",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/questionnaire-responses",
+      "action": "response_create",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "questionnaire_version": {
+            "title": "Questionnaire Version",
+            "type": "string"
+          },
+          "supersedes_response_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Supersedes Response Id"
+          }
+        },
+        "required": [
+          "questionnaire_version"
+        ],
+        "title": "ResponseCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O17",
+      "method": "PUT",
+      "path": "/api/v1/questionnaire-responses/{id}/answers",
+      "action": "answers",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "$defs": {
+          "Answer": {
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "enum": [
+                  "answered",
+                  "unknown",
+                  "not_applicable",
+                  "not_answered"
+                ],
+                "title": "State",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Value"
+              }
+            },
+            "required": [
+              "state",
+              "value"
+            ],
+            "title": "Answer",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "answers": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Answer"
+            },
+            "title": "Answers",
+            "type": "object"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "answers"
+        ],
+        "title": "AnswersPut",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O18",
+      "method": "GET",
+      "path": "/api/v1/questionnaire-responses/{id}",
+      "action": "response",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O19",
+      "method": "POST",
+      "path": "/api/v1/questionnaire-responses/{id}/submit",
+      "action": "submit_response",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "confirmed"
+        ],
+        "title": "Submit",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O20",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/profiles/current",
+      "action": "current_profile",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O21",
+      "method": "GET",
+      "path": "/api/v1/profiles/{id}",
+      "action": "profile",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O22",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/profiles",
+      "action": "profile_create",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "response_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Response Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "response_id"
+        ],
+        "title": "ProfileCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O23",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/medications",
+      "action": "medications",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O24",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/medications",
+      "action": "medication_create",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MedicationCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O25",
+      "method": "PATCH",
+      "path": "/api/v1/medications/{id}",
+      "action": "medication_patch",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "MedicationPatch",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O26",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/plans",
+      "action": "plans",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O27",
+      "method": "GET",
+      "path": "/api/v1/plans/{id}/versions/{version}",
+      "action": "plan",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O28",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/plan-confirmations",
+      "action": "plan_confirm",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Draft Id",
+            "type": "string"
+          },
+          "draft_revision": {
+            "minimum": 1,
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "existing_plan_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Plan Id"
+          },
+          "expected_plan_version": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Plan Version"
+          },
+          "effective_from": {
+            "title": "Effective From",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "draft_id",
+          "draft_revision",
+          "existing_plan_id",
+          "expected_plan_version",
+          "effective_from",
+          "confirmed"
+        ],
+        "title": "PlanConfirm",
+        "type": "object"
+      }
+    },
+    {
+      "id": "O29",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/dose-slots",
+      "action": "slots",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O30",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/reminder-preferences",
+      "action": "reminder",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "O31",
+      "method": "PUT",
+      "path": "/api/v1/patients/{p}/reminder-preferences",
+      "action": "reminder_put",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "$defs": {
+          "Anchor": {
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "enum": [
+                  "wake",
+                  "breakfast",
+                  "bedtime",
+                  "custom"
+                ],
+                "title": "Event",
+                "type": "string"
+              },
+              "label": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Label"
+              },
+              "local_time": {
+                "title": "Local Time",
+                "type": "string"
+              },
+              "offset_minutes": {
+                "maximum": 60,
+                "minimum": -60,
+                "title": "Offset Minutes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "event",
+              "label",
+              "local_time",
+              "offset_minutes"
+            ],
+            "title": "Anchor",
+            "type": "object"
+          },
+          "LocalWindow": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "title": "Start",
+                "type": "string"
+              },
+              "end": {
+                "title": "End",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "LocalWindow",
+            "type": "object"
+          },
+          "ReminderSettings": {
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "title": "Enabled",
+                "type": "boolean"
+              },
+              "channels": {
+                "items": {
+                  "enum": [
+                    "in_app",
+                    "system_notification"
+                  ],
+                  "type": "string"
+                },
+                "title": "Channels",
+                "type": "array"
+              },
+              "sound_enabled": {
+                "title": "Sound Enabled",
+                "type": "boolean"
+              },
+              "vibration_enabled": {
+                "title": "Vibration Enabled",
+                "type": "boolean"
+              },
+              "routine_mode": {
+                "enum": [
+                  "regular",
+                  "night_shift",
+                  "rotating_shift",
+                  "travel",
+                  "custom"
+                ],
+                "title": "Routine Mode",
+                "type": "string"
+              },
+              "anchors": {
+                "items": {
+                  "$ref": "#/$defs/Anchor"
+                },
+                "title": "Anchors",
+                "type": "array"
+              },
+              "privacy_enabled": {
+                "title": "Privacy Enabled",
+                "type": "boolean"
+              },
+              "custom_text": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Custom Text"
+              },
+              "privacy_windows": {
+                "items": {
+                  "$ref": "#/$defs/LocalWindow"
+                },
+                "title": "Privacy Windows",
+                "type": "array"
+              },
+              "repeat_interval_minutes": {
+                "anyOf": [
+                  {
+                    "maximum": 120,
+                    "minimum": 30,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Repeat Interval Minutes"
+              },
+              "max_repeats": {
+                "maximum": 2,
+                "minimum": 0,
+                "title": "Max Repeats",
+                "type": "integer"
+              },
+              "snooze_minutes": {
+                "anyOf": [
+                  {
+                    "maximum": 120,
+                    "minimum": 5,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Snooze Minutes"
+              },
+              "notify_family": {
+                "title": "Notify Family",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "enabled",
+              "channels",
+              "sound_enabled",
+              "vibration_enabled",
+              "routine_mode",
+              "anchors",
+              "privacy_enabled",
+              "custom_text",
+              "privacy_windows",
+              "repeat_interval_minutes",
+              "max_repeats",
+              "snooze_minutes",
+              "notify_family"
+            ],
+            "title": "ReminderSettings",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/$defs/ReminderSettings"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "settings"
+        ],
+        "title": "ReminderPut",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A01",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/files",
+      "action": "file_upload",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "original_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Original Name",
+            "type": "string"
+          },
+          "media_type": {
+            "enum": [
+              "application/pdf",
+              "image/png",
+              "image/jpeg"
+            ],
+            "title": "Media Type",
+            "type": "string"
+          },
+          "size_bytes": {
+            "maximum": 10485760,
+            "minimum": 1,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "original_name",
+          "media_type",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "FileSemantic",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A02",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/files",
+      "action": "files",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "A03",
+      "method": "GET",
+      "path": "/api/v1/files/{id}",
+      "action": "file",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "A04",
+      "method": "GET",
+      "path": "/api/v1/files/{id}/content",
+      "action": "file_content",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "A05",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/drafts",
+      "action": "draft_create",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "$defs": {
+          "DraftEntry": {
+            "additionalProperties": false,
+            "properties": {
+              "draft_entry_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Draft Entry Id",
+                "type": "string"
+              },
+              "medication_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Medication Id",
+                "type": "string"
+              },
+              "dose_value": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Value"
+              },
+              "dose_unit": {
+                "anyOf": [
+                  {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Unit"
+              },
+              "start_date": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Start Date"
+              },
+              "end_date": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "End Date"
+              },
+              "schedule": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Schedule"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "meal_requirement": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Meal Requirement"
+              },
+              "medical_notes": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Medical Notes"
+              },
+              "strict_timing": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Strict Timing"
+              },
+              "min_interval_minutes": {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Min Interval Minutes"
+              },
+              "source_file_ids": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "title": "Source File Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "draft_entry_id",
+              "medication_id",
+              "dose_value",
+              "dose_unit",
+              "start_date",
+              "end_date",
+              "schedule",
+              "meal_requirement",
+              "medical_notes",
+              "strict_timing",
+              "min_interval_minutes",
+              "source_file_ids"
+            ],
+            "title": "DraftEntry",
+            "type": "object"
+          },
+          "Schedule": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "daily",
+                  "weekly"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "times": {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "title": "Times",
+                "type": "array"
+              },
+              "weekdays": {
+                "items": {
+                  "maximum": 7,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "title": "Weekdays",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "times",
+              "weekdays"
+            ],
+            "title": "Schedule",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source_file_ids": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Source File Ids",
+            "type": "array"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/$defs/DraftEntry"
+            },
+            "minItems": 1,
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "DraftCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A06",
+      "method": "GET",
+      "path": "/api/v1/drafts/{id}",
+      "action": "draft",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "A07",
+      "method": "PUT",
+      "path": "/api/v1/drafts/{id}",
+      "action": "draft_put",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "$defs": {
+          "DraftEntry": {
+            "additionalProperties": false,
+            "properties": {
+              "draft_entry_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Draft Entry Id",
+                "type": "string"
+              },
+              "medication_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Medication Id",
+                "type": "string"
+              },
+              "dose_value": {
+                "anyOf": [
+                  {
+                    "maxLength": 80,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Value"
+              },
+              "dose_unit": {
+                "anyOf": [
+                  {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Unit"
+              },
+              "start_date": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Start Date"
+              },
+              "end_date": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "End Date"
+              },
+              "schedule": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Schedule"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "meal_requirement": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Meal Requirement"
+              },
+              "medical_notes": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Medical Notes"
+              },
+              "strict_timing": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Strict Timing"
+              },
+              "min_interval_minutes": {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Min Interval Minutes"
+              },
+              "source_file_ids": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "title": "Source File Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "draft_entry_id",
+              "medication_id",
+              "dose_value",
+              "dose_unit",
+              "start_date",
+              "end_date",
+              "schedule",
+              "meal_requirement",
+              "medical_notes",
+              "strict_timing",
+              "min_interval_minutes",
+              "source_file_ids"
+            ],
+            "title": "DraftEntry",
+            "type": "object"
+          },
+          "Schedule": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "daily",
+                  "weekly"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "times": {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "title": "Times",
+                "type": "array"
+              },
+              "weekdays": {
+                "items": {
+                  "maximum": 7,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "title": "Weekdays",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "times",
+              "weekdays"
+            ],
+            "title": "Schedule",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source_file_ids": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Source File Ids",
+            "type": "array"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/$defs/DraftEntry"
+            },
+            "minItems": 1,
+            "title": "Entries",
+            "type": "array"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_file_ids",
+          "entries",
+          "expected_revision"
+        ],
+        "title": "DraftPut",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A08",
+      "method": "POST",
+      "path": "/api/v1/drafts/{id}/submit",
+      "action": "draft_submit",
+      "owner_module": "s02_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "content_revision": {
+            "minimum": 1,
+            "title": "Content Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "content_revision"
+        ],
+        "title": "DraftSubmit",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A09",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/drafts",
+      "action": "drafts",
+      "owner_module": "s02_api",
+      "input_schema": null
+    },
+    {
+      "id": "A10",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/medication-events",
+      "action": "records_medication_create",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "$defs": {
+          "PlanRef": {
+            "additionalProperties": false,
+            "properties": {
+              "plan_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Plan Id",
+                "type": "string"
+              },
+              "plan_version": {
+                "minimum": 1,
+                "title": "Plan Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "plan_id",
+              "plan_version"
+            ],
+            "title": "PlanRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reported_status": {
+            "enum": [
+              "taken",
+              "not_taken",
+              "postponed",
+              "unknown"
+            ],
+            "title": "Reported Status",
+            "type": "string"
+          },
+          "medication_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Medication Id"
+          },
+          "dose_slot_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dose Slot Id"
+          },
+          "plan_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PlanRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "raw_text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Raw Text"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "occurred_at",
+          "reported_status"
+        ],
+        "title": "MedicationEventInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A11",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/medication-events",
+      "action": "records_medications",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A12",
+      "method": "GET",
+      "path": "/api/v1/medication-events/{id}",
+      "action": "records_medication",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A13",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/measurements",
+      "action": "records_measurement_create",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "$defs": {
+          "MeasurementPayload": {
+            "additionalProperties": false,
+            "properties": {
+              "metric_code": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Metric Code",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Value"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Unit"
+              },
+              "method_code": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Method Code"
+              },
+              "missing_reason": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Missing Reason"
+              }
+            },
+            "required": [
+              "metric_code",
+              "value",
+              "unit",
+              "method_code",
+              "missing_reason"
+            ],
+            "title": "MeasurementPayload",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/$defs/MeasurementPayload"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "occurred_at",
+          "payload"
+        ],
+        "title": "MeasurementInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A14",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/measurements",
+      "action": "records_measurements",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A15",
+      "method": "GET",
+      "path": "/api/v1/measurements/{id}",
+      "action": "records_measurement",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A16",
+      "method": "POST",
+      "path": "/api/v1/events/{id}/corrections",
+      "action": "records_correction",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "$defs": {
+          "EvidencePayload": {
+            "additionalProperties": false,
+            "properties": {
+              "reported_status": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "taken",
+                      "not_taken",
+                      "postponed",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Reported Status"
+              },
+              "observation": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "box_opened",
+                      "inferred_intake"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Observation"
+              },
+              "medication_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Medication Id"
+              },
+              "dose_slot_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Slot Id"
+              },
+              "plan_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PlanRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "raw_text": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Raw Text"
+              }
+            },
+            "required": [
+              "reported_status",
+              "observation",
+              "medication_id",
+              "dose_slot_id",
+              "plan_ref",
+              "raw_text"
+            ],
+            "title": "EvidencePayload",
+            "type": "object"
+          },
+          "MeasurementPayload": {
+            "additionalProperties": false,
+            "properties": {
+              "metric_code": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Metric Code",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Value"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Unit"
+              },
+              "method_code": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Method Code"
+              },
+              "missing_reason": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Missing Reason"
+              }
+            },
+            "required": [
+              "metric_code",
+              "value",
+              "unit",
+              "method_code",
+              "missing_reason"
+            ],
+            "title": "MeasurementPayload",
+            "type": "object"
+          },
+          "PlanRef": {
+            "additionalProperties": false,
+            "properties": {
+              "plan_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Plan Id",
+                "type": "string"
+              },
+              "plan_version": {
+                "minimum": 1,
+                "title": "Plan Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "plan_id",
+              "plan_version"
+            ],
+            "title": "PlanRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EvidencePayload"
+              },
+              {
+                "$ref": "#/$defs/MeasurementPayload"
+              }
+            ],
+            "title": "Payload"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason",
+          "occurred_at",
+          "payload"
+        ],
+        "title": "CorrectionInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A17",
+      "method": "POST",
+      "path": "/api/v1/events/{id}/withdrawals",
+      "action": "records_withdrawal",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "WithdrawalInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A18",
+      "method": "GET",
+      "path": "/api/v1/events/{id}/revisions",
+      "action": "records_revisions",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A19",
+      "method": "GET",
+      "path": "/api/v1/events/{id}/quality",
+      "action": "records_quality",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A20",
+      "method": "POST",
+      "path": "/api/v1/events/{id}/reprocess",
+      "action": "records_reprocess",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "ReprocessInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A21",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/device-bindings",
+      "action": "records_device_bindings",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A22",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/device-bindings",
+      "action": "records_device_bind",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "device_id",
+          "confirmed"
+        ],
+        "title": "DeviceBindingInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A23",
+      "method": "POST",
+      "path": "/api/v1/device-bindings/{id}/revoke",
+      "action": "records_device_revoke",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "Revoke",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A24",
+      "method": "POST",
+      "path": "/api/v1/integrations/device-events",
+      "action": "records_device_event",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "$defs": {
+          "EvidencePayload": {
+            "additionalProperties": false,
+            "properties": {
+              "reported_status": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "taken",
+                      "not_taken",
+                      "postponed",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Reported Status"
+              },
+              "observation": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "box_opened",
+                      "inferred_intake"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Observation"
+              },
+              "medication_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Medication Id"
+              },
+              "dose_slot_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Dose Slot Id"
+              },
+              "plan_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PlanRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "raw_text": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Raw Text"
+              }
+            },
+            "required": [
+              "reported_status",
+              "observation",
+              "medication_id",
+              "dose_slot_id",
+              "plan_ref",
+              "raw_text"
+            ],
+            "title": "EvidencePayload",
+            "type": "object"
+          },
+          "MeasurementPayload": {
+            "additionalProperties": false,
+            "properties": {
+              "metric_code": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Metric Code",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Value"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Unit"
+              },
+              "method_code": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Method Code"
+              },
+              "missing_reason": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Missing Reason"
+              }
+            },
+            "required": [
+              "metric_code",
+              "value",
+              "unit",
+              "method_code",
+              "missing_reason"
+            ],
+            "title": "MeasurementPayload",
+            "type": "object"
+          },
+          "PlanRef": {
+            "additionalProperties": false,
+            "properties": {
+              "plan_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Plan Id",
+                "type": "string"
+              },
+              "plan_version": {
+                "minimum": 1,
+                "title": "Plan Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "plan_id",
+              "plan_version"
+            ],
+            "title": "PlanRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "event_kind": {
+            "enum": [
+              "medication",
+              "measurement"
+            ],
+            "title": "Event Kind",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EvidencePayload"
+              },
+              {
+                "$ref": "#/$defs/MeasurementPayload"
+              }
+            ],
+            "title": "Payload"
+          }
+        },
+        "required": [
+          "device_id",
+          "source_event_id",
+          "occurred_at",
+          "event_kind",
+          "payload"
+        ],
+        "title": "DeviceEventInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A25",
+      "method": "POST",
+      "path": "/api/v1/demo/device-events",
+      "action": "records_demo_device",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "device_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Device Id",
+            "type": "string"
+          },
+          "scenario": {
+            "enum": [
+              "normal_box",
+              "duplicate",
+              "late_upload",
+              "measurement_missing",
+              "unknown_unit",
+              "unbound"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "scenario_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scenario Run Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "device_id",
+          "scenario",
+          "scenario_run_id",
+          "occurred_at"
+        ],
+        "title": "DemoDeviceInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A26",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/dose-matches",
+      "action": "records_matches",
+      "owner_module": "s03_records",
+      "input_schema": null
+    },
+    {
+      "id": "A27",
+      "method": "POST",
+      "path": "/api/v1/dose-matches/review",
+      "action": "records_match_review",
+      "owner_module": "s03_records",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Id",
+            "type": "string"
+          },
+          "dose_slot_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose Slot Id"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason",
+          "event_id",
+          "dose_slot_id"
+        ],
+        "title": "MatchReviewInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A28",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/medication-statistics",
+      "action": "analytics_statistics",
+      "owner_module": "s03_analytics",
+      "input_schema": null
+    },
+    {
+      "id": "A29",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/medication-trends",
+      "action": "analytics_trend",
+      "owner_module": "s03_analytics",
+      "input_schema": null
+    },
+    {
+      "id": "A30",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/measurement-trends",
+      "action": "analytics_measurement",
+      "owner_module": "s03_analytics",
+      "input_schema": null
+    },
+    {
+      "id": "A31",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/summary",
+      "action": "analytics_summary",
+      "owner_module": "s03_analytics",
+      "input_schema": null
+    },
+    {
+      "id": "A32",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/summary-refresh",
+      "action": "analytics_refresh",
+      "owner_module": "s03_analytics",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "As Of"
+          },
+          "data_environment": {
+            "title": "Data Environment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window_start",
+          "window_end",
+          "data_environment"
+        ],
+        "title": "Refresh",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A41",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/feedback-overview",
+      "action": "analytics_feedback",
+      "owner_module": "s03_analytics",
+      "input_schema": null
+    },
+    {
+      "id": "A33",
+      "method": "POST",
+      "path": "/api/v1/tasks",
+      "action": "task_create",
+      "owner_module": "s03_execution",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "refresh_statistics",
+              "refresh_summary",
+              "deliver_reminder",
+              "check_in_node",
+              "deliver_intervention",
+              "expire_b_state",
+              "dispatch_service",
+              "fulfill_reward"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "owner_module": {
+            "enum": [
+              "O",
+              "A",
+              "B",
+              "C"
+            ],
+            "title": "Owner Module",
+            "type": "string"
+          },
+          "owner_operation_key": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Owner Operation Key",
+            "type": "string"
+          },
+          "scheduled_at": {
+            "title": "Scheduled At",
+            "type": "string"
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "intervention_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Intervention Id"
+          },
+          "rule_version": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "kind",
+          "owner_module",
+          "owner_operation_key",
+          "scheduled_at",
+          "valid_until",
+          "payload",
+          "rule_version"
+        ],
+        "title": "TaskCreateInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A34",
+      "method": "GET",
+      "path": "/api/v1/tasks/{id}",
+      "action": "task",
+      "owner_module": "s03_execution",
+      "input_schema": null
+    },
+    {
+      "id": "A35",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/tasks",
+      "action": "tasks",
+      "owner_module": "s03_execution",
+      "input_schema": null
+    },
+    {
+      "id": "A36",
+      "method": "POST",
+      "path": "/api/v1/tasks/{id}/run",
+      "action": "task_run",
+      "owner_module": "s03_execution",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "TaskRunInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A37",
+      "method": "POST",
+      "path": "/api/v1/tasks/{id}/cancel",
+      "action": "task_cancel",
+      "owner_module": "s03_execution",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "TaskCancelInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "A38",
+      "method": "GET",
+      "path": "/api/v1/executions/{id}",
+      "action": "execution",
+      "owner_module": "s03_execution",
+      "input_schema": null
+    },
+    {
+      "id": "A39",
+      "method": "GET",
+      "path": "/api/v1/tasks/{id}/executions",
+      "action": "executions",
+      "owner_module": "s03_execution",
+      "input_schema": null
+    },
+    {
+      "id": "A40",
+      "method": "POST",
+      "path": "/api/v1/integrations/delivery-receipts",
+      "action": "delivery_receipt",
+      "owner_module": "s03_execution",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "provider_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Event Id",
+            "type": "string"
+          },
+          "execution_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "submitted",
+              "delivered",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Code"
+          },
+          "failure_message": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Message"
+          }
+        },
+        "required": [
+          "provider_event_id",
+          "execution_id",
+          "occurred_at",
+          "status"
+        ],
+        "title": "DeliveryReceiptInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "F-API01",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/reminder-snoozes",
+      "action": "reminder_snooze",
+      "owner_module": "s03_execution",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "source_task_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Task Id",
+            "type": "string"
+          },
+          "expected_task_revision": {
+            "minimum": 1,
+            "title": "Expected Task Revision",
+            "type": "integer"
+          },
+          "snooze_minutes": {
+            "maximum": 120,
+            "minimum": 5,
+            "title": "Snooze Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_task_id",
+          "expected_task_revision",
+          "snooze_minutes"
+        ],
+        "title": "ReminderSnoozeInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B01",
+      "method": "POST",
+      "path": "/api/v1/config/check-model",
+      "action": "probe",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "profile_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "expected_config_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expected Config Version",
+            "type": "string"
+          },
+          "allow_external_call": {
+            "title": "Allow External Call",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "profile_id",
+          "expected_config_version",
+          "allow_external_call"
+        ],
+        "title": "ModelProbe",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B02",
+      "method": "GET",
+      "path": "/api/v1/cases",
+      "action": "cases",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B03",
+      "method": "GET",
+      "path": "/api/v1/cases/{id}",
+      "action": "case_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B04",
+      "method": "POST",
+      "path": "/api/v1/cases/{id}/reset",
+      "action": "case_reset",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "case_template_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Case Template Version",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "case_template_version",
+          "confirmed"
+        ],
+        "title": "CaseReset",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B05",
+      "method": "POST",
+      "path": "/api/v1/sessions",
+      "action": "session_create",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Case Id"
+          },
+          "entry_source": {
+            "default": "user",
+            "enum": [
+              "user",
+              "accepted_invitation"
+            ],
+            "title": "Entry Source",
+            "type": "string"
+          },
+          "invitation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Invitation Id"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "SessionCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B06",
+      "method": "GET",
+      "path": "/api/v1/sessions",
+      "action": "sessions",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B07",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}",
+      "action": "session_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B08",
+      "method": "POST",
+      "path": "/api/v1/sessions/{s}/close",
+      "action": "session_close",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "CloseSession",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B09",
+      "method": "POST",
+      "path": "/api/v1/sessions/{s}/messages",
+      "action": "message_send",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_message_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Message Id",
+            "type": "string"
+          },
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "expected_turn_count": {
+            "minimum": 0,
+            "title": "Expected Turn Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client_message_id",
+          "content",
+          "expected_turn_count"
+        ],
+        "title": "MessageInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B10",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}/messages",
+      "action": "messages",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B11",
+      "method": "POST",
+      "path": "/api/v1/messages/{id}/generation-retries",
+      "action": "generation_retry",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "generation_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Generation Id",
+            "type": "string"
+          },
+          "expected_turn_count": {
+            "minimum": 0,
+            "title": "Expected Turn Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generation_id",
+          "expected_turn_count"
+        ],
+        "title": "GenerationRetry",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B12",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}/assessments",
+      "action": "assessments",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B13",
+      "method": "POST",
+      "path": "/api/v1/sessions/{s}/self-reports",
+      "action": "self_report",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "$defs": {
+          "SelfReportItem": {
+            "additionalProperties": false,
+            "properties": {
+              "dimension": {
+                "enum": [
+                  "concerns",
+                  "necessity",
+                  "burden",
+                  "routine",
+                  "support_need"
+                ],
+                "title": "Dimension",
+                "type": "string"
+              },
+              "description": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "title": "Description",
+                "type": "string"
+              },
+              "source_message_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source Message Id"
+              }
+            },
+            "required": [
+              "dimension",
+              "description"
+            ],
+            "title": "SelfReportItem",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "client_report_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Report Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/SelfReportItem"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "client_report_id",
+          "items"
+        ],
+        "title": "SelfReport",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B14",
+      "method": "GET",
+      "path": "/api/v1/assessments/{id}",
+      "action": "assessment_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B15",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}/strategy",
+      "action": "strategy",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B30",
+      "method": "GET",
+      "path": "/api/v1/interventions/export",
+      "action": "export",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B16",
+      "method": "GET",
+      "path": "/api/v1/interventions/{id}",
+      "action": "intervention_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B17",
+      "method": "POST",
+      "path": "/api/v1/suggestions/{id}/response",
+      "action": "suggestion_respond",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "choice": {
+            "enum": [
+              "accepted",
+              "declined",
+              "cancelled"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "expected_status": {
+            "const": "pending",
+            "title": "Expected Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "choice",
+          "expected_status"
+        ],
+        "title": "SuggestionRespond",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B18",
+      "method": "POST",
+      "path": "/api/v1/interventions/{id}/display-receipts",
+      "action": "display",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_receipt_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Receipt Id",
+            "type": "string"
+          },
+          "displayed_at": {
+            "title": "Displayed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_receipt_id",
+          "displayed_at"
+        ],
+        "title": "Display",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B19",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}/ui-mode",
+      "action": "mode_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B20",
+      "method": "PUT",
+      "path": "/api/v1/sessions/{s}/ui-mode",
+      "action": "mode_put",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "ui_mode": {
+            "enum": [
+              "normal",
+              "simplified"
+            ],
+            "title": "Ui Mode",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "source_suggestion_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Suggestion Id"
+          }
+        },
+        "required": [
+          "ui_mode",
+          "expected_revision",
+          "confirmed"
+        ],
+        "title": "ModePut",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B21",
+      "method": "GET",
+      "path": "/api/v1/sessions/{s}/invitations",
+      "action": "session_invitations",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B22",
+      "method": "POST",
+      "path": "/api/v1/invitations/{id}/response",
+      "action": "invitation_respond",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "choice": {
+            "enum": [
+              "accepted",
+              "declined"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "expected_status": {
+            "const": "pending",
+            "title": "Expected Status",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          }
+        },
+        "required": [
+          "choice",
+          "expected_status"
+        ],
+        "title": "InvitationRespond",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B23",
+      "method": "POST",
+      "path": "/api/v1/referrals",
+      "action": "referral_create",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "session_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "source_suggestion_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Suggestion Id"
+          },
+          "resource_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "service_draft_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Draft Id",
+            "type": "string"
+          },
+          "service_draft_revision": {
+            "minimum": 1,
+            "title": "Service Draft Revision",
+            "type": "integer"
+          },
+          "confirmation_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Confirmation Ref Id",
+            "type": "string"
+          },
+          "sharing_scope_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Sharing Scope Ref Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "session_id",
+          "resource_id",
+          "service_draft_id",
+          "service_draft_revision",
+          "confirmation_ref_id",
+          "sharing_scope_ref_id"
+        ],
+        "title": "ReferralCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B24",
+      "method": "GET",
+      "path": "/api/v1/referrals/{id}",
+      "action": "referral_get",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B25",
+      "method": "POST",
+      "path": "/api/v1/integrations/state-events",
+      "action": "state_event",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "$defs": {
+          "SummaryRef": {
+            "additionalProperties": false,
+            "properties": {
+              "summary_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Summary Id",
+                "type": "string"
+              },
+              "window_start": {
+                "title": "Window Start",
+                "type": "string"
+              },
+              "window_end": {
+                "title": "Window End",
+                "type": "string"
+              },
+              "generated_at": {
+                "title": "Generated At",
+                "type": "string"
+              },
+              "valid_until": {
+                "title": "Valid Until",
+                "type": "string"
+              },
+              "data_status": {
+                "enum": [
+                  "fresh",
+                  "stale",
+                  "insufficient"
+                ],
+                "title": "Data Status",
+                "type": "string"
+              },
+              "schema_version": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Schema Version",
+                "type": "string"
+              }
+            },
+            "required": [
+              "summary_id",
+              "window_start",
+              "window_end",
+              "generated_at",
+              "valid_until",
+              "data_status",
+              "schema_version"
+            ],
+            "title": "SummaryRef",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "summary_updated",
+              "plan_changed",
+              "consent_revoked"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "summary_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SummaryRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "rule_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "patient_id",
+          "event_type",
+          "summary_ref",
+          "occurred_at",
+          "rule_version"
+        ],
+        "title": "StateEvent",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B26",
+      "method": "POST",
+      "path": "/api/v1/integrations/execution-receipts",
+      "action": "execution_receipt",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "task_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Task Id",
+            "type": "string"
+          },
+          "execution_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Execution Id",
+            "type": "string"
+          },
+          "intervention_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Intervention Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "execution": {
+            "additionalProperties": true,
+            "title": "Execution",
+            "type": "object"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "patient_id",
+          "task_id",
+          "execution_id",
+          "intervention_id",
+          "occurred_at",
+          "execution"
+        ],
+        "title": "ExecutionReceipt",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B27",
+      "method": "POST",
+      "path": "/api/v1/integrations/referral-receipts",
+      "action": "referral_receipt",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "source_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "referral_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Referral Id",
+            "type": "string"
+          },
+          "service_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Id",
+            "type": "string"
+          },
+          "service_status": {
+            "enum": [
+              "submitted",
+              "in_progress",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Service Status",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "source_version": {
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Source Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_event_id",
+          "patient_id",
+          "referral_id",
+          "service_id",
+          "service_status",
+          "occurred_at",
+          "source_version"
+        ],
+        "title": "ReferralReceipt",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B28",
+      "method": "POST",
+      "path": "/api/v1/demo/triggers",
+      "action": "trigger",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Case Id",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Id"
+          },
+          "scenario": {
+            "enum": [
+              "state_event",
+              "periodic_node",
+              "llm_timeout",
+              "empty_response",
+              "invalid_json",
+              "knowledge_empty",
+              "star_mid_failure",
+              "receipt_late"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "scenario_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scenario Run Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id",
+          "scenario",
+          "scenario_run_id",
+          "occurred_at"
+        ],
+        "title": "Trigger",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B29",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/intervention-feedback",
+      "action": "feedback",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B31",
+      "method": "GET",
+      "path": "/api/v1/knowledge",
+      "action": "knowledge_list",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B32",
+      "method": "GET",
+      "path": "/api/v1/knowledge/{id}/versions/{version}",
+      "action": "knowledge_version",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "B33",
+      "method": "POST",
+      "path": "/api/v1/knowledge/search",
+      "action": "knowledge_search",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "applicability_tags": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Applicability Tags",
+            "type": "array"
+          },
+          "limit": {
+            "default": 5,
+            "maximum": 10,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "purpose": {
+            "default": "medical_support",
+            "enum": [
+              "medical_support",
+              "communication",
+              "service_explanation"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "query",
+          "applicability_tags"
+        ],
+        "title": "KnowledgeSearch",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B34",
+      "method": "POST",
+      "path": "/api/v1/knowledge",
+      "action": "knowledge_create",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "communication",
+              "medical",
+              "service_information"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "source_locator": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Source Locator",
+            "type": "string"
+          },
+          "applicability_tags": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Applicability Tags",
+            "type": "array"
+          },
+          "language": {
+            "const": "zh-CN",
+            "default": "zh-CN",
+            "title": "Language",
+            "type": "string"
+          },
+          "effective_from": {
+            "title": "Effective From",
+            "type": "string"
+          },
+          "effective_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective Until"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "source_locator",
+          "applicability_tags",
+          "effective_from"
+        ],
+        "title": "KnowledgeCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B35",
+      "method": "POST",
+      "path": "/api/v1/knowledge/{id}/versions",
+      "action": "knowledge_new_version",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "$defs": {
+          "KnowledgeCreate": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "communication",
+                  "medical",
+                  "service_information"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Title",
+                "type": "string"
+              },
+              "body": {
+                "maxLength": 20000,
+                "minLength": 1,
+                "title": "Body",
+                "type": "string"
+              },
+              "source_locator": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "title": "Source Locator",
+                "type": "string"
+              },
+              "applicability_tags": {
+                "items": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "title": "Applicability Tags",
+                "type": "array"
+              },
+              "language": {
+                "const": "zh-CN",
+                "default": "zh-CN",
+                "title": "Language",
+                "type": "string"
+              },
+              "effective_from": {
+                "title": "Effective From",
+                "type": "string"
+              },
+              "effective_until": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Effective Until"
+              }
+            },
+            "required": [
+              "kind",
+              "title",
+              "body",
+              "source_locator",
+              "applicability_tags",
+              "effective_from"
+            ],
+            "title": "KnowledgeCreate",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "expected_current_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expected Current Version",
+            "type": "string"
+          },
+          "content": {
+            "$ref": "#/$defs/KnowledgeCreate"
+          }
+        },
+        "required": [
+          "expected_current_version",
+          "content"
+        ],
+        "title": "KnowledgeVersion",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B36",
+      "method": "POST",
+      "path": "/api/v1/knowledge/{id}/review",
+      "action": "knowledge_review",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "expected_revision",
+          "decision",
+          "note"
+        ],
+        "title": "KnowledgeReview",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B37",
+      "method": "POST",
+      "path": "/api/v1/knowledge/{id}/withdraw",
+      "action": "knowledge_withdraw",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "expected_revision",
+          "reason"
+        ],
+        "title": "KnowledgeWithdraw",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B38",
+      "method": "PUT",
+      "path": "/api/v1/config/model-profile",
+      "action": "model_profile",
+      "owner_module": "s04_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "profile_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "expected_config_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expected Config Version",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "profile_id",
+          "expected_config_version",
+          "confirmed"
+        ],
+        "title": "ModelProfile",
+        "type": "object"
+      }
+    },
+    {
+      "id": "B39",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/invitations",
+      "action": "patient_invitations",
+      "owner_module": "s04_api",
+      "input_schema": null
+    },
+    {
+      "id": "C01",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/support-recommendations",
+      "action": "recommendations",
+      "owner_module": "s05_api",
+      "input_schema": null
+    },
+    {
+      "id": "C02",
+      "method": "GET",
+      "path": "/api/v1/support-resources",
+      "action": "resources",
+      "owner_module": "s05_api",
+      "input_schema": null
+    },
+    {
+      "id": "C03",
+      "method": "GET",
+      "path": "/api/v1/support-resources/{id}",
+      "action": "resource",
+      "owner_module": "s05_api",
+      "input_schema": null
+    },
+    {
+      "id": "C04",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/service-drafts",
+      "action": "create",
+      "owner_module": "s05_draft_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "resource_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resource Version",
+            "type": "string"
+          },
+          "request_text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Request Text",
+            "type": "string"
+          },
+          "peer_group_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Peer Group Id"
+          },
+          "source_suggestion_id": {
+            "default": null,
+            "title": "Source Suggestion Id",
+            "type": "null"
+          }
+        },
+        "required": [
+          "resource_id",
+          "resource_version",
+          "request_text"
+        ],
+        "title": "DraftInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C05",
+      "method": "GET",
+      "path": "/api/v1/service-drafts/{id}",
+      "action": "draft",
+      "owner_module": "s05_draft_api",
+      "input_schema": null
+    },
+    {
+      "id": "C06",
+      "method": "PUT",
+      "path": "/api/v1/service-drafts/{id}",
+      "action": "edit",
+      "owner_module": "s05_draft_api",
+      "input_schema": {
+        "$defs": {
+          "DraftInput": {
+            "additionalProperties": false,
+            "properties": {
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Resource Id",
+                "type": "string"
+              },
+              "resource_version": {
+                "maxLength": 128,
+                "minLength": 1,
+                "title": "Resource Version",
+                "type": "string"
+              },
+              "request_text": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "title": "Request Text",
+                "type": "string"
+              },
+              "peer_group_id": {
+                "anyOf": [
+                  {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Peer Group Id"
+              },
+              "source_suggestion_id": {
+                "default": null,
+                "title": "Source Suggestion Id",
+                "type": "null"
+              }
+            },
+            "required": [
+              "resource_id",
+              "resource_version",
+              "request_text"
+            ],
+            "title": "DraftInput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "content": {
+            "$ref": "#/$defs/DraftInput"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "content"
+        ],
+        "title": "DraftEdit",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C34",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/service-confirmations",
+      "action": "confirm",
+      "owner_module": "s05_draft_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "service_draft_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Draft Id",
+            "type": "string"
+          },
+          "draft_revision": {
+            "minimum": 1,
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "shared_categories": {
+            "items": {
+              "enum": [
+                "support_question",
+                "medication_plan",
+                "medication_records",
+                "profile_summary"
+              ],
+              "type": "string"
+            },
+            "title": "Shared Categories",
+            "type": "array"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "existing_confirmation_ref_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Existing Confirmation Ref Id"
+          }
+        },
+        "required": [
+          "service_draft_id",
+          "draft_revision",
+          "shared_categories",
+          "confirmed"
+        ],
+        "title": "Confirm",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C35",
+      "method": "GET",
+      "path": "/api/v1/service-confirmations/{id}",
+      "action": "confirmation",
+      "owner_module": "s05_draft_api",
+      "input_schema": null
+    },
+    {
+      "id": "C36",
+      "method": "POST",
+      "path": "/api/v1/service-confirmations/{id}/revoke",
+      "action": "revoke",
+      "owner_module": "s05_draft_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "Revoke",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C07",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/services",
+      "action": "submit_service",
+      "owner_module": "s05_service_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "service_draft_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Draft Id",
+            "type": "string"
+          },
+          "draft_revision": {
+            "minimum": 1,
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "confirmation_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Confirmation Ref Id",
+            "type": "string"
+          },
+          "sharing_scope_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Sharing Scope Ref Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_draft_id",
+          "draft_revision",
+          "confirmation_ref_id",
+          "sharing_scope_ref_id"
+        ],
+        "title": "ServiceCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C08",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/services",
+      "action": "list_services",
+      "owner_module": "s05_service_api",
+      "input_schema": null
+    },
+    {
+      "id": "C09",
+      "method": "GET",
+      "path": "/api/v1/services/{id}",
+      "action": "read_service",
+      "owner_module": "s05_service_api",
+      "input_schema": null
+    },
+    {
+      "id": "C10",
+      "method": "POST",
+      "path": "/api/v1/services/{id}/cancel",
+      "action": "cancel_service",
+      "owner_module": "s05_service_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "title": "Revoke",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C11",
+      "method": "POST",
+      "path": "/api/v1/integrations/service-receipts",
+      "action": "provider_receipt",
+      "owner_module": "s05_service_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "provider_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Event Id",
+            "type": "string"
+          },
+          "service_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Id",
+            "type": "string"
+          },
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "in_progress",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "result_summary": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Summary"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "response_text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Text"
+          }
+        },
+        "required": [
+          "provider_event_id",
+          "service_id",
+          "expected_revision",
+          "status",
+          "occurred_at",
+          "result_summary",
+          "failure_reason",
+          "response_text"
+        ],
+        "title": "ProviderReceipt",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C12",
+      "method": "POST",
+      "path": "/api/v1/demo/services/{id}/transitions",
+      "action": "demo_transition",
+      "owner_module": "s05_service_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "target_status": {
+            "enum": [
+              "in_progress",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Target Status",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "target_status",
+          "reason"
+        ],
+        "title": "DemoTransition",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C13",
+      "method": "POST",
+      "path": "/api/v1/services/{id}/feedback",
+      "action": "save_feedback",
+      "owner_module": "s05_feedback_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_feedback_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Feedback Id",
+            "type": "string"
+          },
+          "expected_feedback_revision": {
+            "minimum": 0,
+            "title": "Expected Feedback Revision",
+            "type": "integer"
+          },
+          "participation": {
+            "enum": [
+              "provided",
+              "declined",
+              "unable"
+            ],
+            "title": "Participation",
+            "type": "string"
+          },
+          "support_needs": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Needs"
+          },
+          "support_acceptance": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Acceptance"
+          },
+          "intervention_effectiveness": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intervention Effectiveness"
+          },
+          "willing_to_continue": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Willing To Continue"
+          },
+          "missing_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Reason"
+          }
+        },
+        "required": [
+          "client_feedback_id",
+          "expected_feedback_revision",
+          "participation",
+          "support_needs",
+          "support_acceptance",
+          "intervention_effectiveness",
+          "willing_to_continue",
+          "missing_reason"
+        ],
+        "title": "ServiceFeedbackInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C14",
+      "method": "GET",
+      "path": "/api/v1/services/{id}/feedback",
+      "action": "feedback_history",
+      "owner_module": "s05_feedback_api",
+      "input_schema": null
+    },
+    {
+      "id": "C15",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/support-feedback",
+      "action": "feedback_source",
+      "owner_module": "s05_feedback_api",
+      "input_schema": null
+    },
+    {
+      "id": "C16",
+      "method": "GET",
+      "path": "/api/v1/peer-groups",
+      "action": "groups",
+      "owner_module": "s05_peer_api",
+      "input_schema": null
+    },
+    {
+      "id": "C17",
+      "method": "GET",
+      "path": "/api/v1/peer-groups/{id}",
+      "action": "group",
+      "owner_module": "s05_peer_api",
+      "input_schema": null
+    },
+    {
+      "id": "C18",
+      "method": "POST",
+      "path": "/api/v1/peer-groups/{id}/memberships",
+      "action": "join",
+      "owner_module": "s05_peer_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "service_draft_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Draft Id",
+            "type": "string"
+          },
+          "draft_revision": {
+            "minimum": 1,
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "confirmation_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Confirmation Ref Id",
+            "type": "string"
+          },
+          "sharing_scope_ref_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Sharing Scope Ref Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_draft_id",
+          "draft_revision",
+          "confirmation_ref_id",
+          "sharing_scope_ref_id"
+        ],
+        "title": "ServiceCreate",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C19",
+      "method": "POST",
+      "path": "/api/v1/memberships/{id}/leave",
+      "action": "leave",
+      "owner_module": "s05_peer_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "LeaveMembership",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C20",
+      "method": "GET",
+      "path": "/api/v1/peer-groups/{id}/posts",
+      "action": "posts",
+      "owner_module": "s05_peer_api",
+      "input_schema": null
+    },
+    {
+      "id": "C21",
+      "method": "POST",
+      "path": "/api/v1/peer-groups/{id}/posts",
+      "action": "post",
+      "owner_module": "s05_peer_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_post_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Post Id",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_post_id",
+          "content"
+        ],
+        "title": "PeerPostInput",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C37",
+      "method": "POST",
+      "path": "/api/v1/peer-posts/{id}/moderation",
+      "action": "moderate",
+      "owner_module": "s05_peer_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 1,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "visible",
+              "hidden"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "decision",
+          "reason"
+        ],
+        "title": "ModeratePost",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C41",
+      "method": "GET",
+      "path": "/api/v1/peer-memberships/me",
+      "action": "my_memberships",
+      "owner_module": "s05_peer_api",
+      "input_schema": null
+    },
+    {
+      "id": "C22",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/points",
+      "action": "account",
+      "owner_module": "s05_points_api",
+      "input_schema": null
+    },
+    {
+      "id": "C23",
+      "method": "GET",
+      "path": "/api/v1/points/rules",
+      "action": "rules",
+      "owner_module": "s05_points_api",
+      "input_schema": null
+    },
+    {
+      "id": "C24",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/points-ledger",
+      "action": "ledger",
+      "owner_module": "s05_points_api",
+      "input_schema": null
+    },
+    {
+      "id": "C25",
+      "method": "POST",
+      "path": "/api/v1/internal/points/reconcile",
+      "action": "reconcile",
+      "owner_module": "s05_points_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "rules_version": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Rules Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "window_start",
+          "window_end",
+          "rules_version"
+        ],
+        "title": "Reconcile",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C38",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/management-reviews",
+      "action": "complete_review",
+      "owner_module": "s05_points_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_review_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Review Id",
+            "type": "string"
+          },
+          "week_start": {
+            "title": "Week Start",
+            "type": "string"
+          },
+          "reflection": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reflection"
+          },
+          "confirmed_completed": {
+            "const": true,
+            "title": "Confirmed Completed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "client_review_id",
+          "week_start",
+          "confirmed_completed"
+        ],
+        "title": "Review",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C39",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/management-reviews",
+      "action": "reviews",
+      "owner_module": "s05_points_api",
+      "input_schema": null
+    },
+    {
+      "id": "C26",
+      "method": "GET",
+      "path": "/api/v1/rewards",
+      "action": "reward_list",
+      "owner_module": "s05_rewards_api",
+      "input_schema": null
+    },
+    {
+      "id": "C27",
+      "method": "GET",
+      "path": "/api/v1/rewards/{id}",
+      "action": "reward_read",
+      "owner_module": "s05_rewards_api",
+      "input_schema": null
+    },
+    {
+      "id": "C28",
+      "method": "POST",
+      "path": "/api/v1/patients/{p}/redemptions",
+      "action": "redeem",
+      "owner_module": "s05_rewards_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "reward_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reward Id",
+            "type": "string"
+          },
+          "reward_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reward Version",
+            "type": "string"
+          },
+          "expected_account_revision": {
+            "minimum": 1,
+            "title": "Expected Account Revision",
+            "type": "integer"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "service_draft_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Service Draft Id"
+          },
+          "draft_revision": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Draft Revision"
+          },
+          "confirmation_ref_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Confirmation Ref Id"
+          },
+          "sharing_scope_ref_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sharing Scope Ref Id"
+          }
+        },
+        "required": [
+          "reward_id",
+          "reward_version",
+          "expected_account_revision",
+          "confirmed"
+        ],
+        "title": "Redeem",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C29",
+      "method": "GET",
+      "path": "/api/v1/patients/{p}/redemptions",
+      "action": "redemption_list",
+      "owner_module": "s05_rewards_api",
+      "input_schema": null
+    },
+    {
+      "id": "C30",
+      "method": "GET",
+      "path": "/api/v1/redemptions/{id}",
+      "action": "redemption_read",
+      "owner_module": "s05_rewards_api",
+      "input_schema": null
+    },
+    {
+      "id": "C31",
+      "method": "POST",
+      "path": "/api/v1/integrations/fulfillment-receipts",
+      "action": "fulfillment_receipt",
+      "owner_module": "s05_rewards_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "provider_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Event Id",
+            "type": "string"
+          },
+          "fulfillment_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Fulfillment Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "in_progress",
+              "completed",
+              "failed",
+              "cancelled",
+              "outcome_unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "result_ref": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result Ref"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Reason"
+          }
+        },
+        "required": [
+          "provider_event_id",
+          "fulfillment_id",
+          "status",
+          "occurred_at"
+        ],
+        "title": "Receipt",
+        "type": "object"
+      }
+    },
+    {
+      "id": "C32",
+      "method": "GET",
+      "path": "/api/v1/redemptions/{id}/fulfillment",
+      "action": "fulfillment_read",
+      "owner_module": "s05_rewards_api",
+      "input_schema": null
+    },
+    {
+      "id": "C33",
+      "method": "POST",
+      "path": "/api/v1/redemptions/{id}/feedback",
+      "action": "redemption_feedback",
+      "owner_module": "s05_rewards_api",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "client_feedback_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Client Feedback Id",
+            "type": "string"
+          },
+          "participation": {
+            "enum": [
+              "provided",
+              "declined",
+              "unable"
+            ],
+            "title": "Participation",
+            "type": "string"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Experience"
+          },
+          "service_feedback_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Service Feedback Id"
+          }
+        },
+        "required": [
+          "client_feedback_id",
+          "participation"
+        ],
+        "title": "Feedback",
+        "type": "object"
+      }
+    },
+    {
+      "id": "foundation-health",
+      "method": "GET",
+      "path": "/api/v1/health",
+      "owner_module": "web",
+      "input_schema": null
+    },
+    {
+      "id": "foundation-config",
+      "method": "GET",
+      "path": "/api/v1/config/status",
+      "owner_module": "web",
+      "input_schema": null
+    }
+  ]
+}

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     SINGLE_PASS_MAX_ATTEMPTS: int = Field(default=2, ge=1, le=2)
     STAR_MAX_ATTEMPTS: int = Field(default=8, ge=1, le=8)
     STAR_MAX_CANDIDATES: int = Field(default=2, ge=1, le=2)
+    STAR_ALLOW_SINGLE_PASS_FALLBACK: bool = False
+    DIALOGUE_HISTORY_LIMIT: int = Field(default=20, ge=1, le=100)
+    RUNNER_POLL_SECONDS: int = Field(default=5, ge=1, le=60)
+    RUNNER_MAX_TASKS: int = Field(default=100, ge=1, le=1000)
+    SUPPORT_RULE_PROFILE: str = Field(default='support-default', min_length=1, max_length=128)
     LLM_MAX_OUTPUT_TOKENS: int = Field(default=1024, ge=1, le=1024)
     CONFIG_VERSION: Literal["s01-config-v1"] = "s01-config-v1"
 

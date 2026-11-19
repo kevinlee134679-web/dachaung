@@ -138,7 +138,7 @@ async function supportConversation(session, view) {
   const canWrite = own() && session.status === "active";
   const panel = el("section", {class: "panel"});
   const toolbar = el("div", {class: "support-toolbar"}, el("h2", {}, simplified ? "极简对话" : "支持对话"),
-                     p("本地模拟 · mock / single_pass", "support-status"));
+                     p("本地模拟对话", "support-status"));
   const messages = await all(supportPath(session, "/messages"));
   const thread = el("div", {class: "support-thread", "aria-label": "对话历史"});
   for (const message of messages) thread.append(supportMessage(session, message, canWrite));
@@ -315,14 +315,14 @@ async function supportConsole() {
   const [sl, scenario] = select("模拟场景", [
     ["state_event", "状态邀请"], ["periodic_node", "周期节点"], ["llm_timeout", "模型超时"],
     ["empty_response", "空响应"], ["invalid_json", "非法结构"], ["knowledge_empty", "知识不足"],
-    ["receipt_late", "晚到回执"]
+    ["receipt_late", "晚到回执"], ["star_mid_failure", "STAR 中途失败"]
   ], "state_event");
   const [il, sessionId] = input("限定到本案例会话（可留空）");
   const [rl, runId] = input("场景运行号", crypto.randomUUID());
   const [tl, time] = input("事件时间（北京时间）", localDateTime(), "datetime-local");
   const output = el("div", {"aria-live": "polite"});
   const configVersion = config.version_refs.find(ref => ref.kind === "model_config")?.version;
-  const model = "mock-single-pass";
+  const model = config.requested_pipeline === 'star' ? 'mock-star' : 'mock-single-pass';
   main.append(el("section", {class: "panel"}, el("h2", {}, "情感支持演示控制台"),
     p(config.llm_mode + " / " + config.requested_pipeline),
     el("div", {class: "actions"}, button("显式检查模拟模型", async v => {
@@ -332,10 +332,14 @@ async function supportConsole() {
       output.replaceChildren(p("探测完成 · 网络尝试 " + result.network_attempt_count + " 次"));
     }), button("选择 mock single_pass", async v => {
       await api("/config/model-profile", "PUT", {
-        profile_id: model, expected_config_version: configVersion, confirmed: true
+        profile_id: 'mock-single-pass', expected_config_version: configVersion, confirmed: true
       }, v);
       await refreshSupport(v);
       notice("已保存模型配置。");
+    }), button('选择 mock STAR', async v => {
+      await api('/config/model-profile', 'PUT', {profile_id: 'mock-star', expected_config_version: configVersion, confirmed: true}, v);
+      await refreshSupport(v);
+      notice('已保存 STAR 模拟配置。');
     })), cl,
     button("读取案例开场草稿", async v => {
       const data = await api("/cases/" + encodeURIComponent(chooser.value), "GET", null, v);

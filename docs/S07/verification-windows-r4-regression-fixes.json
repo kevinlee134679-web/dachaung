@@ -1,0 +1,37 @@
+{
+  "title": "Windows完整回归三项失败整改与r4复验准备",
+  "stage": "S07 Windows回归整改",
+  "status": "r3实机回归失败已整改；r4最终Linux全项预演通过，待具体授权交付与Windows复验",
+  "schema": "0016",
+  "evidence_file": "verification-windows-r4-regression-fixes.json",
+  "completed": [
+    "保留负责人上传的原始full-regression.log及SHA256。r3实机前九项通过，完整回归275项出现1失败、2错误、14项平台跳过；不覆盖或修改失败证据。",
+    "worker互斥测试显式指定子Python -X utf8与父捕获encoding=utf8，避免父测试UTF-8与Windows子进程本地编码不一致导致stderr解码线程失败。保留实际第二进程拒绝和释放后重启断言。",
+    "修复实际备份目标SQLite连接未关闭；sqlite3连接上下文仅管理事务，不负责关闭，现使用closing覆盖成功及异常路径。同步关闭测试及验收读取连接；旧库写入夹具显式commit，并断言升级后原夹具确实存在。",
+    "浏览器本地API就绪回归用Node虚拟Date/setTimeout检查链式请求与静默期，消除真实毫秒阈值的Windows计时误判，生产等待逻辑未放宽。",
+    "新增备份成功和完整性错误两路径均关闭连接的回归；r4失败摘要直接附regression_failure诊断，便于后续定位。更新包内说明，应用0.7.3/schema0016及旧迁移不变。"
+  ],
+  "remaining": [
+    "r4尚未真实Windows复验。r3已通过浏览器、worker、旧库升级不能替代r4全项结果，S07整体仍待Windows回归确认。",
+    "r4新源码包的私有Drive上传需具体文件授权；此前明确授权覆盖r3。GitHub仍按负责人要求在验收后统一上传。"
+  ],
+  "verification": [
+    "定向检查：runner10项Python、lifecycle6项Python（新增1项，覆盖成功/异常两个子用例）、验收器Node5项通过。",
+    "首轮Linux预演276项Python全部通过（内含页面Node56和验收器Node5），12组真实Chromium通过；其运行期间审查补充旧库写入的显式commit与具体夹具保留断言，因此最终版本再次完整预演后才封包。",
+    "原Windows14项跳过逐项核对：12项Linux保护后端、1项POSIX信号、1项Windows非特权符号链接；没有新增跳过或隐藏失败。",
+    "最终完整Linux预演acceptance_revision=4、rehearsal_passed_not_windows：276项Python，0失败/错误/跳过，12组Chromium，两次正常停止，80张旧表保持；独立只读核对升级后的原windows-fixture行确实存在。"
+  ],
+  "next": [
+    "完成r4最终版本预演和封包，校验清单与哈希后，具体授权范围内私有交付新包。",
+    "负责人完整解压到新目录运行WINDOWS_ACCEPTANCE.cmd并返回acceptance_revision=4的完整结果；全部实测通过才登记S07验收完成。"
+  ],
+  "review": [
+    "审核发现将写入连接改用closing后须显式提交，已补commit和升级后原夹具内容断言，最终运行需覆盖该修正，不以空表指纹冒充原行保留。",
+    "首次多文件patch因验收脚本匹配行不全被原子拒绝，工作树确认未修改后精确重试；未产生半套修复。",
+    "不重新安装用户已有Python/Node，不操作原演示库、不调用真实模型、不扩大网盘授权范围、不提前上传GitHub。"
+  ],
+  "record": "R0058",
+  "version_record": "V0058",
+  "recorded_at": "2026-11-19T10:20:19+08:00",
+  "application": "0.7.3"
+}
