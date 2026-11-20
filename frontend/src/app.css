@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+@plugin '@iconify/tailwind4';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-zinc-50 font-sans text-zinc-950 antialiased dark:bg-zinc-950 dark:text-white;
+}

@@ -1,5 +1,9 @@
 .venv/
 .venv-*/
+node_modules/
+medplatform/static/
+coverage/
+*.tsbuildinfo
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -26,3 +30,17 @@ test-output/
 
 # Protected uploaded content beside a custom database path.
 files-demo/
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# ruff
+.ruff_cache/
+
+# pre-commit
+.pre-commit-config.yaml

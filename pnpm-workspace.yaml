@@ -1,0 +1,13 @@
+packages:
+  - frontend
+
+allowBuilds:
+  simple-git-hooks: true
+
+minimumReleaseAgeExclude:
+  - '@solidjs/signals@2.0.3'
+  - '@solidjs/web@2.0.3'
+  - solid-js@2.0.3
+
+overrides:
+  typescript: npm:typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2

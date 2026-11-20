@@ -1,0 +1,21 @@
+[project]
+name = "dachaung"
+version = "0.7.3"
+requires-python = "==3.14.*"
+dependencies = [
+    # POSIX payload encryption; Windows uses DPAPI
+    "cryptography>=50.0.2 ; sys_platform != 'win32'",
+    "fastapi>=0.163.1",
+    # TestClient behind the demo seeders
+    "httpx2>=2.16.2",
+    "pydantic-settings>=2.16.3",
+    "python-multipart>=0.0.34",
+    # Windows has no system IANA time zone data
+    "tzdata>=2026.6",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.6",
+]

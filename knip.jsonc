@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // ruff comes from the uv-managed Python env, not npm; lint-staged calls it for *.py
+  "ignoreBinaries": ["ruff"],
+  // @iconify/tailwind4 resolves icon sets by name at build time
+  "ignoreDependencies": ["@iconify-json/heroicons"],
+}

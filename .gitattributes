@@ -6,10 +6,15 @@ docs/** -text
 # S01 source conventions; SQL checksums must survive checkout byte-for-byte.
 *.py text eol=lf
 *.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
 *.css text eol=lf
 *.html text eol=lf
 *.txt text eol=lf
-*.in text eol=lf
+*.toml text eol=lf
+uv.lock text eol=lf
 *.sql -text
 *.ps1 -text
 .env.example -text
@@ -22,5 +27,5 @@ docs/** -text
 # S02 fixture manifests have stable checkout bytes.
 data/demo/*.json text eol=lf
 
-# S02 frontend regression files retain stable checkout bytes.
-*.cjs text eol=lf
+# The POSIX launcher needs an LF shebang in every checkout.
+start.sh text eol=lf

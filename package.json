@@ -1,0 +1,41 @@
+{
+  "name": "dachaung",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @dachaung/frontend build",
+    "dev": "pnpm --filter @dachaung/frontend dev",
+    "format": "oxfmt --write \"**/*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}\"",
+    "format:check": "oxfmt --check \"**/*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}\"",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "prepare": "simple-git-hooks",
+    "test": "pnpm --filter @dachaung/frontend test",
+    "typecheck": "pnpm --filter @dachaung/frontend typecheck",
+    "knip": "knip"
+  },
+  "devDependencies": {
+    "@mzwing/oxc-config": "^0.1.6",
+    "eslint-plugin-solid": "^0.16.0",
+    "knip": "^6.46.1",
+    "lint-staged": "^17.6.1",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "simple-git-hooks": "^2.14.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}": [
+      "oxfmt --write",
+      "oxlint --fix"
+    ],
+    "*.py": [
+      "ruff format",
+      "ruff check --fix"
+    ]
+  },
+  "packageManager": "pnpm@12.22.0"
+}
