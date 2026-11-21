@@ -17,15 +17,15 @@ docs/** -text
 uv.lock text eol=lf
 *.sql -text
 *.ps1 -text
-.env.example -text
+backend/.env.example -text
 
 # Preserve attributes themselves; stabilize other text metadata on Windows.
 .gitattributes -text
 .gitignore text eol=lf
-.python-version text eol=lf
+backend/.python-version text eol=lf
 
 # S02 fixture manifests have stable checkout bytes.
-data/demo/*.json text eol=lf
+backend/data/demo/*.json text eol=lf
 
 # The POSIX launcher needs an LF shebang in every checkout.
-start.sh text eol=lf
+backend/start.sh text eol=lf

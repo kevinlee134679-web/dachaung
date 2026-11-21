@@ -1,7 +1,7 @@
 .venv/
 .venv-*/
 node_modules/
-medplatform/static/
+backend/medplatform/static/
 coverage/
 *.tsbuildinfo
 __pycache__/
@@ -24,8 +24,8 @@ var/
 *.pfx
 secrets/
 private/
-data/real/
-data/uploads/
+backend/data/real/
+backend/data/uploads/
 test-output/
 
 # Protected uploaded content beside a custom database path.

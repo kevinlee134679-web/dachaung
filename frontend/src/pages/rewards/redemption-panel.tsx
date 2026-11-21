@@ -18,6 +18,7 @@ import {
   Text,
   Textarea,
 } from '../../ui/components'
+import { confirm } from '../../ui/confirm'
 import { statusTone } from '../../ui/labels'
 import { serviceWrite } from '../support/service-draft-data'
 import { openServiceRecord } from '../support/service-navigation'
@@ -234,7 +235,8 @@ function RewardItem(props: {
       view={props.view}
       onAction={async view => {
         if (localStorage.getItem(props.pendingKey) !== null) throw new Error('请先核查原兑换。')
-        if (!window.confirm(`确认使用 ${props.reward.points_cost} 积分兑换「${props.reward.name}」？`)) return
+        if (!(await confirm(`确认使用 ${props.reward.points_cost} 积分兑换「${props.reward.name}」？`))) return
+        requireCurrentView(view)
         await props.send(
           {
             reward_id: props.reward.reward_id,

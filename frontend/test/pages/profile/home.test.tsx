@@ -34,7 +34,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('S07 home reads authoritative support and service status without writes or markup execution', async () => {
+it('home reads authoritative support and service status without writes or markup execution', async () => {
   choose(['support:read', 'services:read'])
   const calls: [string, string | undefined][] = []
   vi.stubGlobal(
@@ -60,7 +60,7 @@ it('S07 home reads authoritative support and service status without writes or ma
   expect(calls.every(([, method]) => method === 'GET')).toBe(true)
 })
 
-it('S07 home does not request support facts without their exact scopes', async () => {
+it('home does not request support facts without their exact scopes', async () => {
   const fetch = vi.fn(() => success({}))
   vi.stubGlobal('fetch', fetch)
   render(() => <HomePage />)
@@ -68,7 +68,7 @@ it('S07 home does not request support facts without their exact scopes', async (
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('S07 home discards delayed service content after switching patient', async () => {
+it('home discards delayed service content after switching patient', async () => {
   choose(['services:read'])
   const reply = Promise.withResolvers<{
     ok: boolean

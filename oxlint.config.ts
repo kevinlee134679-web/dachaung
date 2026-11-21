@@ -4,16 +4,12 @@ export default oxlint({
   type: 'app',
   typescript: true,
   solid: true,
-  ignores: ['medplatform/static/**'],
+  ignores: ['backend/medplatform/static/**'],
   rules: {
     // eslint-plugin-solid models Solid 1 tracking; Solid 2 component props like onAction and onSettled snapshots are flagged wrongly
     'solid/reactivity': 'allow',
-    // destructive actions keep the legacy explicit window.confirm step
-    'no-alert': 'allow',
     // conflicts with require-await on promise forwarders; DSA-Mastery turns it off the same way
     'typescript/promise-function-async': 'allow',
-    // ported test titles keep the legacy S05/S07 stage prefixes
-    'vitest/prefer-lowercase-title': 'allow',
 
     // typescript-eslint strict-type-checked and stylistic-type-checked on top of the shared config
     'typescript/adjacent-overload-signatures': 'error',

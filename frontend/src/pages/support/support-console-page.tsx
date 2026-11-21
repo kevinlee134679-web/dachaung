@@ -7,6 +7,7 @@ import { inputDateTime, localDateTime } from '../../date/date'
 import { actionError, notice } from '../../notice/notice'
 import { captureView, isCurrentView, isDemoAdmin, requireCurrentView, ViewChanged } from '../../session/session'
 import { Button, Card, Field, Input, Select, Text, Textarea } from '../../ui/components'
+import { confirm } from '../../ui/confirm'
 import { PointsConsole, RewardDemoControls } from '../rewards/reward-controls'
 import { refreshSupport } from './home-support-invitations'
 import { PeerModerationControls } from './peer-controls'
@@ -117,7 +118,8 @@ export function SupportConsolePage(): JSX.Element {
   }
   async function resetCase(view: View): Promise<void> {
     const selected = catalog().find(entry => entry.case_id === chooser.value)
-    if (!selected || !window.confirm(`确认清理「${selected.title}」的虚构对话记录？`)) return
+    if (!selected || !(await confirm(`确认清理「${selected.title}」的虚构对话记录？`))) return
+    requireCurrentView(view)
     const result = await api(
       `/cases/${encodeURIComponent(selected.case_id)}/reset`,
       v.looseObject({ affected_session_ids: v.array(v.string()) }),

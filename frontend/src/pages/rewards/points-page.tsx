@@ -10,6 +10,7 @@ import { actionError, notice } from '../../notice/notice'
 import { readGate } from '../../session/read-gate'
 import { captureView, isCurrentView, own, requireCurrentView, scope, state, ViewChanged } from '../../session/session'
 import { Button, Card, Checkbox, Disclosure, Field, Text, Textarea } from '../../ui/components'
+import { confirm } from '../../ui/confirm'
 import { RangeControls } from '../../ui/range-controls'
 import { RedemptionPanel } from './redemption-panel'
 
@@ -132,7 +133,8 @@ function ManagementReview(props: { path: string; timezone: string; view: View })
                 view={props.view}
                 onAction={async view => {
                   if (!confirmed.checked) throw new Error('请本人明确确认已完成本周回顾。')
-                  if (!window.confirm('确认记录本周管理回顾？')) return
+                  if (!(await confirm('确认记录本周管理回顾？'))) return
+                  requireCurrentView(view)
                   const draft = {
                     week_start: week(),
                     reflection: reflection.value.trim() || null,

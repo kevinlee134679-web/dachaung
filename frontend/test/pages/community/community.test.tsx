@@ -12,6 +12,8 @@ import { SocialSupportPage } from '../../../src/pages/support/social-support-pag
 import { state, updateSession } from '../../../src/session/session'
 import { navigate } from '../../../src/shell/navigation'
 
+vi.mock('../../../src/ui/confirm', () => ({ confirm: () => Promise.resolve(true) }))
+
 interface SuccessResponse {
   ok: boolean
   status: number
@@ -262,7 +264,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('S05 catalog and matching show exact source versions and browse only with GET', async () => {
+it('catalog and matching show exact source versions and browse only with GET', async () => {
   const calls: [string, string | undefined, string | undefined][] = []
   vi.stubGlobal(
     'fetch',
@@ -290,7 +292,7 @@ it('S05 catalog and matching show exact source versions and browse only with GET
   ])
 })
 
-it('S05 ignores a delayed matching result after the selected need or patient changes', async () => {
+it('ignores a delayed matching result after the selected need or patient changes', async () => {
   const response = Promise.withResolvers<SuccessResponse>()
   const sent = Promise.withResolvers<undefined>()
   const fetchMock = vi.fn((url: string) => {
@@ -319,7 +321,7 @@ it('S05 ignores a delayed matching result after the selected need or patient cha
   expect(document.body.textContent).not.toMatch(/o-profile-a|本次支持需求/)
 })
 
-it('S05 stale resource version is reported and never labeled as the prior match', async () => {
+it('stale resource version is reported and never labeled as the prior match', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string) => {
@@ -335,7 +337,7 @@ it('S05 stale resource version is reported and never labeled as the prior match'
   expect(document.body.textContent).not.toMatch(/演示资源介绍|demo-v3/)
 })
 
-it('S05 family prepares a manual draft and restores it without confirmation or revoke controls', async () => {
+it('family prepares a manual draft and restores it without confirmation or revoke controls', async () => {
   const calls = draftEnvironment({ family: true })
   const text = await prepareDraft()
   fireEvent.input(text, { target: { value: '家属据实代录' } })
@@ -353,7 +355,7 @@ it('S05 family prepares a manual draft and restores it without confirmation or r
   await waitFor(() => expect(screen.getByLabelText<HTMLTextAreaElement>('本次服务问题').value).toBe('家属据实代录'))
 })
 
-it('S05 stale draft edit reloads revisions while preserving the unsaved text', async () => {
+it('stale draft edit reloads revisions while preserving the unsaved text', async () => {
   const calls = draftEnvironment({ conflict: true })
   fireEvent.input(await prepareDraft(), { target: { value: '首次录入' } })
   fireEvent.click(screen.getByRole('button', { name: '保存草稿' }))
@@ -369,7 +371,7 @@ it('S05 stale draft edit reloads revisions while preserving the unsaved text', a
   expect(writes[1]?.body?.['content']).toMatchObject({ request_text: '此项修改应保留' })
 })
 
-it('S05 explicit patient confirmation submits only checked options and retains revoked history', async () => {
+it('explicit patient confirmation submits only checked options and retains revoked history', async () => {
   const calls = draftEnvironment()
   fireEvent.input(await prepareDraft(), { target: { value: '本人核对的演示问题' } })
   fireEvent.click(screen.getByRole('button', { name: '保存草稿' }))
@@ -402,7 +404,7 @@ it('S05 explicit patient confirmation submits only checked options and retains r
   ).toBeTruthy()
 })
 
-it('S05 unknown draft write uses the original key and blocks a changed request', async () => {
+it('unknown draft write uses the original key and blocks a changed request', async () => {
   const calls = draftEnvironment({ lost: true })
   const text = await prepareDraft()
   fireEvent.input(text, { target: { value: '原提交正文' } })
@@ -475,7 +477,6 @@ it('weekly review uses local ISO week and recovers a committed write from the se
       )
     }),
   )
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
   choose(['points:read'])
   navigate('rewards')
   render(() => <TestPage />)

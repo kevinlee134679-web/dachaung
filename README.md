@@ -9,24 +9,27 @@
 ```sh
 direnv allow
 pnpm install && pnpm build
-python -m medplatform init-demo
-python -m medplatform serve
+cd backend
+uv run python -m medplatform init-demo
+uv run python -m medplatform serve
 ```
 
-不用 devenv 时，需要 uv、Node.js 和 pnpm：先运行一次 `pnpm install && pnpm build`，再用 `./start.sh`（Windows 用 `start.cmd`）跟同样的命令（`init-demo`、`serve`）。
+不用 devenv 时，需要 uv、Node.js 和 pnpm：先在根目录运行一次 `pnpm install && pnpm build`，再用 `backend/start.sh`（Windows 用 `backend\start.cmd`）跟同样的命令（`init-demo`、`serve`）。
 
 启动后打开 http://127.0.0.1:8000/ 。全部命令见 [运维文档](docs/运维.md)。
 
 ## 开发
 
 ```sh
-python -B -X utf8 -m unittest discover -s tests
+cd backend
+uv run python -B -X utf8 -m unittest discover -s tests
 uv run ruff check && uv run ruff format
+cd ..
 pnpm test && pnpm typecheck
 pnpm lint && pnpm format
 ```
 
-前端源码在 `frontend/`（Solid、Vite、Tailwind CSS）。`pnpm dev` 启动带热更新的开发服务器，`/api` 代理到同时运行的 `serve`（127.0.0.1:8000）。
+后端（Python、FastAPI）在 `backend/`，前端源码在 `frontend/`（Solid、Vite、Tailwind CSS）。pnpm 命令在根目录运行。`pnpm dev` 启动带热更新的开发服务器，`/api` 代理到同时运行的 `serve`（127.0.0.1:8000）。
 
 pre-commit 钩子要用 pnpm，请在 direnv 已加载的终端里提交。
 

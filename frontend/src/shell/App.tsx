@@ -44,6 +44,7 @@ import {
   ViewChanged,
 } from '../session/session'
 import { Badge, Button, Heading, Select, Text } from '../ui/components'
+import { ConfirmHost } from '../ui/confirm'
 import { Tabs } from '../ui/tabs'
 import { changeTab, navigate } from './navigation'
 
@@ -332,6 +333,7 @@ export function App(): JSX.Element {
         </div>
       }
     >
+      <ConfirmHost />
       <Show
         when={state.context}
         fallback={

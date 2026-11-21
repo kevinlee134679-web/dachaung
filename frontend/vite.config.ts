@@ -7,7 +7,7 @@ const config: UserConfig = defineConfig({
   base: '/static/',
   plugins: [solid(), tailwindcss()],
   build: {
-    outDir: '../medplatform/static',
+    outDir: '../backend/medplatform/static',
     emptyOutDir: true,
   },
   server: {

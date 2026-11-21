@@ -17,6 +17,7 @@ import {
 } from '../../session/session'
 import { navigate } from '../../shell/navigation'
 import { Badge, Button, Card, Field, Select, Subheading, Text, Textarea } from '../../ui/components'
+import { confirm } from '../../ui/confirm'
 import { statusTone } from '../../ui/labels'
 import { peerMembershipSchema, peerPath, PeerPostItem, peerPostPageSchema } from './peer-controls'
 import { formalServiceStates } from './service-controls'
@@ -288,7 +289,8 @@ export function PeerSupportPage(): JSX.Element {
   })
 
   async function leave(current: PeerDetail, membership: PeerMembership): Promise<void> {
-    if (!window.confirm('确认自愿退出此小组？')) return
+    if (!(await confirm('确认自愿退出此小组？'))) return
+    requireCurrentView(view)
     try {
       await serviceWrite(
         `/memberships/${encodeURIComponent(membership.membership_id)}/leave`,

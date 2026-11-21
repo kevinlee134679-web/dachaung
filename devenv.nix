@@ -11,6 +11,7 @@
     python = {
       enable = true;
       package = pkgs.python314;
+      directory = "./backend";
 
       venv.enable = true;
 
