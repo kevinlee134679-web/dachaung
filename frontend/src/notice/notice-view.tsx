@@ -1,7 +1,7 @@
 import type { JSX } from '@solidjs/web'
 import { Show } from 'solid-js'
 import { requireCurrentView } from '../session/session'
-import { Button } from '../ui/components'
+import { Button } from '../ui/button'
 import { currentNotice, notice } from './notice'
 
 export function Notice(): JSX.Element {

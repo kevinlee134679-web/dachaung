@@ -8,6 +8,34 @@ from ..core.migrations import status
 from ..core.strict_json import loads
 
 
+async def dispatch(
+    request,
+    service,
+    envelope,
+    action,
+    principal,
+    params,
+    query,
+    body,
+    key,
+    *extra,
+):
+    response = await run_in_threadpool(
+        service.handle, action, principal, params, query, body, key, *extra
+    )
+    error = response.error
+    http = JSONResponse(
+        envelope(
+            request,
+            response.data,
+            **({"code": error["code"], "message": error["message"]} if error else {}),
+        ),
+        status_code=response.status,
+        headers=response.headers,
+    )
+    return response, http
+
+
 def router(modules, envelope):
     result = APIRouter()
     for module, service in modules:
@@ -62,8 +90,10 @@ def router(modules, envelope):
                         raise AppError(
                             422, "VALIDATION_ERROR", "请求字段、时区、窗口或格式不合法"
                         ) from None
-                    response = await run_in_threadpool(
-                        service.handle,
+                    _, http = await dispatch(
+                        request,
+                        service,
+                        envelope,
                         action,
                         principal,
                         params,
@@ -71,20 +101,7 @@ def router(modules, envelope):
                         body,
                         request.headers.get("Idempotency-Key"),
                     )
-                    error = response.error
-                    return JSONResponse(
-                        envelope(
-                            request,
-                            response.data,
-                            **(
-                                {"code": error["code"], "message": error["message"]}
-                                if error
-                                else {}
-                            ),
-                        ),
-                        status_code=response.status,
-                        headers=response.headers,
-                    )
+                    return http
 
                 return handle
 

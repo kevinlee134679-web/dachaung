@@ -14,7 +14,7 @@ uv run python -m medplatform init-demo
 uv run python -m medplatform serve
 ```
 
-不用 devenv 时，需要 uv、Node.js 和 pnpm：先在根目录运行一次 `pnpm install && pnpm build`，再用 `backend/start.sh`（Windows 用 `backend\start.cmd`）跟同样的命令（`init-demo`、`serve`）。
+不用 devenv 时，需要 uv、Node.js 和 pnpm：在根目录先运行一次 `./start.sh init-demo`，之后运行 `./start.sh` 即可构建前端并启动服务（Windows 用 `start.cmd`）。
 
 启动后打开 http://127.0.0.1:8000/ 。全部命令见 [运维文档](docs/运维.md)。
 

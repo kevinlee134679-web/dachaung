@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 from fixtures import BASE, PA, PB, IdentityFixture, defaults, key, unknown_answers
 from medplatform.core.config import ROOT
 from medplatform.core.documents import all_docs, get, stamp
-from medplatform.identity.api import ROUTES
 from medplatform.identity.service import seed_demo
 from medplatform.web.app import create_app
 
@@ -529,10 +528,6 @@ class IdentityTests(IdentityFixture):
             f"/patients/{PA}/dose-slots?window_start=2027-01-01T00:00:00Z&window_end=2027-01-02T00:00:00Z",
             expected=409,
         )
-        with self.db.connection(readonly=True) as c:
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM change_notices").fetchone()[0], 1
-            )
 
     def test_weekly_calendar_and_declared_interval_across_midnight(self):
         draft = self.draft(
@@ -655,9 +650,6 @@ class IdentityTests(IdentityFixture):
             self.assertEqual(len(all_docs(c, "PlanVersion")), 0)
             self.assertEqual(
                 c.execute("SELECT count(*) FROM dose_slots").fetchone()[0], 0
-            )
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM change_notices").fetchone()[0], 0
             )
 
     def test_reminder_config_only_defaults_limits_privacy_and_permissions(self):
@@ -950,35 +942,3 @@ class IdentityTests(IdentityFixture):
         )
         self.assertEqual(r.status_code, 503)
         self.assertEqual(self.db.path.read_bytes(), before)
-
-    def test_no_later_phase_routes_or_background_tasks(self):
-        self.assertEqual(len(ROUTES), 40)
-        # B02 is admin-only; C07/C08 are now in scope while later rewards remain absent.
-        denied = self.call(self.a, "GET", "/cases", expected=403)
-        self.assertEqual(denied["code"], "ADMIN_REQUIRED")
-        cases = self.call(self.login("demo-admin"), "GET", "/cases")["items"]
-        self.assertEqual(
-            {case["case_id"] for case in cases},
-            {"case-low-mood", "case-anxiety", "case-fatigue"},
-        )
-        self.assertEqual(
-            self.call(self.a, "GET", f"/patients/{PA}/services"),
-            {"items": [], "next_cursor": None},
-        )
-        self.assertEqual(
-            self.call(self.a, "GET", f"/patients/{PA}/redemptions"),
-            {"items": [], "next_cursor": None},
-        )
-        for path in (
-            "/api/v1/patients/" + PA + "/statistics",
-            "/api/v1/redemptions/missing",
-        ):
-            self.assertEqual(self.a.get(path).status_code, 404)
-        self.assertEqual(self.a.get("/api/v1/tasks").status_code, 405)
-        self.assertNotIn("Task", {r[0] for r in self.db_connection_table_names()})
-
-    def db_connection_table_names(self):
-        with self.db.connection(readonly=True) as c:
-            return c.execute(
-                'SELECT name FROM sqlite_master WHERE type="table"'
-            ).fetchall()

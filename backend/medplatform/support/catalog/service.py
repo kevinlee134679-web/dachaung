@@ -1,7 +1,6 @@
 """The local C directory and a read-only projection of approved support sources."""
 
 import json
-import sqlite3
 from typing import Literal
 
 from pydantic import TypeAdapter, model_validator
@@ -12,6 +11,7 @@ from ...core.errors import AppError
 from ...core.idempotency import Result
 from ...core.migrations import status
 from ...web.inputs import ID, Input, Short, Text
+from ..common import next_cursor, page_after, read_guarded
 
 FIXTURE_FILE = "data/demo/support_resources.json"
 NEED_BY_KIND = {
@@ -82,7 +82,6 @@ class DemoResource(Input):
 class ResourceFixture(Input):
     resource: DemoResource
     previous_version: ID | None
-    review_status: Literal["not_reviewed"]
     profile_types: list[ID]
 
     @model_validator(mode="after")
@@ -116,24 +115,21 @@ def register_catalog(db, fixtures, clock=now):
     """Install versioned fictional fixtures via the explicit local command."""
     status(db)
     with db.transaction() as conn:
-        return install_catalog(conn, fixtures, stamp(clock()), FIXTURE_FILE)
+        return install_catalog(conn, fixtures, stamp(clock()))
 
 
-def install_catalog(conn, fixtures, at, fixture_file):
+def install_catalog(conn, fixtures, at):
     written = 0
     for fixture in fixtures:
         doc = fixture.resource
         identity = (doc.resource_id, doc.resource_version)
-        source = f"{fixture_file}#{doc.resource_id}/{doc.resource_version}"
         payload = (
             fixture.previous_version,
-            source,
-            fixture.review_status,
             encode(doc.model_dump()),
             encode(sorted(fixture.profile_types)),
         )
         saved = conn.execute(
-            """SELECT previous_version, fixture_source, review_status, resource_json, profile_types_json
+            """SELECT previous_version, resource_json, profile_types_json
                FROM c_support_resource_versions WHERE resource_id=? AND resource_version=?""",
             identity,
         ).fetchone()
@@ -153,8 +149,8 @@ def install_catalog(conn, fixtures, at, fixture_file):
             )
         conn.execute(
             """INSERT INTO c_support_resource_versions
-               (resource_id, resource_version, recorded_at, previous_version, fixture_source,
-                review_status, resource_json, profile_types_json) VALUES (?,?,?,?,?,?,?,?)""",
+               (resource_id, resource_version, recorded_at, previous_version,
+                resource_json, profile_types_json) VALUES (?,?,?,?,?,?)""",
             (*identity, at, *payload),
         )
         conn.execute(
@@ -227,10 +223,17 @@ class Catalog:
         return patient
 
     def handle(self, action, principal, path, query, _body, _key):
-        try:
-            with self.db.connection(readonly=True) as conn:
-                conn.execute("BEGIN")
-                patient = self.patient(conn, principal, path)
+        def guard(conn):
+            return self.patient(conn, principal, path)
+
+        def verify(patient, current):
+            if current != patient:
+                raise AppError(403, "SCOPE_REQUIRED", "当前照护对象已变更，请重新读取")
+            if action == "recommendations" and read_profile:
+                self.auth.require_patient(principal, patient, "profile:read", conn)
+
+        with self.db.connection(readonly=True) as conn:
+            with read_guarded(conn, guard, verify) as patient:
                 if action == "recommendations":
                     data, read_profile = self.recommendations(
                         conn, principal, patient, query.get("need")
@@ -239,38 +242,14 @@ class Catalog:
                     data = self.resources(conn, principal, patient, query)
                 else:
                     data = self.resource(conn, path["id"])
-                conn.commit()
-                if self.patient(conn, principal, path) != patient:
-                    raise AppError(
-                        403, "SCOPE_REQUIRED", "当前照护对象已变更，请重新读取"
-                    )
-                if action == "recommendations" and read_profile:
-                    self.auth.require_patient(principal, patient, "profile:read", conn)
-                return Result(data)
-        except sqlite3.Error, json.JSONDecodeError:
-            code = (
-                "SUPPORT_CONTEXT_UNAVAILABLE"
-                if action == "recommendations"
-                else "SUPPORT_RESOURCE_UNAVAILABLE"
-            )
-            message = (
-                "支持上下文暂不可用"
-                if action == "recommendations"
-                else "资源目录暂不可用"
-            )
-            raise AppError(503, code, message) from None
+            return Result(data)
 
     def resources(self, conn, principal, patient, query):
         if not catalog_registered(conn):
             raise AppError(503, "SUPPORT_RESOURCE_UNAVAILABLE", "模拟资源目录尚未登记")
         channel = query.get("channel", "support")
         context = [principal.account_id, "C02", patient, channel]
-        after = ""
-        if "cursor" in query:
-            last = self.auth.read_cursor(query["cursor"], context)
-            if len(last) != 1 or not isinstance(last[0], str):
-                raise AppError(422, "INVALID_CURSOR", "分页位置无效，请重新读取列表")
-            after = last[0]
+        after = page_after(self.auth, query, context, [""])[0]
         limit = query.get("limit", 20)
         rows = conn.execute(
             CURRENT
@@ -283,13 +262,13 @@ class Catalog:
                 limit + 1,
             ),
         ).fetchall()
-        more = len(rows) > limit
-        rows = rows[:limit]
+        items = [json.loads(r["resource_json"]) for r in rows[:limit]]
+        cursor = next_cursor(
+            rows, limit, self.auth, context, lambda row: [row["resource_id"]]
+        )
         return {
-            "items": [json.loads(r["resource_json"]) for r in rows],
-            "next_cursor": self.auth.cursor(context, [rows[-1]["resource_id"]])
-            if more
-            else None,
+            "items": items,
+            "next_cursor": cursor,
         }
 
     def resource(self, conn, identifier):

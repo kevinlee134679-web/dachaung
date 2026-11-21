@@ -1,4 +1,3 @@
-import json
 import sqlite3
 import unittest
 from datetime import timedelta
@@ -6,8 +5,7 @@ from unittest.mock import patch
 from urllib.parse import urlencode, urlsplit
 
 import fixtures as existing
-from medplatform.core.documents import encode, fingerprint, stamp
-from medplatform.medication.analytics import METRICS
+from medplatform.core.documents import stamp
 
 from support.services import test_services as services
 
@@ -23,7 +21,6 @@ class FeedbackTests(unittest.TestCase):
         self.addCleanup(self.f.doCleanups)
         self.s, self.d = self.f.s, self.f.d
         self.c = self.s.app.state.feedback
-        self.a = self.s.app.state.analytics
         self.range = {
             "window_start": stamp(self.s.clock() - timedelta(days=1)),
             "window_end": stamp(self.s.clock() + timedelta(days=1)),
@@ -228,12 +225,6 @@ class FeedbackTests(unittest.TestCase):
             self.assertEqual(
                 conn.execute("SELECT count(*) FROM c_service_feedback").fetchone()[0], 0
             )
-            self.assertEqual(
-                conn.execute(
-                    "SELECT count(*) FROM change_notices WHERE kind='c_feedback_changed'"
-                ).fetchone()[0],
-                0,
-            )
         first = self.submit(service, body, key=key)
         self.assertEqual(self.submit(service, body, key=key), first)
         self.assertEqual(self.submit(service, body), first)
@@ -258,24 +249,6 @@ class FeedbackTests(unittest.TestCase):
         )
         self.assertEqual(
             [r["feedback_revision"] for r in self.history(service)["items"]], [1, 2]
-        )
-        with self.s.db.connection(readonly=True) as conn:
-            refs = [
-                json.loads(row[0])
-                for row in conn.execute(
-                    "SELECT source_ref FROM change_notices WHERE kind='c_feedback_changed' ORDER BY rowid"
-                )
-            ]
-        self.assertEqual(
-            refs,
-            [
-                {
-                    "resource_type": "ServiceFeedback",
-                    "resource_id": doc["feedback_id"],
-                    "resource_revision": doc["feedback_revision"],
-                }
-                for doc in self.history(service)["items"]
-            ],
         )
 
     def test_patients_family_admin_and_grant_revocation(self):
@@ -354,125 +327,23 @@ class FeedbackTests(unittest.TestCase):
                 self.projection(expected=503)["code"], "SUPPORT_FEEDBACK_UNAVAILABLE"
             )
             self.assertEqual(self.aggregate()["availability"], "unavailable")
-        with patch.object(self.a, "service_feedback", None):
-            self.assertEqual(self.aggregate()["availability"], "not_integrated")
 
-    def test_a_snapshot_preserves_exact_revision_and_b_rechecks_current_feedback(self):
+    def test_summary_reads_historical_and_current_feedback(self):
         service = self.service()
         first = self.submit(service)
-        session = self.d.call("POST", "/sessions", {"patient_id": PA}, expected=201)
-        self.d.call(
-            "POST",
-            f"/sessions/{session['session_id']}/self-reports",
-            {
-                "client_report_id": existing.key(),
-                "items": [{"dimension": "burden", "description": "虚构自评"}],
-            },
-            expected=201,
-        )
-        for metric, unit in METRICS.items():
-            self.d.call(
-                "POST",
-                P + "/measurements",
-                {
-                    "source_event_id": existing.key(),
-                    "occurred_at": stamp(self.s.clock()),
-                    "payload": {
-                        "metric_code": metric,
-                        "unit": unit,
-                        "value": 1,
-                        "method_code": "manual_entry",
-                        "missing_reason": None,
-                    },
-                },
-                expected=201,
-            )
-        path = P + "/summary"
         window = dict(self.range, data_environment="demo", as_of=stamp(self.s.clock()))
-        first_summary = self.d.call("POST", path + "-refresh", window)
-        self.assertEqual(
-            first_summary["data_status"], "fresh", first_summary["missing_items"]
-        )
+        path = P + "/summary?"
         self.s.time[0] += timedelta(seconds=1)
         second = self.submit(service, self.body(1, support_needs="下一次先讨论安排"))
-        past = self.d.call("GET", path + "?" + urlencode(window))
-        self.assertEqual(past, first_summary)
-        response = self.d.call(
-            "POST",
-            f"/sessions/{session['session_id']}/messages",
-            {
-                "client_message_id": existing.key(),
-                "expected_turn_count": 0,
-                "content": "普通测试对话",
-            },
-            expected=201,
+        past = self.d.call("GET", path + urlencode(window))
+        current = self.d.call(
+            "GET", path + urlencode(dict(window, as_of=stamp(self.s.clock())))
         )
-        b_ref = response["generation"]["input_snapshot"]["summary_ref"]
         self.assertEqual(
-            (b_ref["summary_id"], b_ref["data_status"]),
-            (first_summary["summary_id"], "stale"),
+            past["feedback_overview"]["sources"][1]["records"][0]["support_needs"],
+            first["support_needs"],
         )
-        new_summary = self.d.call(
-            "POST", path + "-refresh", dict(window, as_of=stamp(self.s.clock()))
+        self.assertEqual(
+            current["feedback_overview"]["sources"][1]["records"][0]["support_needs"],
+            second["support_needs"],
         )
-        source = new_summary["feedback_overview"]["sources"][1]
-        self.assertEqual(source["records"][0]["support_needs"], second["support_needs"])
-        with self.s.db.connection(readonly=True) as conn:
-            for snapshot, revision in ((first_summary, first), (new_summary, second)):
-                row = conn.execute(
-                    """SELECT s.source_refs FROM s03_results r JOIN s03_computation_snapshots s USING(snapshot_id)
-                                     WHERE r.result_id=?""",
-                    (snapshot["summary_id"],),
-                ).fetchone()
-                feedback_refs = [
-                    r
-                    for r in json.loads(row[0])
-                    if r["resource_type"] == "ServiceFeedback"
-                ]
-                self.assertEqual(
-                    feedback_refs,
-                    [
-                        {
-                            "resource_type": "ServiceFeedback",
-                            "resource_id": revision["feedback_id"],
-                            "resource_revision": revision["feedback_revision"],
-                        }
-                    ],
-                )
-
-    def test_s03_and_b_only_summary_signatures_remain_readable(self):
-        service = self.service()
-        window = dict(self.range, data_environment="demo", as_of=stamp(self.s.clock()))
-        path = P + "/summary"
-        for b_connected in (False, True):
-            with self.subTest(b_connected=b_connected):
-                summary = self.d.call("POST", path + "-refresh", window)
-                summary["schema_version"] = "A-v0.4-summary-v1"
-                summary["feedback_overview"]["sources"][1] = {
-                    "source_module": "C",
-                    "availability": "not_integrated",
-                    "records": [],
-                    "reason": "C业务尚未接入",
-                }
-                with self.s.db.transaction() as conn:
-                    saved = self.a.signature(conn, PA, window)
-                    if b_connected:
-                        saved = fingerprint(
-                            [saved, summary["feedback_overview"]["sources"][0]]
-                        )
-                    else:
-                        summary["feedback_overview"]["sources"][0] = {
-                            "source_module": "B",
-                            "availability": "not_integrated",
-                            "records": [],
-                            "reason": "B业务尚未接入",
-                        }
-                    conn.execute(
-                        "UPDATE s03_results SET result_json=?,input_signature=? WHERE result_id=?",
-                        (encode(summary), saved, summary["summary_id"]),
-                    )
-                if not b_connected:
-                    self.submit(service)
-                actual = self.d.call("GET", path + "?" + urlencode(window))
-                self.assertEqual(actual, summary)
-                self.assertNotEqual(actual["data_status"], "stale")

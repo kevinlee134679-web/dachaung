@@ -1,5 +1,6 @@
 import unittest
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
 
 import fixtures as support
 from medplatform.core.documents import stamp
@@ -68,18 +69,15 @@ class AnalyticsTests(unittest.TestCase):
             expected=201,
         )
 
-    def refresh(self, **changes):
+    def summary(self, **changes):
         return self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            {**self.window, **changes},
+            "GET",
+            f"/patients/{support.PA}/summary?" + urlencode({**self.window, **changes}),
         )
 
     def get_result(
         self, kind="medication-statistics", as_of=None, client=None, expected=200
     ):
-        from urllib.parse import urlencode
-
         query = {**self.window}
         if as_of is not None:
             query["as_of"] = as_of
@@ -135,19 +133,14 @@ class AnalyticsTests(unittest.TestCase):
                 client=admin,
             )
 
-    def test_fourteen_slots_10_then_11_and_old_snapshot_is_immutable(self):
+    def test_fourteen_slots_10_then_11_and_historical_cutoff(self):
         self.prepare()
         events = [self.report(i) for i in range(10)]
         self.boxes([10, 11])
-        before = self.refresh()["record_overview"]
+        before = self.summary()["record_overview"]
         cutoff = before["as_of"]
         self.counts(before, [10, 0, 0, 2, 2])
         self.assertEqual(before["patient_confirmation_ratio"], 10 / 14)
-        with self.s.db.connection(readonly=True) as c:
-            stored = c.execute(
-                "SELECT result_json FROM s03_results WHERE result_id=?",
-                (before["statistics_id"],),
-            ).fetchone()[0]
         self.s.time[0] += timedelta(seconds=1)
         self.report(12)
         self.api(
@@ -168,19 +161,11 @@ class AnalyticsTests(unittest.TestCase):
             },
             expected=201,
         )
-        after = self.refresh()["record_overview"]
+        after = self.summary()["record_overview"]
         self.counts(after, [11, 0, 0, 2, 1])
-        self.assertNotEqual(before["statistics_id"], after["statistics_id"])
         historical = self.get_result(as_of=cutoff)
-        self.assertEqual(historical, before)
-        with self.s.db.connection(readonly=True) as c:
-            self.assertEqual(
-                stored,
-                c.execute(
-                    "SELECT result_json FROM s03_results WHERE result_id=?",
-                    (before["statistics_id"],),
-                ).fetchone()[0],
-            )
+        self.counts(historical, [10, 0, 0, 2, 2])
+        self.assertEqual(historical["as_of"], cutoff)
 
     def test_five_categories_postponed_followed_by_later_self_final(self):
         self.prepare()
@@ -189,7 +174,7 @@ class AnalyticsTests(unittest.TestCase):
         self.report(9, "not_taken")
         postponed = self.report(10, "postponed")
         self.boxes([11, 12])
-        self.counts(self.refresh()["record_overview"], [9, 1, 1, 2, 1])
+        self.counts(self.summary()["record_overview"], [9, 1, 1, 2, 1])
         self.s.time[0] += timedelta(seconds=1)
         body = {
             "source_event_id": support.key(),
@@ -202,13 +187,13 @@ class AnalyticsTests(unittest.TestCase):
         self.api(
             "POST", f"/patients/{support.PA}/medication-events", body, expected=201
         )
-        self.counts(self.refresh()["record_overview"], [10, 1, 0, 2, 1])
+        self.counts(self.summary()["record_overview"], [10, 1, 0, 2, 1])
 
     def test_conflict_is_unknown_and_correction_preserves_old_cutoff(self):
         self.prepare()
         self.report(0)
         second = self.report(0, "not_taken")
-        previous = self.refresh()["record_overview"]
+        previous = self.summary()["record_overview"]
         self.counts(previous, [0, 0, 0, 0, 14])
         self.assertIn("conflicting_reports", [x["code"] for x in previous["issues"]])
         self.s.time[0] += timedelta(seconds=1)
@@ -217,95 +202,43 @@ class AnalyticsTests(unittest.TestCase):
             f"/events/{second['event_id']}/withdrawals",
             {"expected_revision": 1, "reason": "演示撤销相反报告"},
         )
-        self.counts(self.refresh()["record_overview"], [1, 0, 0, 0, 13])
+        self.counts(self.summary()["record_overview"], [1, 0, 0, 0, 13])
         self.counts(self.get_result(as_of=previous["as_of"]), [0, 0, 0, 0, 14])
 
-    def test_read_does_not_materialize_compute_or_rewrite_and_default_is_honestly_stale(
-        self,
-    ):
+    def test_live_reads_do_not_write(self):
         self.prepare()
-        self.get_result(expected=409)
-        snapshot = self.refresh()
-        cutoff = snapshot["record_overview"]["as_of"]
         before = self.s.db.path.read_bytes()
-        self.get_result(as_of=cutoff)
-        self.get_result("medication-trends", as_of=cutoff)
-        self.get_result("summary", as_of=cutoff)
+        self.get_result()
+        self.get_result("medication-trends")
+        self.get_result("summary")
         self.assertEqual(before, self.s.db.path.read_bytes())
-        self.s.time[0] += timedelta(seconds=1)
-        self.assertEqual(self.get_result()["data_status"], "stale")
-        self.assertEqual(self.get_result()["as_of"], cutoff)
-        self.assertEqual(before, self.s.db.path.read_bytes())
-
-    def test_summary_expiry_projection_does_not_write(self):
-        self.prepare()
-        snapshot = self.refresh()
-        cutoff = snapshot["record_overview"]["as_of"]
-        self.s.time[0] += timedelta(minutes=15)
-        before = self.s.db.path.read_bytes()
-        summary = self.get_result("summary", as_of=cutoff)
-        self.assertEqual(summary["data_status"], "stale")
-        self.assertEqual(before, self.s.db.path.read_bytes())
-
-    def test_summary_with_legacy_a_signature_keeps_projection_and_expiry(self):
-        from unittest.mock import patch
-
-        self.prepare()
-        self.report(0)
-        analytics = self.s.app.state.analytics
-        with patch.object(analytics, "support_feedback", None):
-            snapshot = self.refresh()
-        cutoff = snapshot["record_overview"]["as_of"]
-        before = self.s.db.path.read_bytes()
-        self.assertEqual(
-            snapshot["feedback_overview"]["sources"][0]["availability"],
-            "not_integrated",
-        )
-        self.s.time[0] += timedelta(minutes=14, seconds=59)
-        self.assertEqual(self.get_result("summary", as_of=cutoff), snapshot)
-        self.s.time[0] += timedelta(seconds=1)
-        expired = self.get_result("summary", as_of=cutoff)
-        self.assertEqual(expired["data_status"], "stale")
-        self.assertEqual(expired["valid_until"], snapshot["valid_until"])
-        self.assertEqual(expired["missing_items"][-1]["code"], "refresh_required")
-        self.assertEqual(self.s.db.path.read_bytes(), before)
 
     def test_empty_plan_is_zero_but_unmaterialized_window_is_not(self):
-        empty = self.refresh()["record_overview"]
+        empty = self.summary()["record_overview"]
         self.assertEqual(empty["planned_dose_count"], 0)
         self.assertIsNone(empty["patient_confirmation_ratio"])
         self.prepare()
         self.s.time[0] += timedelta(days=40)
         self.s.a = self.s.login("demo-patient-a")
         error = self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            {
-                "window_start": "2026-12-25T00:00:00+08:00",
-                "window_end": "2026-12-26T00:00:00+08:00",
-                "data_environment": "demo",
-            },
+            "GET",
+            f"/patients/{support.PA}/summary?window_start=2026-12-25T00%3A00%3A00%2B08%3A00&window_end=2026-12-26T00%3A00%3A00%2B08%3A00&data_environment=demo",
             expected=409,
         )
         self.assertEqual(error["code"], "SCHEDULE_WINDOW_NOT_READY")
 
     def test_invalid_cutoff_environment_query_and_patient_isolation(self):
         self.prepare()
-        self.refresh()
+        self.summary()
         self.get_result(client=self.s.b, expected=404)
         self.get_result(
             as_of=stamp(self.s.clock() + timedelta(seconds=1)), expected=422
         )
+        self.get_result(as_of="invalid", expected=422)
         self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            {**self.window, "as_of": None},
-            expected=422,
-        )
-        self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            {**self.window, "data_environment": "real"},
+            "GET",
+            f"/patients/{support.PA}/summary?"
+            + urlencode({**self.window, "data_environment": "real"}),
             expected=403,
         )
         self.api(
@@ -314,74 +247,21 @@ class AnalyticsTests(unittest.TestCase):
             expected=422,
         )
 
-    def test_family_summary_permission_does_not_expand_components_and_replay_rechecks(
-        self,
-    ):
+    def test_family_summary_permission_revocation(self):
         self.prepare()
-        _binding, grant = self.s.bind(["summary:read"])
-        operation = support.key()
-        summary = self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            self.window,
-            client=self.s.f,
-            operation=operation,
-        )
-        self.assertIsNone(summary["record_overview"])
-        self.assertEqual(summary["measurement_overview"], [])
-        self.assertIn("restricted", [x["code"] for x in summary["missing_items"]])
+        _, grant = self.s.bind(["summary:read"])
+        self.get_result("summary", client=self.s.f)
         self.api(
             "POST",
             f"/grants/{grant['grant_id']}/revoke",
             {"expected_revision": 1, "reason": "演示撤销摘要权限"},
         )
-        self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            self.window,
-            client=self.s.f,
-            operation=operation,
-            expected=403,
-        )
-
-    def test_replay_after_component_scope_removed_does_not_return_old_body(self):
-        self.prepare()
-        binding, _grant = self.s.bind(
-            ["summary:read", "statistics:read", "measurements:read"]
-        )
-        operation = support.key()
-        summary = self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            self.window,
-            client=self.s.f,
-            operation=operation,
-        )
-        self.assertIsNotNone(summary["record_overview"])
-        self.api(
-            "PUT",
-            f"/family-bindings/{binding['binding_id']}/grant",
-            {
-                "expected_revision": 1,
-                "scopes": ["summary:read"],
-                "valid_until": None,
-                "confirmed": True,
-            },
-        )
-        error = self.api(
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            self.window,
-            client=self.s.f,
-            operation=operation,
-            expected=403,
-        )
-        self.assertEqual(error["code"], "SOURCE_ACCESS_CHANGED")
+        self.get_result("summary", client=self.s.f, expected=403)
 
     def test_summary_references_a6_and_no_b_c_effects(self):
         self.prepare()
         self.report(0)
-        summary = self.refresh()
+        summary = self.summary()
         stats = self.get_result(as_of=summary["record_overview"]["as_of"])
         self.assertEqual(summary["record_overview"], stats)
         sources = summary["feedback_overview"]["sources"]
@@ -392,11 +272,9 @@ class AnalyticsTests(unittest.TestCase):
         for source in sources:
             self.assertEqual(source["records"], [])
             self.assertTrue(source["reason"])
-        self.assertEqual(summary["data_status"], "insufficient")
+        self.assertTrue(summary["missing_items"])
 
     def test_measurement_zero_missing_unit_and_method_groups(self):
-        from urllib.parse import urlencode
-
         for value, unit, reason, method in [
             (0, "count", None, "manual_entry"),
             (None, "count", "未采集", "manual_entry"),
@@ -434,7 +312,7 @@ class AnalyticsTests(unittest.TestCase):
             [0, None],
         )
         self.assertIn("unknown_unit", [x["code"] for x in trend["issues"]])
-        summary = self.refresh(window_end="2026-11-17T00:00:00+08:00")
+        summary = self.summary(window_end="2026-11-17T00:00:00+08:00")
         overview = next(
             m
             for m in summary["measurement_overview"]
@@ -442,37 +320,6 @@ class AnalyticsTests(unittest.TestCase):
         )
         self.assertEqual(overview["latest_value"], 0)
         self.assertTrue(overview["missing_items"])
-
-    def test_failed_refresh_rolls_back_results_notices_and_receipt(self):
-        from unittest.mock import patch
-
-        self.prepare()
-        analytics = self.s.app.state.analytics
-        operation = support.key()
-        with self.s.db.connection(readonly=True) as c:
-            before = c.execute("SELECT COUNT(*) FROM s03_results").fetchone()[0]
-        with patch.object(
-            analytics, "feedback", side_effect=RuntimeError("fictional fault")
-        ):
-            self.api(
-                "POST",
-                f"/patients/{support.PA}/summary-refresh",
-                self.window,
-                operation=operation,
-                expected=500,
-            )
-        with self.s.db.connection(readonly=True) as c:
-            self.assertEqual(
-                before, c.execute("SELECT COUNT(*) FROM s03_results").fetchone()[0]
-            )
-        self.assertIsNotNone(
-            self.api(
-                "POST",
-                f"/patients/{support.PA}/summary-refresh",
-                self.window,
-                operation=operation,
-            )["summary_id"]
-        )
 
 
 if __name__ == "__main__":

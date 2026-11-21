@@ -75,7 +75,6 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
                 "source_events",
                 "dose_slots",
                 "event_revisions",
-                "evidence_slot_links",
             }
             <= tables
         ):
@@ -91,7 +90,6 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
                 "s02_source_keys",
                 "idempotency_receipts",
                 "receipt_responses",
-                "change_notices",
                 "o_schedule_windows",
                 "o_revocation_audit",
             }
@@ -106,10 +104,8 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
                 "b_generations",
                 "b_generation_runs",
                 "b_records",
-                "b_intervention_revisions",
                 "b_knowledge",
                 "b_knowledge_history",
-                "b_model_selection",
             }
             <= tables
         ):
@@ -183,19 +179,12 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
                 "c_redemption_history",
                 "c_fulfillment_receipts",
                 "c_redemption_feedback",
-                "c_redemption_notices",
             }
             <= tables
         ):
             raise SchemaError("S05兑换目录、订单或履约表缺失")
-        if current >= 15 and "b_star_checkpoints" not in tables:
-            raise SchemaError("S06分步对话检查点表缺失")
-        if (
-            current >= 16
-            and not {"b_rule_versions", "b_rule_selection", "b_rule_selection_history"}
-            <= tables
-        ):
-            raise SchemaError("S06规则版本与选择历史表缺失")
+        if current >= 19 and "b_support_rule" not in tables:
+            raise SchemaError("S06规则选择表缺失")
         return current
 
 

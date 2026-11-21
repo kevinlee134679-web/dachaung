@@ -73,12 +73,6 @@ class Receipts:
                             "敏感回执已过期，不能用旧键创建新事实",
                         )
                     if row["protected_response"] is not None:
-                        if row["sensitive_until"] <= at:
-                            raise AppError(
-                                409,
-                                "SENSITIVE_RECEIPT_EXPIRED",
-                                "敏感回执已过期，不能用旧键创建新事实",
-                            )
                         body = json.loads(
                             unprotect(
                                 row["protected_response"],

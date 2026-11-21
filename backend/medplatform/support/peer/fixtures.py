@@ -59,7 +59,6 @@ class GroupFixture(Input):
                     "is_simulated": True,
                 },
                 "previous_version": None,
-                "review_status": "not_reviewed",
                 "profile_types": [],
             }
         )
@@ -74,7 +73,7 @@ def seed_peer_groups(db, clock=now):
     counts = {"groups_added": 0, "moderators_added": 0}
     with db.transaction() as conn:
         counts["resources_added"] = install_catalog(
-            conn, [f.resource() for f in fixtures], stamp(clock()), FIXTURE
+            conn, [f.resource() for f in fixtures], stamp(clock())
         )
         counts["recipients_added"] = install_demo_recipients(conn, recipients)
         for fixture in fixtures:

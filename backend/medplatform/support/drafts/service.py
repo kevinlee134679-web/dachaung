@@ -5,7 +5,7 @@ from ...core.errors import AppError
 from ...core.idempotency import Result
 from ...identity.sharing import VALIDITY, SharingAuthority
 from ..catalog.service import current_resource
-from ..common import CONTRACT, missing
+from ..common import CONTRACT, missing, read_guarded
 
 DRAFT = """SELECT d.*, r.resource_id, r.resource_version, r.request_text,
                   json_extract(v.resource_json,'$.peer_group_id') AS peer_group_id
@@ -91,16 +91,16 @@ class Drafts:
     def handle(self, action, principal, path, query, body, key):
         if action in {"draft", "confirmation"}:
             with self.db.connection(readonly=True) as conn:
-                conn.execute("BEGIN")
-                _, doc = self.authorize(conn, action, principal, path, body)
-                at = stamp(self.clock())
-                view = (
-                    self.draft_view(conn, principal, doc, at)
-                    if action == "draft"
-                    else self.confirmation_view(conn, doc, at)
-                )
-                conn.commit()
-                self.authorize(conn, action, principal, path, body)
+                with read_guarded(
+                    conn,
+                    lambda conn: self.authorize(conn, action, principal, path, body),
+                ) as (_, doc):
+                    at = stamp(self.clock())
+                    view = (
+                        self.draft_view(conn, principal, doc, at)
+                        if action == "draft"
+                        else self.confirmation_view(conn, doc, at)
+                    )
                 return Result(view)
 
         with self.db.connection(readonly=True) as conn:
@@ -253,7 +253,7 @@ class Drafts:
         return view
 
     def confirmation_view(self, conn, row, at):
-        scope, _ = self.sharing.scope(
+        scope = self.sharing.scope(
             conn, row["sharing_scope_ref_id"], row["patient_id"], at
         )
         state = scope["status"]
@@ -299,19 +299,14 @@ class Drafts:
         at = stamp(now)
         patient = draft["patient_id"]
         categories = body["shared_categories"]
-        grants = self.sharing.terms(conn, principal, patient, resource, categories)
-        if self.sharing.grant_status(conn, patient, grants, at) != "active":
-            raise needs_confirmation("必要 O 授权已失效，请重新核对")
+        self.sharing.validate_consent(conn, principal, patient, resource, categories)
         descriptor = scope_descriptor(patient, resource, categories)
 
         def active(row):
             return self.confirmation_view(conn, row, at)["status"] == "active"
 
         def reusable(row):
-            if row["descriptor_hash"] != descriptor or not active(row):
-                return False
-            _, versions = self.sharing.scope(conn, row["sharing_scope_ref_id"], patient)
-            return versions == grants
+            return row["descriptor_hash"] == descriptor and active(row)
 
         for row in self.linked(conn, draft, exact_revision=False):
             if row["descriptor_hash"] != descriptor and active(row):

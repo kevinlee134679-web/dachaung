@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 import fixtures as existing
 from medplatform.core.documents import encode, stamp
 from medplatform.dialogue.completion import validate_completion
-from medplatform.dialogue.model import MockModel, OpenAICompatible
+from medplatform.dialogue.model import MockModel
 from medplatform.dialogue.state import CASE_VERSION
 from medplatform.web.app import create_app
 
@@ -102,57 +102,7 @@ class DialogueTests(unittest.TestCase):
             expected=expected,
         )
 
-    def test_registered_cards_and_guarded_mock_config(self):
-        registry = self.s.app.state.registry
-        self.assertEqual(
-            {f"B{n:02d}" for n in range(1, 40)},
-            {name for name in registry.names if name.startswith("B")},
-        )
-        # The five S05 batches authorize precisely these additional routes.
-        c_routes = {
-            ("GET", "/api/v1/patients/{}/support-recommendations"),
-            ("GET", "/api/v1/support-resources"),
-            ("GET", "/api/v1/support-resources/{}"),
-            ("POST", "/api/v1/patients/{}/service-drafts"),
-            ("GET", "/api/v1/service-drafts/{}"),
-            ("PUT", "/api/v1/service-drafts/{}"),
-            ("POST", "/api/v1/patients/{}/service-confirmations"),
-            ("GET", "/api/v1/service-confirmations/{}"),
-            ("POST", "/api/v1/service-confirmations/{}/revoke"),
-            ("POST", "/api/v1/patients/{}/services"),
-            ("GET", "/api/v1/patients/{}/services"),
-            ("GET", "/api/v1/services/{}"),
-            ("POST", "/api/v1/services/{}/cancel"),
-            ("POST", "/api/v1/integrations/service-receipts"),
-            ("POST", "/api/v1/demo/services/{}/transitions"),
-            ("POST", "/api/v1/services/{}/feedback"),
-            ("GET", "/api/v1/services/{}/feedback"),
-            ("GET", "/api/v1/patients/{}/support-feedback"),
-            ("GET", "/api/v1/peer-groups"),
-            ("GET", "/api/v1/peer-groups/{}"),
-            ("POST", "/api/v1/peer-groups/{}/memberships"),
-            ("POST", "/api/v1/memberships/{}/leave"),
-            ("GET", "/api/v1/peer-groups/{}/posts"),
-            ("POST", "/api/v1/peer-groups/{}/posts"),
-            ("POST", "/api/v1/peer-posts/{}/moderation"),
-            ("GET", "/api/v1/peer-memberships/me"),
-            ("GET", "/api/v1/patients/{}/points"),
-            ("GET", "/api/v1/points/rules"),
-            ("GET", "/api/v1/patients/{}/points-ledger"),
-            ("POST", "/api/v1/internal/points/reconcile"),
-            ("POST", "/api/v1/patients/{}/management-reviews"),
-            ("GET", "/api/v1/patients/{}/management-reviews"),
-            ("GET", "/api/v1/rewards"),
-            ("GET", "/api/v1/rewards/{}"),
-            ("POST", "/api/v1/patients/{}/redemptions"),
-            ("GET", "/api/v1/patients/{}/redemptions"),
-            ("GET", "/api/v1/redemptions/{}"),
-            ("POST", "/api/v1/integrations/fulfillment-receipts"),
-            ("GET", "/api/v1/redemptions/{}/fulfillment"),
-            ("POST", "/api/v1/redemptions/{}/feedback"),
-        }
-        self.assertEqual(registry.routes & c_routes, c_routes)
-        self.assertEqual(len(registry.routes - c_routes), 114)
+    def test_cases_admin_only_and_guarded_mock_config(self):
         self.api("GET", "/cases", expected=403)
         cases = self.api("GET", "/cases", client=self.admin)["items"]
         self.assertEqual(
@@ -181,29 +131,8 @@ class DialogueTests(unittest.TestCase):
         )
         self.assertEqual(checked["network_attempt_count"], 0)
         self.assertIsNone(checked["usage"]["total_tokens"])
-        self.api(
-            "PUT",
-            "/config/model-profile",
-            {
-                "profile_id": "unregistered-real",
-                "expected_config_version": version,
-                "confirmed": True,
-            },
-            client=self.admin,
-            expected=422,
-        )
-        selected = self.api(
-            "PUT",
-            "/config/model-profile",
-            {
-                "profile_id": "mock-single-pass",
-                "expected_config_version": version,
-                "confirmed": True,
-            },
-            client=self.admin,
-        )
-        self.assertNotEqual(selected["model_config_version"], version)
-        self.api("POST", "/config/check-model", probe, client=self.admin, expected=409)
+        stale = dict(probe, expected_config_version="stale")
+        self.api("POST", "/config/check-model", stale, client=self.admin, expected=409)
 
     def test_exact_source_dedupe_case_isolation_and_readonly_strategy(self):
         created = self.create()
@@ -213,11 +142,9 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(self.send(created, number=number, operation=key), result)
         self.assertEqual(self.send(created, number=number), result)
         self.assertEqual(result["user_message"]["content"], "  心情低落，只想倾诉。  ")
-        self.assertEqual(result["generation"]["budget"]["used_network_attempts"], 0)
         self.assertEqual(
             result["business_output"]["difficulty_cues"][0]["evidence"], "心情低落"
         )
-        self.assertEqual(result["generation"]["actual_pipeline"], "single_pass")
         self.assertIsNone(result["intervention_id"])
         self.send(created, "不同正文", number=number, expected=409)
         self.api("GET", self.path(created, "/messages"), client=self.s.b, expected=404)
@@ -339,45 +266,32 @@ class DialogueTests(unittest.TestCase):
             )
         )
 
-    def test_live_summary_rechecks_source_correction_without_rewriting_history(self):
-        when = stamp(self.s.clock())
-        event = self.api(
-            "POST",
-            f"/patients/{PA}/medication-events",
-            {
-                "source_event_id": existing.key(),
-                "occurred_at": when,
-                "reported_status": "unknown",
-            },
-            expected=201,
-        )
-        window = {
-            "window_start": stamp(self.s.clock() - timedelta(days=1)),
-            "window_end": stamp(self.s.clock() + timedelta(days=1)),
-            "data_environment": "demo",
-        }
-        summary = self.api("POST", f"/patients/{PA}/summary-refresh", window)
-        analytics = self.s.app.state.analytics
-        principal = analytics.auth.resolve(self.s.a.cookies.get("session"))
-        with self.s.db.connection(readonly=True) as conn:
-            self.assertTrue(
-                analytics.summary_feedback_current(conn, principal, PA, summary)
-            )
-        self.s.time[0] += timedelta(seconds=1)
-        self.api(
-            "POST",
-            f"/events/{event['event_id']}/withdrawals",
-            {"expected_revision": 1, "reason": "虚构来源撤回"},
-        )
-        with self.s.db.connection(readonly=True) as conn:
-            self.assertFalse(
-                analytics.summary_feedback_current(conn, principal, PA, summary)
-            )
+    def test_message_cites_live_summary_snapshot(self):
+        session = self.create()
+        with patch.object(
+            self.b.dialogue.adapter, "complete", wraps=self.b.dialogue.adapter.complete
+        ) as attempted:
+            result = self.send(session)
+        snapshot = result["generation"]["input_snapshot"]
+        summary = snapshot["summary_ref"]
+        self.assertEqual(summary["window_end"], snapshot["captured_at"])
+        self.assertEqual(summary["as_of"], snapshot["captured_at"])
         self.assertEqual(
-            self.api(
-                "GET", f"/patients/{PA}/summary?" + urlencode(dict(window, as_of=when))
-            ),
-            summary,
+            summary["window_start"], stamp(self.s.clock() - timedelta(days=7))
+        )
+        self.assertEqual(
+            summary["record_overview"],
+            {"planned_dose_count": 0, "patient_confirmed_count": 0, "unknown_count": 0},
+        )
+        self.assertTrue(summary["missing_items"])
+        self.assertIn(
+            "SUMMARY_INSUFFICIENT", [item["code"] for item in snapshot["missing_items"]]
+        )
+        self.assertTrue(
+            any(
+                "A 权威摘要中的记录覆盖情况" in part["content"]
+                for part in attempted.call_args.args[0]
+            )
         )
 
     def test_unknown_result_never_retries(self):
@@ -609,17 +523,15 @@ class DialogueTests(unittest.TestCase):
                 "RESOURCE_NOT_FOUND",
             )
 
-    def test_s04_summary_signature_still_tracks_b_source_changes(self):
+    def test_summary_reads_current_feedback(self):
         session = self.create()
         window = {
             "window_start": stamp(self.s.clock() - timedelta(days=1)),
             "window_end": stamp(self.s.clock() + timedelta(days=1)),
             "data_environment": "demo",
         }
-        summary = self.api("POST", f"/patients/{PA}/summary-refresh", window)
-        query = urlencode(dict(window, as_of=stamp(self.s.clock())))
-        path = f"/patients/{PA}/summary?" + query
-        self.assertEqual(self.api("GET", path), summary)
+        path = f"/patients/{PA}/summary?" + urlencode(window)
+        before = self.api("GET", path)
         self.api(
             "POST",
             self.path(session, "/self-reports"),
@@ -629,12 +541,13 @@ class DialogueTests(unittest.TestCase):
             },
             expected=201,
         )
-        before = self.s.db.path.read_bytes()
-        stale = self.api("GET", path)
-        self.assertEqual(stale["data_status"], "stale")
-        self.assertEqual(stale["summary_id"], summary["summary_id"])
-        self.assertEqual(stale["feedback_overview"], summary["feedback_overview"])
-        self.assertEqual(self.s.db.path.read_bytes(), before)
+        after = self.api("GET", path)
+        self.assertEqual(
+            before["feedback_overview"]["sources"][0]["availability"], "not_collected"
+        )
+        self.assertEqual(
+            after["feedback_overview"]["sources"][0]["availability"], "available"
+        )
 
     def test_expiry_projection_and_registered_a_task(self):
         session = self.create()
@@ -967,26 +880,6 @@ class DialogueTests(unittest.TestCase):
 
 
 class OfflineModelTests(unittest.TestCase):
-    def test_compatible_transport_does_not_force_optional_parameters(self):
-        sent = []
-
-        def transport(payload, timeout):
-            sent.append((payload, timeout))
-            return 200, {
-                "choices": [{"finish_reason": "stop", "message": {"content": "{}"}}]
-            }
-
-        adapter = OpenAICompatible(
-            transport, "unit-placeholder", provider_label="offline-test"
-        )
-        result = adapter.complete([], timeout=7, output_limit=1024)
-        self.assertEqual(result.content, "{}")
-        self.assertIsNone(result.usage["total_tokens"])
-        self.assertEqual(
-            sent[0][0],
-            {"model": "unit-placeholder", "messages": [], "n": 1, "stream": False},
-        )
-
     def test_invalid_core_and_forged_auxiliary(self):
         self.assertEqual(validate_completion("{", {}, lambda _: False), (None, False))
         raw = json.dumps(

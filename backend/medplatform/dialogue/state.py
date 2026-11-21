@@ -57,7 +57,6 @@ FAULTS = {
     "empty_response",
     "invalid_json",
     "knowledge_empty",
-    "star_mid_failure",
 }
 EXPIRY_MAINTENANCE_LIMIT = "9999-12-31T23:59:59.999999+00:00"
 
@@ -75,17 +74,8 @@ def case(conn, identifier):
 
 
 class SupportState:
-    def __init__(self, clock, execution, settings=None):
+    def __init__(self, clock, execution):
         self.clock, self.execution = clock, execution
-        self.settings = settings
-
-    def policy(self, conn):
-        return rules.policy(
-            conn, getattr(self.settings, "SUPPORT_RULE_PROFILE", "support-default")
-        )
-
-    def rule_reference(self, conn):
-        return rules.reference(self.policy(conn))
 
     def new_session(self, conn, body):
         patient, case_id, invitation_id = (
@@ -254,9 +244,8 @@ class SupportState:
             self.change_mode(conn, session, state, "normal", "expiry")
             state = store.by_id(conn, "UIState", session["session_id"])
             current = state["ui_mode"]
-        policy = self.policy(conn)
         valid = (
-            stamp(when + timedelta(seconds=policy["mode_seconds"]))
+            stamp(when + timedelta(seconds=rules.MODE_SECONDS))
             if requested == "simplified"
             else None
         )
@@ -301,7 +290,7 @@ class SupportState:
                     "scheduled_at": valid,
                     "valid_until": EXPIRY_MAINTENANCE_LIMIT,
                     "intervention_id": None,
-                    "rule_version": rules.reference(policy),
+                    "rule_version": rules.active(conn),
                     "payload": {
                         "session_id": identifier,
                         "target_kind": "ui_mode",
@@ -315,22 +304,20 @@ class SupportState:
 
     def validate_task(self, conn, task):
         if task["kind"] == "check_in_node":
-            policy = rules.by_reference(conn, task["rule_version"])
             patient = get(conn, "Patient", task["patient_id"])
             payload = task["payload"]
-            delay = {"week_1": 7, "week_4": 28}.get(payload["node_code"])
+            delay = rules.CHECKIN_OFFSETS.get(payload["node_code"])
             enrolled = patient["enrollment_at"]
             if (
                 delay is None
                 or enrolled is None
                 or not patient["meta"]["is_simulated"]
                 or payload["cycle_id"] != fingerprint([task["patient_id"], enrolled])
-                or payload["rule_version"] != task["rule_version"]
             ):
                 raise AppError(409, "B_TARGET_CONFLICT", "周期节点来源或规则不匹配")
             start = datetime.fromisoformat(enrolled) + timedelta(days=delay)
             if task["scheduled_at"] != stamp(start) or task["valid_until"] != stamp(
-                start + timedelta(seconds=policy["node_window_seconds"])
+                start + timedelta(seconds=rules.NODE_WINDOW_SECONDS)
             ):
                 raise AppError(
                     409, "B_TARGET_CONFLICT", "周期节点必须保留原起点和24小时时窗"
@@ -357,14 +344,13 @@ class SupportState:
     def run_task(self, conn, task):
         if task["kind"] == "check_in_node":
             self.validate_task(conn, task)
-            delay = {"week_1": 7, "week_4": 28}[task["payload"]["node_code"]]
+            delay = rules.CHECKIN_OFFSETS[task["payload"]["node_code"]]
             related = self.periodic(
                 conn,
                 task["patient_id"],
                 None,
                 stamp(self.clock()),
                 offsets=(delay,),
-                policy=rules.by_reference(conn, task["rule_version"]),
             )
             return related[0] if related else None
         payload = task["payload"]
@@ -426,14 +412,11 @@ class SupportState:
                 expired += 1
         return expired
 
-    def invitation(
-        self, conn, patient, session_id, trigger_type, trigger_ref, at, *, policy=None
-    ):
+    def invitation(self, conn, patient, session_id, trigger_type, trigger_ref, at):
         key = fingerprint([patient, trigger_type, trigger_ref])
         existing = store.by_source(conn, "Invitation", key)
         if existing is not None:
             return existing
-        policy = policy or self.policy(conn)
         doc = {
             "invitation_id": uid(),
             "patient_id": patient,
@@ -445,12 +428,11 @@ class SupportState:
             "description": "如果你愿意，可以聊聊最近想得到哪方面的支持。",
             "created_at": at,
             "valid_until": stamp(
-                datetime.fromisoformat(at)
-                + timedelta(seconds=policy["invitation_seconds"])
+                datetime.fromisoformat(at) + timedelta(seconds=rules.INVITATION_SECONDS)
             ),
             "displayed_at": None,
             "resolved_session_id": None,
-            "rule_version": rules.reference(policy),
+            "rule_version": rules.active(conn),
             "is_simulated": True,
         }
         return store.insert(
@@ -511,15 +493,13 @@ class SupportState:
         if enrolled is None:
             return 0
         cycle = fingerprint([patient, enrolled])
-        policy = self.policy(conn)
-        rule_ref = rules.reference(policy)
         created = 0
-        for offset, code in ((7, "week_1"), (28, "week_4")):
+        for code, offset in rules.CHECKIN_OFFSETS.items():
             key = fingerprint([patient, enrolled, offset])
             if store.by_source(conn, "CheckinNode", key) is not None:
                 continue
             start = datetime.fromisoformat(enrolled) + timedelta(days=offset)
-            end = start + timedelta(seconds=policy["node_window_seconds"])
+            end = start + timedelta(seconds=rules.NODE_WINDOW_SECONDS)
             if stamp(end) <= stamp(self.clock()):
                 self.periodic(
                     conn, patient, None, stamp(self.clock()), offsets=(offset,)
@@ -531,7 +511,7 @@ class SupportState:
                 (operation,),
             ).fetchone()
             if existing:
-                continue  # Existing nodes retain their original immutable rule snapshot.
+                continue
             self.execution.create_in_transaction(
                 conn,
                 None,
@@ -543,29 +523,24 @@ class SupportState:
                     "scheduled_at": stamp(start),
                     "valid_until": stamp(end),
                     "intervention_id": None,
-                    "rule_version": rule_ref,
-                    "payload": {
-                        "cycle_id": cycle,
-                        "node_code": code,
-                        "rule_version": rule_ref,
-                    },
+                    "rule_version": rules.active(conn),
+                    "payload": {"cycle_id": cycle, "node_code": code},
                 },
                 internal=True,
             )
             created += existing is None
         return created
 
-    def periodic(self, conn, patient, session_id, at, *, offsets=(7, 28), policy=None):
+    def periodic(self, conn, patient, session_id, at, *, offsets=rules.CHECKIN_DAYS):
         enrolled = get(conn, "Patient", patient)["enrollment_at"]
         related = []
-        policy = policy or self.policy(conn)
         if enrolled is None:
             return related
         for delay in offsets:
             start = datetime.fromisoformat(enrolled) + timedelta(days=delay)
             first, last = (
                 stamp(start),
-                stamp(start + timedelta(seconds=policy["node_window_seconds"])),
+                stamp(start + timedelta(seconds=rules.NODE_WINDOW_SECONDS)),
             )
             if at < first:
                 continue
@@ -577,9 +552,7 @@ class SupportState:
                 continue
             node_id = uid()
             invite = (
-                self.invitation(
-                    conn, patient, session_id, "periodic", node_id, at, policy=policy
-                )
+                self.invitation(conn, patient, session_id, "periodic", node_id, at)
                 if at < last
                 else None
             )
@@ -597,7 +570,7 @@ class SupportState:
                     "outcome": "invited" if invite else "missed",
                     "invitation_id": invite["invitation_id"] if invite else None,
                     "checked_at": at,
-                    "rule_version": rules.reference(policy),
+                    "rule_version": rules.active(conn),
                 },
                 source_key=key,
             )
@@ -707,61 +680,12 @@ class SupportState:
         )
         return data
 
-    def consume_notices(self, conn, patient):
-        self.process_support_needs(conn, patient)
-        for notice in conn.execute(
-            """
-            SELECT n.* FROM change_notices n LEFT JOIN a_notice_consumptions x
-            ON n.notice_id=x.notice_id AND x.consumer='B'
-            WHERE n.patient_id=? AND n.data_environment='demo' AND x.notice_id IS NULL
-            AND n.kind IN ('plan_published','summary_changed')
-            ORDER BY n.created_at,n.notice_id
-        """,
-            (patient,),
-        ).fetchall():
-            ref = json.loads(notice["source_ref"])
-            if notice["kind"] == "plan_published":
-                key = f"{ref['resource_id']}:{ref['resource_revision']}"
-                authorized = get(conn, "PlanVersion", key, required=False)
-                exists = authorized is not None and authorized["patient_id"] == patient
-            else:
-                exists = (
-                    conn.execute(
-                        """
-                    SELECT 1 FROM s03_results WHERE result_id=? AND patient_id=? AND data_environment='demo' AND kind='summary'
-                """,
-                        (ref["resource_id"], patient),
-                    ).fetchone()
-                    is not None
-                )
-            reason = (
-                "仅记录权威来源；支持邀请由已登记的明确自报规则判断"
-                if exists
-                else "权威来源不匹配或不可用"
-            )
-            ack = self.audit(
-                conn, "A_notice", patient, notice["notice_id"], ref, False, reason
-            )
-            conn.execute(
-                "INSERT INTO a_notice_consumptions VALUES (?,?,?,?,?,?)",
-                (
-                    notice["notice_id"],
-                    "B",
-                    "ignored",
-                    ack["integration_event_id"],
-                    reason,
-                    stamp(self.clock()),
-                ),
-            )
-
     def process_support_needs(self, conn, patient):
-        policy = self.policy(conn)
-        if not policy["state_events"]:
+        profile = rules.active(conn)
+        if not rules.STATE_EVENTS[profile]:
             return
         at = stamp(self.clock())
-        since = stamp(
-            self.clock() - timedelta(seconds=policy["offer_cooldown_seconds"])
-        )
+        since = stamp(self.clock() - timedelta(seconds=rules.OFFER_COOLDOWN_SECONDS))
         assessments = sorted(
             store.records(conn, "Assessment", patient),
             key=lambda a: (a["observed_at"], a["assessment_id"]),
@@ -798,7 +722,6 @@ class SupportState:
                     "state_event",
                     source,
                     at,
-                    policy=policy,
                 )
                 related.append(invite["invitation_id"])
             self.audit(
@@ -806,53 +729,21 @@ class SupportState:
                 "support_need_rule",
                 patient,
                 source,
-                {"assessment_id": source, "rule_version": rules.reference(policy)},
+                {"assessment_id": source, "rule_version": profile},
                 bool(related),
                 None if related else "已有邀请、仍在频控间隔或会话已结束",
                 related,
             )
 
-    def touch_intervention(self, conn, doc):
-        at = stamp(self.clock())
-        identifier = doc["intervention_id"]
-        revision = conn.execute(
-            """
-            INSERT INTO b_intervention_revisions VALUES (?,1,?)
-            ON CONFLICT(intervention_id) DO UPDATE SET revision=revision+1,updated_at=excluded.updated_at
-            RETURNING revision
-        """,
-            (identifier, at),
-        ).fetchone()[0]
-        ref = {
-            "resource_type": "Intervention",
-            "resource_id": identifier,
-            "resource_revision": revision,
-        }
-        conn.execute(
-            "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (
-                uid(),
-                "B",
-                doc["patient_id"],
-                "demo",
-                "b_intervention_changed",
-                encode(ref),
-                f"b-intervention:{identifier}:{revision}",
-                at,
-                at,
-                1,
-            ),
-        )
-        store.update(conn, "Intervention", identifier, doc)
-
-    def update_suggestion(self, conn, suggestion, **updates):
+    @staticmethod
+    def update_suggestion(conn, suggestion, **updates):
         store.update(
             conn, "Suggestion", suggestion["suggestion_id"], dict(suggestion, **updates)
         )
         doc = store.by_id(conn, "Intervention", suggestion["intervention_id"])
         if updates.get("response_id"):
             doc["response_ids"].append(updates["response_id"])
-        self.touch_intervention(conn, doc)
+        store.update(conn, "Intervention", doc["intervention_id"], doc)
 
     def suggestion_respond(self, conn, suggestion, body):
         identifier = suggestion["suggestion_id"]
@@ -956,5 +847,5 @@ class SupportState:
             session_id=doc["session_id"],
         )
         doc["displayed_at"] = data["displayed_at"]
-        self.touch_intervention(conn, doc)
+        store.update(conn, "Intervention", doc["intervention_id"], doc)
         return data

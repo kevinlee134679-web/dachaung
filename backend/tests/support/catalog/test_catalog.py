@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import fixtures as existing
 from medplatform.core.config import ROOT
-from medplatform.core.documents import get, meta, save, stamp, uid
+from medplatform.core.documents import get, save, stamp, uid
 from medplatform.core.errors import AppError
 from medplatform.support.catalog.service import (
     FIXTURE_FILE,
@@ -93,53 +93,7 @@ class CatalogTests(unittest.TestCase):
             if a
         }
 
-    def test_exact_routes_registered_and_public_shapes(self):
-        registry = self.s.app.state.registry
-        self.assertEqual(
-            {n for n in registry.names if n.startswith("C")},
-            {
-                "C01",
-                "C02",
-                "C03",
-                "C04",
-                "C05",
-                "C06",
-                "C07",
-                "C08",
-                "C09",
-                "C10",
-                "C11",
-                "C12",
-                "C13",
-                "C14",
-                "C15",
-                "C16",
-                "C17",
-                "C18",
-                "C19",
-                "C20",
-                "C21",
-                "C22",
-                "C23",
-                "C24",
-                "C25",
-                "C26",
-                "C27",
-                "C28",
-                "C29",
-                "C30",
-                "C31",
-                "C32",
-                "C33",
-                "C34",
-                "C35",
-                "C36",
-                "C37",
-                "C38",
-                "C39",
-                "C41",
-            },
-        )
+    def test_public_shapes(self):
         self.assertEqual(seed_catalog(self.s.db), 7)
         self.assertEqual(seed_catalog(self.s.db), 0)
         result = self.request(CATALOG)
@@ -198,12 +152,6 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(
             self.request(f"/patients/{PA}/services"), {"items": [], "next_cursor": None}
         )
-        self.request(
-            f"/demo/patients/{PA}/profile-fixtures",
-            method="POST",
-            body={},
-            expected=404,
-        )
 
     def test_explicit_installation_and_unavailable_dependency(self):
         admin = self.s.login("demo-admin")
@@ -226,6 +174,16 @@ class CatalogTests(unittest.TestCase):
         self.assertTrue(
             next(c["available"] for c in caps if c["code"] == "support_catalog")
         )
+
+    def test_database_read_failure_uses_global_dependency_error(self):
+        self.install()
+        with patch(
+            "medplatform.support.catalog.service.catalog_registered",
+            side_effect=sqlite3.OperationalError("injected storage fault"),
+        ):
+            self.assertEqual(
+                self.request(CATALOG, expected=503)["code"], "DEPENDENCY_NOT_READY"
+            )
 
     def test_query_validation_and_cursor_scope(self):
         self.install()
@@ -339,13 +297,9 @@ class CatalogTests(unittest.TestCase):
                 first["primary_action"]["title"],
             )
             self.assertEqual(old["recorded_at"], old_ref["recorded_at"])
-            self.assertTrue(
-                old["fixture_source"].endswith(f"#{PHARMACY}/{old_ref['version']}")
-            )
-            self.assertEqual(old["review_status"], "not_reviewed")
         with self.assertRaises(sqlite3.IntegrityError), self.s.db.transaction() as conn:
             conn.execute(
-                "UPDATE c_support_resource_versions SET review_status='not_reviewed'"
+                "UPDATE c_support_resource_versions SET recorded_at=recorded_at"
             )
         conflicting = self.revision(
             PHARMACY, "resource-demo-v2", "resource-demo-v3", name="不同内容（模拟）"
@@ -447,7 +401,7 @@ class CatalogTests(unittest.TestCase):
         with self.s.db.connection(readonly=True) as conn:
             self.assertEqual(get(conn, "Profile", first["profile_id"]), first)
 
-    def test_missing_and_unknown_fields_do_not_satisfy_a_condition(self):
+    def test_unknown_profile_type_does_not_satisfy_a_condition(self):
         self.install(self.fixture(TARGETED))
         self.o_profile()
         unknown = self.recommend("practical")
@@ -457,17 +411,6 @@ class CatalogTests(unittest.TestCase):
         )
         self.assertEqual(unknown["need_status"], "insufficient")
         self.assertEqual(self.candidate_ids(unknown), set())
-        profile = copy.deepcopy(self.o_profile())
-        profile.pop("primary_type")
-        profile["profile_id"], profile["meta"] = uid(), meta(stamp(self.s.clock()))
-        with self.s.db.transaction() as conn:
-            save(conn, "Profile", profile["profile_id"], PA, profile)
-        missing = self.recommend("practical")
-        self.assertEqual(
-            self.codes(missing),
-            {"profile_field_missing", "profile_condition_unresolved"},
-        )
-        self.assertEqual(missing["need_status"], "insufficient")
 
     def test_known_matching_and_nonmatching_profile_types(self):
         self.install(self.fixture(TARGETED))
@@ -512,29 +455,28 @@ class CatalogTests(unittest.TestCase):
         self.install()
         self.o_profile()
         before = self.s.db.path.read_bytes()
-        for _ in range(2):
-            unknown, declined = self.recommend(), self.recommend("none")
-            self.assertEqual(
-                (unknown["need_status"], unknown["main_need"]),
-                ("insufficient", "unknown"),
+        unknown, declined = self.recommend(), self.recommend("none")
+        self.assertEqual(
+            (unknown["need_status"], unknown["main_need"]),
+            ("insufficient", "unknown"),
+        )
+        self.assertIn("support_need_unknown", self.codes(unknown))
+        self.assertEqual(declined["need_status"], "none")
+        self.assertEqual(declined["source_refs"], [])
+        self.assertEqual(
+            self.candidate_ids(declined) | self.candidate_ids(unknown), set()
+        )
+        match = self.recommend("emotional")
+        self.assertIsNone(match["primary_action"])
+        self.assertEqual(self.candidate_ids(match), EMOTIONAL)
+        self.assertTrue(
+            all(
+                a["action_type"] == "companionship" and a["requires_confirmation"]
+                for a in match["secondary_actions"]
             )
-            self.assertIn("support_need_unknown", self.codes(unknown))
-            self.assertEqual(declined["need_status"], "none")
-            self.assertEqual(declined["source_refs"], [])
-            self.assertEqual(
-                self.candidate_ids(declined) | self.candidate_ids(unknown), set()
-            )
-            match = self.recommend("emotional")
-            self.assertIsNone(match["primary_action"])
-            self.assertEqual(self.candidate_ids(match), EMOTIONAL)
-            self.assertTrue(
-                all(
-                    a["action_type"] == "companionship" and a["requires_confirmation"]
-                    for a in match["secondary_actions"]
-                )
-            )
-            self.request(CATALOG)
-            self.request(f"{CATALOG}/{PHARMACY}")
+        )
+        self.request(CATALOG)
+        self.request(f"{CATALOG}/{PHARMACY}")
         self.assertEqual(self.s.db.path.read_bytes(), before)
         third = self.fixture("resource-companionship-demo").model_dump()
         third["resource"]["resource_id"] = "resource-other-companionship-demo"

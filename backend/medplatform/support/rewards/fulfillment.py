@@ -1,12 +1,11 @@
 """Registered C fulfillment handler and trusted simulated receipt processing."""
 
 import json
-import secrets
 
 from ...core.documents import changed, encode, fingerprint, stamp, uid
 from ...core.errors import AppError
 from ...core.idempotency import Result
-from ..common import CONTRACT, missing
+from ..common import CONTRACT, authenticate_provider, missing
 from .catalog import DEMO_RECEIVER
 
 TERMINAL = frozenset({"completed", "failed", "cancelled"})
@@ -22,16 +21,14 @@ class RewardFulfillment:
         self.db, self.clock, self.services = rewards.db, rewards.clock, rewards.services
 
     def authenticate(self, header):
-        token = self.settings.DEMO_FULFILLMENT_RECEIPT_TOKEN.get_secret_value()
-        subject = self.settings.DEMO_FULFILLMENT_RECEIPT_SUBJECT
-        if not subject or len(token) < 32:
-            raise AppError(503, "FULFILLMENT_UNAVAILABLE", "独立模拟交付方凭据尚未配置")
-        scheme, _, supplied = (header or "").partition(" ")
-        if scheme.lower() != "bearer" or not secrets.compare_digest(
-            supplied.encode(), token.encode()
-        ):
-            raise AppError(401, "AUTH_REQUIRED", "交付回执需要独立的模拟交付凭据")
-        return subject
+        return authenticate_provider(
+            header,
+            self.settings.DEMO_FULFILLMENT_RECEIPT_TOKEN.get_secret_value(),
+            self.settings.DEMO_FULFILLMENT_RECEIPT_SUBJECT,
+            "FULFILLMENT_UNAVAILABLE",
+            "独立模拟交付方凭据尚未配置",
+            "交付回执需要独立的模拟交付凭据",
+        )
 
     def check(self, conn, task, task_id):
         order, fulfillment, _ = self.rewards.state(
@@ -75,7 +72,7 @@ class RewardFulfillment:
                 or service["status"] in TERMINAL
             ):
                 raise conflict("原人员服务已变化，请检查该服务")
-            _, _, _, deadline = self.services.consent(conn, service, at)
+            _, _, deadline = self.services.consent(conn, service, at)
             if deadline != task["valid_until"]:
                 raise conflict("原授权时间已变化，请核查人员服务")
         return order, fulfillment

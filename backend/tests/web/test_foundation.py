@@ -4,19 +4,18 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
+from fixtures import BASE, key
 from medplatform.core.config import ROOT, ConfigurationError, Settings, load_settings
 from medplatform.core.database import Database
-from medplatform.core.errors import AppError, SchemaError
+from medplatform.core.errors import SchemaError
 from medplatform.core.migrations import DIRECTORY, catalog, migrate, status
-from medplatform.identity.auth import Account, DemoAuthority
+from medplatform.identity.service import seed_demo
 from medplatform.web.app import create_app
-from medplatform.web.registry import ModuleRegistry
 
 LATEST = len(catalog())
 
@@ -57,25 +56,6 @@ def event(
     )
 
 
-def slot(conn, slot_id="slot-a", patient="pa"):
-    conn.execute(
-        "INSERT INTO dose_slots VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        (
-            slot_id,
-            patient,
-            "demo",
-            "plan-demo-" + patient,
-            1,
-            "entry-" + slot_id,
-            "med-demo",
-            "2026-11-16T00:00:00+00:00",
-            "active",
-            "fixture-v1",
-            1,
-        ),
-    )
-
-
 class Sandbox(unittest.TestCase):
     def setUp(self):
         parent = ROOT / "test-output"
@@ -93,7 +73,6 @@ class Sandbox(unittest.TestCase):
             DATABASE_PATH=self.db.path,
             AUTH_MODE="demo",
             LLM_MODE="mock",
-            DIALOGUE_PIPELINE="single_pass",
         )
 
 
@@ -186,42 +165,6 @@ class MigrationTests(Sandbox):
                 c.execute("SELECT count(*) FROM source_events").fetchone()[0], 1
             )
 
-    def test_two_evidences_one_slot_and_cross_patient_fk(self):
-        migrate(self.db, initialize=True, target=1)
-        with self.db.transaction() as c:
-            slot(c)
-            slot(c, "slot-b", "pb")
-            event(c, "self")
-            event(c, "box", source="box", subject="device-a")
-            event(c, "unlinked")
-        migrate(self.db)
-        with self.db.transaction() as c:
-            for eid in ("self", "box"):
-                c.execute(
-                    "INSERT INTO evidence_slot_links VALUES (?,1,'pa','demo','slot-a')",
-                    (eid,),
-                )
-        with self.db.connection(readonly=True) as c:
-            self.assertEqual(
-                c.execute(
-                    "SELECT count(*) FROM evidence_slot_links WHERE dose_slot_id='slot-a'"
-                ).fetchone()[0],
-                2,
-            )
-            self.assertEqual(
-                c.execute(
-                    "SELECT count(*) FROM dose_slots WHERE patient_id='pa'"
-                ).fetchone()[0],
-                1,
-            )
-        with (
-            self.assertRaisesRegex(sqlite3.IntegrityError, "FOREIGN KEY"),
-            self.db.transaction() as c,
-        ):
-            c.execute(
-                "INSERT INTO evidence_slot_links VALUES ('unlinked',1,'pb','demo','slot-b')"
-            )
-
     def test_revision_chain_keeps_original_and_requires_reason(self):
         migrate(self.db, initialize=True, target=1)
         with self.db.transaction() as c:
@@ -277,8 +220,8 @@ class MigrationTests(Sandbox):
 
 
 class WebTests(Sandbox):
-    def client(self, auth=None):
-        app = create_app(self.settings(), auth)
+    def client(self):
+        app = create_app(self.settings())
         self.app = app
         client = TestClient(
             app, base_url="http://127.0.0.1:8000", raise_server_exceptions=False
@@ -311,7 +254,7 @@ class WebTests(Sandbox):
         self.assertEqual(
             response.headers["X-Request-ID"], response.json()["request_id"]
         )
-        for url in ("/api/v1/statistics", "/api/v1/unknown", "/docs", "/openapi.json"):
+        for url in ("/api/v1/unknown", "/docs", "/openapi.json"):
             r = client.get(url)
             self.assertEqual(r.status_code, 404)
             self.assertEqual(r.headers["content-type"], "application/json")
@@ -320,19 +263,19 @@ class WebTests(Sandbox):
     def test_schema_table_damage_is_not_ready(self):
         migrate(self.db, initialize=True)
         with self.db.transaction() as c:
-            c.execute("ALTER TABLE evidence_slot_links RENAME TO damaged_links")
+            c.execute("ALTER TABLE event_revisions RENAME TO damaged_revisions")
         self.assertEqual(self.client().get("/api/v1/health").status_code, 503)
 
     def test_admin_configuration_is_authenticated_and_redacted(self):
         migrate(self.db, initialize=True)
-        auth = DemoAuthority([Account("admin", admin=True), Account("user", "pa")])
+        seed_demo(self.db)
         settings = self.settings().model_copy(
             update={
                 "LLM_BASE_URL": "https://private.invalid/secret",
                 "LLM_MODEL": "mock-test",
             }
         )
-        app = create_app(settings, auth)
+        app = create_app(settings)
         with TestClient(app, base_url="http://127.0.0.1:8000") as client:
             self.assertEqual(
                 client.get(
@@ -340,9 +283,19 @@ class WebTests(Sandbox):
                 ).status_code,
                 401,
             )
-            client.cookies.set("session", auth.issue("user")[0])
+            response = client.post(
+                "/api/v1/auth/demo-session",
+                json={"demo_account_id": "demo-patient-a"},
+                headers={"Origin": BASE, "Idempotency-Key": key()},
+            )
+            self.assertEqual(response.status_code, 201)
             self.assertEqual(client.get("/api/v1/config/status").status_code, 403)
-            client.cookies.set("session", auth.issue("admin")[0])
+            response = client.post(
+                "/api/v1/auth/demo-session",
+                json={"demo_account_id": "demo-admin"},
+                headers={"Origin": BASE, "Idempotency-Key": key()},
+            )
+            self.assertEqual(response.status_code, 201)
             r = client.get("/api/v1/config/status")
             self.assertEqual(r.status_code, 200)
             self.assertEqual(r.json()["data"]["model_connectivity"], "unverified")
@@ -355,8 +308,9 @@ class WebTests(Sandbox):
         )
 
     def test_csrf_origin_and_idempotency_header_guard(self):
-        auth = DemoAuthority([Account("aa", "pa")])
-        client = self.client(auth)
+        migrate(self.db, initialize=True)
+        seed_demo(self.db)
+        client = self.client()
         router = APIRouter()
 
         @router.post("/api/v1/test-write", operation_id="test_write")
@@ -364,9 +318,14 @@ class WebTests(Sandbox):
             return {"result": "guard reached; test only"}
 
         self.app.state.registry.include_router(self.app, router)
-        token, csrf = auth.issue("aa")
         self.assertEqual(client.post("/api/v1/test-write").status_code, 401)
-        client.cookies.set("session", token)
+        response = client.post(
+            "/api/v1/auth/demo-session",
+            json={"demo_account_id": "demo-patient-a"},
+            headers={"Origin": BASE, "Idempotency-Key": key()},
+        )
+        self.assertEqual(response.status_code, 201)
+        csrf = response.json()["data"]["csrf_token"]
         self.assertEqual(client.post("/api/v1/test-write").status_code, 403)
         headers = {
             "X-CSRF-Token": csrf,
@@ -401,7 +360,6 @@ class WebTests(Sandbox):
             )
         self.assertEqual(r.status_code, 500)
         self.assertNotIn("PRIVATE_TEST_SECRET", r.text + " ".join(logs.output))
-        self.assertIn(r.json()["request_id"], " ".join(logs.output))
         self.assertEqual(
             client.get("/", headers={"Host": "evil.invalid"}).status_code, 403
         )
@@ -440,7 +398,7 @@ class ConfigurationAndRegistryTests(Sandbox):
                     load_settings()
                 self.assertNotIn("PRIVATE_TEST_SECRET", str(e.exception))
 
-    def test_duplicate_route_and_operation_registration(self):
+    def test_duplicate_route_registration(self):
         app = create_app(self.settings())
         router = APIRouter()
 
@@ -450,25 +408,6 @@ class ConfigurationAndRegistryTests(Sandbox):
 
         with self.assertRaises(ValueError):
             app.state.registry.include_router(app, router)
-        registry = ModuleRegistry()
-        registry.register_operation("safe", lambda: None)
-        with self.assertRaises(ValueError):
-            registry.register_operation("safe", lambda: None)
-        with self.assertRaises(ValueError):
-            registry.register_operation("unsafe", "arbitrary-command")
-
-    def test_session_expiration_and_revocation(self):
-        now = [datetime(2026, 11, 16, tzinfo=UTC)]
-        auth = DemoAuthority([Account("aa", "pa")], clock=lambda: now[0])
-        token, _csrf = auth.issue("aa")
-        principal = auth.resolve(token)
-        now[0] += timedelta(hours=8)
-        with self.assertRaises(AppError):
-            auth.resolve(token)
-        now[0] -= timedelta(hours=1)
-        auth.revoke_session(principal)
-        with self.assertRaises(AppError):
-            auth.resolve(token)
 
 
 if __name__ == "__main__":

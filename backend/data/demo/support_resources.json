@@ -26,7 +26,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": []
   },
   {
@@ -56,7 +55,6 @@
       "is_simulated": true
     },
     "previous_version": "resource-demo-v1",
-    "review_status": "not_reviewed",
     "profile_types": []
   },
   {
@@ -84,7 +82,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": []
   },
   {
@@ -112,7 +109,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": [
       "B2",
       "D1"
@@ -143,7 +139,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": []
   },
   {
@@ -171,7 +166,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": []
   },
   {
@@ -199,7 +193,6 @@
       "is_simulated": true
     },
     "previous_version": null,
-    "review_status": "not_reviewed",
     "profile_types": []
   }
 ]

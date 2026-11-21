@@ -2,7 +2,7 @@ import type { JSX } from '@solidjs/web'
 import { onSettled } from 'solid-js'
 import { inputDateTime, localDateTime, today } from '../date/date'
 import { dataEnvironment } from '../session/session'
-import { Field, Input } from './components'
+import { Field, Input } from './form'
 
 export interface RangeValue {
   window_start: string

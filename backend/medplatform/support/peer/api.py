@@ -4,7 +4,15 @@ from typing import Literal
 
 from pydantic import TypeAdapter
 
-from ...web.inputs import ID, Input, Reason, Version
+from ...web.inputs import (
+    ID,
+    Input,
+    Reason,
+    Version,
+    query_fields,
+    query_limit,
+    query_text,
+)
 from ..services.inputs import ServiceCreate
 
 
@@ -37,30 +45,20 @@ ROUTES = [
 
 
 def query_input(action, pairs):
-    query = dict(pairs)
     allowed = {
         "groups": {"group_id", "cursor", "limit"},
         "posts": {"cursor", "limit", "include_pending"},
         "my_memberships": {"cursor", "limit"},
     }
-    if len(query) != len(pairs) or set(query) - allowed.get(action, set()):
-        raise ValueError()
+    query = query_fields(pairs, allowed.get(action, set()))
     if "group_id" in query:
         TypeAdapter(ID).validate_python(query["group_id"])
-    if "cursor" in query and not 1 <= len(query["cursor"]) <= 4096:
-        raise ValueError()
+    if "cursor" in query:
+        query_text(query["cursor"], 4096)
     if "include_pending" in query:
         if query["include_pending"] not in {"true", "false"}:
             raise ValueError()
         query["include_pending"] = query["include_pending"] == "true"
     if "limit" in query:
-        value = query["limit"]
-        if (
-            not value.isascii()
-            or not value.isdecimal()
-            or not 1 <= len(value) <= 3
-            or not 1 <= int(value) <= 100
-        ):
-            raise ValueError()
-        query["limit"] = int(value)
+        query["limit"] = query_limit(query["limit"], 3)
     return query

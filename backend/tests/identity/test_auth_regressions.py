@@ -8,8 +8,7 @@ import json
 import unittest
 
 import fixtures
-from medplatform.core.documents import fingerprint
-from medplatform.identity.auth import digest
+from medplatform.core.documents import digest, fingerprint
 
 
 class AuthRegressionTests(unittest.TestCase):

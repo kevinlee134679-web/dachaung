@@ -7,12 +7,11 @@ their own timestamped histories; the A1 source tables remain the only facts.
 import copy
 import json
 import sqlite3
-from datetime import datetime
 
 from ..core.documents import encode, fingerprint, get, stamp, uid
 from ..core.errors import AppError
 from ..core.idempotency import Result
-from ..web.inputs import utc
+from ..web.inputs import query_fields, query_limit, query_window, utc
 from . import record_inputs as inputs
 
 RULE = "flow-v0.1-explicit-slot-v1"
@@ -104,15 +103,7 @@ WINDOWS = {"records_medications", "records_measurements", "records_matches"}
 LISTS = WINDOWS | {"records_revisions", "records_device_bindings"}
 
 
-def query_input(action, raw_query):
-    pairs = (
-        list(raw_query.multi_items())
-        if hasattr(raw_query, "multi_items")
-        else list(raw_query.items())
-        if hasattr(raw_query, "items")
-        else list(raw_query)
-    )
-    q = dict(pairs)
+def query_input(action, pairs):
     allowed = {"cursor", "limit"} if action in LISTS else set()
     if action in WINDOWS:
         allowed |= {"window_start", "window_end", "as_of", "data_environment"}
@@ -123,28 +114,18 @@ def query_input(action, raw_query):
     if action == "records_matches":
         allowed.add("plan_id")
     try:
-        if len(q) != len(pairs) or set(q) - allowed:
-            raise ValueError()
+        q = query_fields(pairs, allowed)
         if action in WINDOWS:
-            q["window_start"] = utc(q["window_start"])
-            q["window_end"] = utc(q["window_end"])
-            seconds = (
-                datetime.fromisoformat(q["window_end"])
-                - datetime.fromisoformat(q["window_start"])
-            ).total_seconds()
-            if not 0 < seconds <= 31 * 86400 or q["data_environment"] not in {
+            query_window(q)
+            if q["data_environment"] not in {
                 "demo",
                 "real",
             }:
                 raise ValueError()
             if "as_of" in q:
                 q["as_of"] = utc(q["as_of"])
-        if "limit" in q and (
-            not str(q["limit"]).isascii()
-            or not str(q["limit"]).isdigit()
-            or not 1 <= int(q["limit"]) <= 100
-        ):
-            raise ValueError()
+        if "limit" in q:
+            query_limit(q["limit"])
         if "cursor" in q and not q["cursor"]:
             raise ValueError()
         if q.get("state", "effective") not in {"effective", "withdrawn", "all"}:
@@ -220,13 +201,13 @@ def match_view(conn, event_id, event_revision, as_of=None):
     return json.loads(row[0]) if row else None
 
 
-def event_view(conn, event_id, as_of=None):
+def event_detail(conn, event_id, as_of=None):
     row = source_row(conn, event_id)
     if as_of is not None and row["received_at"] > as_of:
         raise AppError(404, "RESOURCE_NOT_FOUND", "该时点尚未接收此记录")
     revision = revision_row(conn, event_id, as_of)
     match = match_view(conn, event_id, revision["revision"], as_of)
-    return {
+    event = {
         "event_id": event_id,
         "patient_id": row["patient_id"],
         "event_kind": row["event_kind"],
@@ -255,23 +236,37 @@ def event_view(conn, event_id, as_of=None):
             "is_simulated": bool(row["is_simulated"]),
         },
     }
+    return {"event": event, "match": match}
 
 
-def effective_events(conn, patient, environment, as_of):
+def event_view(conn, event_id, as_of=None):
+    return event_detail(conn, event_id, as_of)["event"]
+
+
+def effective_event_details(conn, patient, environment, as_of):
     rows = conn.execute(
         "SELECT event_id FROM source_events WHERE patient_id=? AND data_environment=? AND received_at<=? ORDER BY received_at,event_id",
         (patient, environment, as_of),
     ).fetchall()
     return [
-        event
+        detail
         for row in rows
-        if (event := event_view(conn, row["event_id"], as_of))["state"] == "effective"
+        if (detail := event_detail(conn, row["event_id"], as_of))["event"]["state"]
+        == "effective"
+    ]
+
+
+def effective_events(conn, patient, environment, as_of):
+    return [
+        detail["event"]
+        for detail in effective_event_details(conn, patient, environment, as_of)
     ]
 
 
 class Records:
     event_view = staticmethod(event_view)
     effective_events = staticmethod(effective_events)
+    effective_event_details = staticmethod(effective_event_details)
     match_view = staticmethod(match_view)
     quality_view = staticmethod(quality_view)
 
@@ -688,32 +683,6 @@ class Records:
                     422, "INVALID_SLOT_REFERENCE", "药品、时段和计划版本引用不一致"
                 )
 
-    def _notice(self, c, event, at, tag):
-        for kind in ("event_revision_changed", "points_source_changed"):
-            if kind == "points_source_changed" and event["source"] != "manual":
-                continue
-            key = f"{kind}:{event['event_id']}:{event['meta']['revision']}:{tag}"
-            ref = {
-                "resource_type": "SourceEvent",
-                "resource_id": event["event_id"],
-                "resource_revision": event["meta"]["revision"],
-            }
-            c.execute(
-                "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(source_module,data_environment,business_key) DO NOTHING",
-                (
-                    uid(),
-                    "A",
-                    event["patient_id"],
-                    "demo",
-                    kind,
-                    encode(ref),
-                    key,
-                    event["meta"]["updated_at"],
-                    at,
-                    1,
-                ),
-            )
-
     def _make_match(self, c, event, at, reason=None):
         payload = event["payload"]
         slot_id = payload.get("dose_slot_id")
@@ -756,21 +725,6 @@ class Records:
                 encode(match),
             ),
         )
-        c.execute(
-            "DELETE FROM evidence_slot_links WHERE event_id=? AND event_revision=?",
-            (event["event_id"], event["meta"]["revision"]),
-        )
-        if match["dose_slot_id"]:
-            c.execute(
-                "INSERT INTO evidence_slot_links VALUES (?,?,?,?,?)",
-                (
-                    event["event_id"],
-                    event["meta"]["revision"],
-                    event["patient_id"],
-                    "demo",
-                    match["dose_slot_id"],
-                ),
-            )
 
     def _assess_quality(self, event, at):
         """Pure registered rules: no IO, authorization, or mutable source facts."""
@@ -876,8 +830,7 @@ class Records:
                     "is_simulated": True,
                 }
         signature = lambda q: {k: v for k, v in q.items() if k != "processed_at"}
-        changed = signature(existing) != signature(quality)
-        if changed:
+        if signature(existing) != signature(quality):
             c.execute(
                 "INSERT INTO s03_quality_history VALUES (?,?,?,?,?,?)",
                 (
@@ -891,11 +844,6 @@ class Records:
             )
         if proposed is not None:
             self._save_match(c, event, proposed)
-            changed = True
-        if changed:
-            self._notice(
-                c, event, at, "process:" + fingerprint(signature(quality))[:20]
-            )
         return quality_view(c, event["event_id"], event["meta"]["revision"])
 
     def _ingest(
@@ -964,7 +912,6 @@ class Records:
             ),
         )
         event = event_view(c, identifier)
-        self._notice(c, event, at, "revision")
         self._process(c, event, at)
         return event_view(c, identifier)
 
@@ -1059,7 +1006,6 @@ class Records:
                     reason=b["reason"],
                 )
                 self._save_match(c, event, match, principal.account_id, True)
-                self._notice(c, event, at, "review:" + match["match_id"])
                 return Result(
                     match, resource_type="SourceEvent", resource_id=identifier
                 )
@@ -1117,7 +1063,6 @@ class Records:
                 ),
             )
             updated = event_view(c, identifier)
-            self._notice(c, updated, at, "revision")
             self._process(c, updated, at)
             return Result(
                 event_view(c, identifier),

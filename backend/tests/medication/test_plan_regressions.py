@@ -77,9 +77,6 @@ class PlanRegressionTests(unittest.TestCase):
             self.assertEqual(
                 conn.execute("SELECT count(*) FROM dose_slots").fetchone()[0], 0
             )
-            self.assertEqual(
-                conn.execute("SELECT count(*) FROM change_notices").fetchone()[0], 0
-            )
 
     def test_far_future_weekly_entry_checks_its_full_recurrence(self):
         draft = self.prepare(

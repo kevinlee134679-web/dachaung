@@ -4,6 +4,7 @@ import argparse
 import json
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
+from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from ..core.config import ROOT, Settings
@@ -12,12 +13,11 @@ from ..core.documents import stamp, uid
 from ..core.migrations import migrate
 from ..identity.service import seed_demo
 from ..web.app import create_app
-from .client import SessionClient
+from .client import ScenarioClients
 
 PATIENT = "demo-patient-a-self"
 SCENARIO = "s03-fixed-14-v1"
 ZONE = ZoneInfo("Asia/Shanghai")
-ORIGIN = "http://127.0.0.1:8000"
 
 
 def generate(path, *, add_late_report=False):
@@ -48,37 +48,10 @@ def generate(path, *, add_late_report=False):
         Settings(_env_file=None, APP_ENV="test", DATABASE_PATH=path),
         clock=lambda: clock[0],
     )
-    clients = []
-
-    def login(account):
-        client = SessionClient(app, base_url=ORIGIN)
-        clients.append(client)
-        r = client.post(
-            "/api/v1/auth/demo-session",
-            json={"demo_account_id": account},
-            headers={"Origin": ORIGIN, "Idempotency-Key": uid()},
-        )
-        if r.status_code != 201:
-            raise RuntimeError("Scenario login failed")
-        client.csrf = r.json()["data"]["csrf_token"]
-        return client
-
-    def call(client, method, path, body=None):
-        r = client.request(
-            method,
-            "/api/v1" + path,
-            json=body,
-            headers={
-                "Origin": ORIGIN,
-                "X-CSRF-Token": client.csrf,
-                "Idempotency-Key": uid(),
-            },
-        )
-        if r.status_code >= 300:
-            raise RuntimeError("Scenario API failed: " + r.json()["error"]["code"])
-        return r.json()["data"]
-
-    try:
+    with ScenarioClients(
+        app, "Scenario login failed", "Scenario API failed: "
+    ) as clients:
+        login, call = clients.login, clients.call
         a = login("demo-patient-a")
         if not add_late_report:
             med = call(
@@ -313,14 +286,12 @@ def generate(path, *, add_late_report=False):
         app.state.execution.maintain_due(None, PATIENT)
         summary = call(
             a,
-            "POST",
-            f"/patients/{PATIENT}/summary-refresh",
-            {**window, "data_environment": "demo"},
+            "GET",
+            f"/patients/{PATIENT}/summary?"
+            + urlencode({**window, "data_environment": "demo"}),
         )
         stats = summary["record_overview"]
         manifest.update(
-            summary_id=summary["summary_id"],
-            statistics_id=stats["statistics_id"],
             as_of=stats["as_of"],
             planned_dose_count=stats["planned_dose_count"],
             patient_confirmed_count=stats["patient_confirmed_count"],
@@ -332,9 +303,6 @@ def generate(path, *, add_late_report=False):
             newline="\n",
         )
         return manifest
-    finally:
-        for client in clients:
-            client.close()
 
 
 def main():

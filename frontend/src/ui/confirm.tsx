@@ -1,7 +1,8 @@
 import type { JSX } from '@solidjs/web'
 import { createSignal, flush, Show } from 'solid-js'
 import { state } from '../session/session'
-import { Button, Text } from './components'
+import { Button } from './button'
+import { Text } from './typography'
 
 const [message, setMessage] = createSignal('')
 let dialog!: HTMLDialogElement

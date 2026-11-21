@@ -6,7 +6,15 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from ..core.errors import AppError
-from ..web.inputs import ID, DateTime, Input, Short, Version
+from ..web.inputs import (
+    ID,
+    DateTime,
+    Input,
+    Short,
+    Version,
+    query_fields,
+    query_limit,
+)
 
 
 class WindowTaskPayload(Input):
@@ -37,7 +45,6 @@ class ReminderTaskPayload(Input):
 class CheckinTaskPayload(Input):
     cycle_id: ID
     node_code: Short
-    rule_version: Short
 
 
 class InterventionTaskPayload(Input):
@@ -68,8 +75,6 @@ class RewardFulfillmentTaskPayload(Input):
 
 
 PAYLOADS = {
-    "refresh_statistics": WindowTaskPayload,
-    "refresh_summary": WindowTaskPayload,
     "deliver_reminder": ReminderTaskPayload,
     "check_in_node": CheckinTaskPayload,
     "deliver_intervention": InterventionTaskPayload,
@@ -82,8 +87,6 @@ PAYLOADS = {
 class TaskCreateInput(Input):
     patient_id: ID
     kind: Literal[
-        "refresh_statistics",
-        "refresh_summary",
         "deliver_reminder",
         "check_in_node",
         "deliver_intervention",
@@ -104,8 +107,6 @@ class TaskCreateInput(Input):
         if self.valid_until <= self.scheduled_at:
             raise ValueError("valid_until must exceed scheduled_at")
         owners = {
-            "refresh_statistics": "A",
-            "refresh_summary": "A",
             "deliver_reminder": "O",
             "check_in_node": "B",
             "deliver_intervention": "B",
@@ -155,15 +156,7 @@ class DeliveryReceiptInput(Input):
         return self
 
 
-def query_input(action, raw_query):
-    pairs = (
-        list(raw_query.multi_items())
-        if hasattr(raw_query, "multi_items")
-        else list(raw_query.items())
-        if hasattr(raw_query, "items")
-        else list(raw_query)
-    )
-    query = dict(pairs)
+def query_input(action, pairs):
     allowed = (
         {"cursor", "limit", "status"}
         if action == "tasks"
@@ -172,14 +165,9 @@ def query_input(action, raw_query):
         else set()
     )
     try:
-        if len(pairs) != len(query) or set(query) - allowed:
-            raise ValueError()
-        if "limit" in query and (
-            not str(query["limit"]).isascii()
-            or not str(query["limit"]).isdigit()
-            or not 1 <= int(query["limit"]) <= 100
-        ):
-            raise ValueError()
+        query = query_fields(pairs, allowed)
+        if "limit" in query:
+            query_limit(query["limit"])
         if "cursor" in query and not query["cursor"]:
             raise ValueError()
         if "status" in query and query["status"] not in (

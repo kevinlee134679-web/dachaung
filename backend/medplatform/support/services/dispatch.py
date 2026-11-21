@@ -10,7 +10,6 @@ from ..services.service import confirmation_required
 class MockServiceDispatch:
     def __init__(self, db, services, clock):
         self.db, self.services, self.clock = db, services, clock
-        self.adapter = lambda task_id, execution_id: {"delivery_status": "submitted"}
 
     def check(self, conn, task, task_id):
         payload = task["payload"]
@@ -33,7 +32,7 @@ class MockServiceDispatch:
             raise confirmation_required("派发任务与正式申请来源不一致")
         if doc["status"] != "submitted" or doc["meta"]["revision"] != 1:
             raise confirmation_required("正式服务已变化，停止原派发")
-        _, _, _, deadline = self.services.consent(conn, doc, stamp(self.clock()))
+        _, _, deadline = self.services.consent(conn, doc, stamp(self.clock()))
         if task["valid_until"] != deadline:
             raise confirmation_required("派发任务的授权期限已变化")
         return doc
@@ -41,14 +40,7 @@ class MockServiceDispatch:
     def attempt(self, task, execution):
         with self.db.connection(readonly=True) as conn:
             self.check(conn, task, task["task_id"])
-        outcome = self.adapter(task["task_id"], execution["execution_id"])
-        if isinstance(outcome, dict) and (
-            outcome.get("outcome_unknown")
-            or outcome.get("error_code")
-            or outcome.get("delivery_status") == "submitted"
-        ):
-            return outcome
-        return {"outcome_unknown": True}
+        return {"delivery_status": "submitted"}
 
     @staticmethod
     def submission(conn, service_id):

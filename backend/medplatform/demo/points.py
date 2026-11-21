@@ -19,10 +19,9 @@ from ..identity.service import seed_demo
 from ..support.points.service import seed_points
 from ..support.rewards.catalog import seed_rewards
 from ..web.app import create_app
-from .client import SessionClient
+from .client import ScenarioClients
 
 PATIENT = "demo-patient-a-self"
-ORIGIN = "http://127.0.0.1:8000"
 ZONE = ZoneInfo("Asia/Shanghai")
 
 
@@ -48,39 +47,10 @@ def generate(path):
         Settings(_env_file=None, APP_ENV="test", DATABASE_PATH=path),
         clock=lambda: clock[0],
     )
-    clients = []
-
-    def login(account):
-        client = SessionClient(app, base_url=ORIGIN)
-        clients.append(client)
-        response = client.post(
-            "/api/v1/auth/demo-session",
-            json={"demo_account_id": account},
-            headers={"Origin": ORIGIN, "Idempotency-Key": uid()},
-        )
-        if response.status_code != 201:
-            raise RuntimeError("Fixture login failed")
-        client.csrf = response.json()["data"]["csrf_token"]
-        return client
-
-    def call(client, method, route, body=None):
-        response = client.request(
-            method,
-            "/api/v1" + route,
-            json=body,
-            headers={
-                "Origin": ORIGIN,
-                "X-CSRF-Token": client.csrf,
-                "Idempotency-Key": uid(),
-            },
-        )
-        if response.status_code >= 300:
-            raise RuntimeError(
-                "Fixture API rejected: " + response.json()["error"]["code"]
-            )
-        return response.json()["data"]
-
-    try:
+    with ScenarioClients(
+        app, "Fixture login failed", "Fixture API rejected: "
+    ) as clients:
+        login, call = clients.login, clients.call
         patient = login("demo-patient-a")
         med = call(
             patient,
@@ -198,9 +168,6 @@ def generate(path):
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf8"
         )
         return manifest
-    finally:
-        for client in clients:
-            client.close()
 
 
 def main():

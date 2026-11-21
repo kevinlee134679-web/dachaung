@@ -15,8 +15,6 @@ from ..core.config import Settings, load_settings
 from ..core.database import Database
 from ..core.errors import AppError, SchemaError
 from ..core.migrations import status
-from ..identity.auth import DemoAuthority
-from ..identity.authority import PersistentAuthority
 from .models import ConfigStatus, Envelope, Health
 from .registry import ModuleRegistry
 
@@ -35,7 +33,6 @@ def envelope(request: Request, data=None, *, code=None, message=None):
 
 def create_app(
     settings: Settings | None = None,
-    authority: DemoAuthority | PersistentAuthority | None = None,
     *,
     clock=None,
 ) -> FastAPI:
@@ -43,6 +40,7 @@ def create_app(
     db = Database(settings.database_path)
     from ..core.documents import now
     from ..dialogue import api as dialogue_routes
+    from ..dialogue import rules as support_rules
     from ..dialogue.service import DialogueService
     from ..identity.api import router as identity_router
     from ..identity.service import IdentityService
@@ -74,11 +72,9 @@ def create_app(
 
     service = IdentityService(db, clock or now)
     records = record_routes.Records(db, service.auth, service.receipts, clock or now)
-    analytics = analytics_routes.Analytics(
-        db, service.auth, service.receipts, clock or now, records
-    )
+    analytics = analytics_routes.Analytics(db, service.auth, clock or now, records)
     execution = execution_routes.Execution(
-        db, service.auth, service.receipts, clock or now, analytics=analytics
+        db, service.auth, service.receipts, clock or now
     )
     support = DialogueService(
         db, service.auth, service.receipts, clock or now, settings, analytics, execution
@@ -98,7 +94,7 @@ def create_app(
     execution.support_state = support.state
     analytics.support_feedback = support.feedback_source
     analytics.service_feedback = feedback
-    authority = authority if authority is not None else service.auth
+    authority = service.auth
     app = FastAPI(
         title="Medication platform foundation",
         version=__version__,
@@ -161,10 +157,7 @@ def create_app(
                             request.headers.get("Authorization")
                         )
                     )
-                elif (
-                    request.url.path == "/api/v1/auth/logout"
-                    and authority is service.auth
-                ):
+                elif request.url.path == "/api/v1/auth/logout":
                     principal = authority.resolve(
                         request.cookies.get("session"), logout_receipt=True
                     )
@@ -302,16 +295,13 @@ def create_app(
         no_query(request)
         schema = ready()
         with db.connection(readonly=True) as conn:
-            profile = support.profile(conn)
             directory_ready = catalog_registered(conn)
-            rule_version = support.state.rule_reference(conn)
-        dialogue_ready = profile["configuration_status"] == "ready"
+            rule_version = support_rules.active(conn)
         return envelope(
             request,
             {
                 "auth_mode": settings.AUTH_MODE,
                 "llm_mode": settings.LLM_MODE,
-                "requested_pipeline": profile["requested_pipeline"],
                 "model_configured": bool(
                     settings.LLM_BASE_URL
                     and settings.LLM_MODEL
@@ -330,10 +320,8 @@ def create_app(
                     ],
                     {
                         "code": "dialogue",
-                        "available": dialogue_ready,
-                        "reason": f"本地 mock {profile['requested_pipeline']}"
-                        if dialogue_ready
-                        else "已请求的流水线尚未接入",
+                        "available": True,
+                        "reason": "本地 mock",
                     },
                     {
                         "code": "real_model",
@@ -373,10 +361,7 @@ def create_app(
                     {"kind": "contract", "version": "C-v0.2"},
                     {"kind": "runner", "version": "s06-runner-v1"},
                     {"kind": "rule", "version": rule_version},
-                    {
-                        "kind": "model_config",
-                        "version": profile["model_config_version"],
-                    },
+                    {"kind": "model_config", "version": settings.CONFIG_VERSION},
                 ],
             },
         )

@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from ...core.documents import encode, uid
-from ...core.errors import AppError
 from ...medication.analytics import valid_plan_slot
 
 
@@ -18,30 +16,6 @@ def iso_monday(day):
     return day - timedelta(days=day.weekday())
 
 
-def points_notice(conn, patient, kind, identifier, revision, at):
-    conn.execute(
-        "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (
-            uid(),
-            "C",
-            patient,
-            "demo",
-            "points_source_changed",
-            encode(
-                {
-                    "resource_type": kind,
-                    "resource_id": identifier,
-                    "resource_revision": revision,
-                }
-            ),
-            f"points_source_changed:{kind}:{identifier}:{revision}",
-            at,
-            at,
-            1,
-        ),
-    )
-
-
 @dataclass(frozen=True)
 class Source:
     module: str
@@ -51,7 +25,6 @@ class Source:
     recorded_at: str
     anchor_at: str
     period: date
-    qualification_ref: str | None = None
 
 
 ISSUES = {
@@ -68,8 +41,6 @@ ISSUES = {
     "peer_pending": "有本人帖子待审，尚未产生可见参与资格。",
     "peer_hidden": "有本人帖子已隐藏，不能作为当前核奖证据。",
     "peer_restricted": "有同辈来源当前授权受限，尚未获奖的来源暂停核奖。",
-    "source_changed": "已有入账来源发生更正、技术复核或状态变化，原奖励保留。",
-    "source_unavailable": "有原奖励来源当前不可核验，原奖励保留。",
 }
 
 
@@ -114,7 +85,6 @@ class PointsSources:
             event["meta"]["updated_at"],
             slot["scheduled_at"],
             patient_date(slot["scheduled_at"], ZoneInfo(plan["timezone"])),
-            match["match_id"],
         ), None
 
     def select_manual(self, conn, patient, left, right, at, plans, issues):
@@ -180,10 +150,9 @@ class PointsSources:
     def select_peer(self, conn, patient, left, right, at, zone, issues):
         if not conn.execute("SELECT 1 FROM c_peer_groups LIMIT 1").fetchone():
             issues.add("peer_not_configured")
-            return {}, {}
+            return {}
         weeks = defaultdict(list)
-        rows = {r["post_id"]: r for r in self.peer_rows(conn, patient)}
-        for row in rows.values():
+        for row in self.peer_rows(conn, patient):
             anchor = row["first_visible_at"] or row["created_at"]
             if not left <= anchor < right or anchor > at or row["recorded_at"] > at:
                 continue
@@ -209,60 +178,4 @@ class PointsSources:
             )
         if not weeks:
             issues.add("peer_not_collected")
-        return weeks, rows
-
-    def check_previous(self, conn, patient, left, right, at, plans, posts, issues):
-        rows = conn.execute(
-            """
-            SELECT * FROM c_points_award_sources WHERE patient_id=? AND anchor_at>=? AND anchor_at<?
-        """,
-            (patient, left, right),
-        ).fetchall()
-        changes = []
-        for row in rows:
-            reason, revision = None, None
-            if row["module"] == "A":
-                try:
-                    event = self.analytics.records.event_view(
-                        conn, row["record_id"], at
-                    )
-                except AppError as exc:
-                    if exc.status != 404:
-                        raise
-                    reason = "source_unavailable"
-                else:
-                    revision = event["meta"]["revision"]
-                    current, issue = self.manual(conn, patient, event, plans, at)
-                    if issue:
-                        reason = issue
-                    elif (revision, current.qualification_ref) != (
-                        row["source_revision"],
-                        row["qualification_ref"],
-                    ):
-                        reason = "source_changed"
-            elif row["record_kind"] == "peer_post":
-                post = posts.get(row["record_id"])
-                if post is None:
-                    reason = "source_unavailable"
-                else:
-                    revision = post["revision"]
-                    if post["status"] != "visible":
-                        reason = "peer_hidden"
-                    elif not self.peer.access_current(
-                        conn, post["group_id"], post["service_id"]
-                    ):
-                        reason = "peer_restricted"
-                    elif revision != row["source_revision"]:
-                        reason = "source_changed"
-            if reason:
-                issues.update((reason, "source_changed"))
-                changes.append(
-                    {
-                        "ledger_id": row["ledger_id"],
-                        "source_order": row["source_order"],
-                        "awarded_revision": row["source_revision"],
-                        "current_revision": revision,
-                        "reason": reason,
-                    }
-                )
-        return changes
+        return weeks

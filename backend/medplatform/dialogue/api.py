@@ -91,6 +91,5 @@ ROUTES = [
         "knowledge_withdraw",
         inputs.KnowledgeWithdraw,
     ),
-    ("B38", "PUT", "/config/model-profile", "model_profile", inputs.ModelProfile),
     ("B39", "GET", "/patients/{p}/invitations", "patient_invitations", None),
 ]

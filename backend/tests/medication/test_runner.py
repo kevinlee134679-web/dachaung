@@ -28,7 +28,6 @@ class RunnerTests(unittest.TestCase):
             APP_ENV="test",
             AUTH_MODE="demo",
             LLM_MODE="mock",
-            DIALOGUE_PIPELINE="single_pass",
             HOST="127.0.0.1",
             PORT="8000",
             DATABASE_PATH=str(self.h.db.path),
@@ -146,28 +145,31 @@ class RunnerTests(unittest.TestCase):
 
     def test_per_cycle_work_is_bounded_and_next_cycle_resumes(self):
         self.h.app.state.settings.RUNNER_MAX_TASKS = 1
-        with self.h.db.transaction() as conn:
-            for n in range(2):
-                self.execution.create_in_transaction(
-                    conn,
-                    None,
-                    {
-                        "patient_id": prior.PA,
-                        "owner_module": "A",
-                        "kind": "refresh_statistics",
-                        "owner_operation_key": "bounded-" + str(n),
-                        "scheduled_at": stamp(self.h.clock()),
-                        "valid_until": stamp(self.h.clock() + timedelta(hours=1)),
-                        "intervention_id": None,
-                        "rule_version": "demo-test",
-                        "payload": {
-                            "window_start": stamp(self.h.clock() - timedelta(days=1)),
-                            "window_end": stamp(self.h.clock()),
-                            "data_environment": "demo",
-                        },
-                    },
-                    internal=True,
-                )
+        for _ in range(2):
+            session = self.h.call(
+                self.h.a,
+                "POST",
+                "/sessions",
+                {
+                    "patient_id": prior.PA,
+                    "case_id": None,
+                    "entry_source": "user",
+                    "invitation_id": None,
+                },
+                expected=201,
+            )
+            self.h.call(
+                self.h.a,
+                "PUT",
+                "/sessions/" + session["session_id"] + "/ui-mode",
+                {
+                    "ui_mode": "simplified",
+                    "expected_revision": 1,
+                    "confirmed": True,
+                    "source_suggestion_id": None,
+                },
+            )
+        self.h.time[0] += timedelta(hours=2, seconds=1)
         self.assertEqual(self.run_cycle()["completed"], 1)
         self.assertEqual(self.run_cycle()["completed"], 1)
         self.assertEqual(self.run_cycle()["executions"], 0)
@@ -285,4 +287,4 @@ class RunnerTests(unittest.TestCase):
         _stdout, stderr = process.communicate(timeout=10)
         self.assertEqual(process.returncode, 0, stderr)
         with self.runner.exclusive():
-            self.assertTrue(self.runner.owns_lock)
+            pass

@@ -63,15 +63,8 @@ class AnalyticsAuditTests(unittest.TestCase):
             expected=201,
         )
 
-    def refresh(self, as_of=None, client=None, operation=None, expected=200):
-        return self.case.call(
-            client or self.case.a,
-            "POST",
-            f"/patients/{support.PA}/summary-refresh",
-            {**self.window, "as_of": as_of or stamp(self.case.clock())},
-            operation=operation,
-            expected=expected,
-        )
+    def summary(self, as_of=None, client=None):
+        return self.read("summary", as_of, client)
 
     def read(self, resource, as_of=None, client=None, expected=200):
         params = {**self.window, "as_of": as_of or stamp(self.case.clock())}
@@ -89,7 +82,7 @@ class AnalyticsAuditTests(unittest.TestCase):
         due = self.slots()
         self.assertEqual(len(due), 4)
         self.report(due[0])
-        summary = self.refresh()
+        summary = self.summary()
         trend = self.read("medication-trends")
         self.assertEqual(
             [
@@ -103,16 +96,13 @@ class AnalyticsAuditTests(unittest.TestCase):
         )
         self.assertEqual(trend["aggregate"]["patient_confirmation_ratio"], 0.25)
         self.assertEqual(summary["record_overview"]["patient_confirmation_ratio"], 0.25)
-        self.assertEqual(
-            trend["aggregate"]["statistics_id"],
-            summary["record_overview"]["statistics_id"],
-        )
+        self.assertEqual(trend["aggregate"], summary["record_overview"])
 
     def test_later_plan_publication_does_not_reassign_historical_denominator(self):
         original = self.plan()
         self.move("2026-11-17T13:00:00+00:00")
         old_cutoff = stamp(self.case.clock())
-        old = self.refresh(old_cutoff)["record_overview"]
+        old = self.summary(old_cutoff)["record_overview"]
         self.assertEqual(old["planned_dose_count"], 2)
         self.assertEqual(
             old["plan_refs"], [{"plan_id": original["plan_id"], "plan_version": 1}]
@@ -124,16 +114,10 @@ class AnalyticsAuditTests(unittest.TestCase):
             expected_plan_version=1,
             effective_from=stamp(self.case.clock() + timedelta(hours=1)),
         )
-        rebuilt = self.refresh(old_cutoff)["record_overview"]
+        rebuilt = self.summary(old_cutoff)["record_overview"]
         self.assertEqual(rebuilt["planned_dose_count"], old["planned_dose_count"])
         self.assertEqual(rebuilt["plan_refs"], old["plan_refs"])
         self.assertEqual(rebuilt["as_of"], old_cutoff)
-        with self.case.db.connection(readonly=True) as conn:
-            saved = conn.execute(
-                "SELECT result_json FROM s03_results WHERE result_id=?",
-                (old["statistics_id"],),
-            ).fetchone()[0]
-        self.assertIn(old["statistics_id"], saved)
 
     def test_family_opposite_final_report_is_an_unresolved_conflict(self):
         self.plan()
@@ -143,7 +127,7 @@ class AnalyticsAuditTests(unittest.TestCase):
         self.report(slot, "taken")
         family = self.report(slot, "not_taken", self.case.f)
         self.assertEqual(family["evidence_type"], "family_report")
-        stats = self.refresh()["record_overview"]
+        stats = self.summary()["record_overview"]
         self.assertEqual(stats["patient_confirmed_count"], 0)
         self.assertEqual(stats["reported_not_taken_count"], 0)
         self.assertEqual(stats["unknown_count"], 1)
@@ -154,7 +138,7 @@ class AnalyticsAuditTests(unittest.TestCase):
         self.move("2026-11-16T13:00:00+00:00")
         event = self.report(self.slots()[0])
         old_cutoff = stamp(self.case.clock())
-        old = self.refresh(old_cutoff)["record_overview"]
+        old = self.summary(old_cutoff)["record_overview"]
         self.assertEqual(old["patient_confirmed_count"], 1)
         self.move(self.case.clock() + timedelta(minutes=1))
         admin = self.case.login("demo-admin")
@@ -169,12 +153,12 @@ class AnalyticsAuditTests(unittest.TestCase):
                 "reason": "演示复核明确解除原关联",
             },
         )
-        current = self.refresh()["record_overview"]
+        current = self.summary()["record_overview"]
         self.assertEqual(current["patient_confirmed_count"], 0)
         self.assertEqual(current["unknown_count"], 1)
         historical = self.read("medication-statistics", old_cutoff)
         self.assertEqual(historical["patient_confirmed_count"], 1)
-        self.assertEqual(historical["statistics_id"], old["statistics_id"])
+        self.assertEqual(historical["as_of"], old["as_of"])
 
     def test_quality_processed_after_cutoff_does_not_backfill_historical_result(self):
         self.plan()
@@ -183,7 +167,7 @@ class AnalyticsAuditTests(unittest.TestCase):
             event = self.report(self.slots()[0])
         self.assertEqual(event["quality"]["status"], "pending_validation")
         old_cutoff = stamp(self.case.clock())
-        old = self.refresh(old_cutoff)["record_overview"]
+        old = self.summary(old_cutoff)["record_overview"]
         self.assertEqual(old["patient_confirmed_count"], 0)
         self.move(self.case.clock() + timedelta(minutes=1))
         admin = self.case.login("demo-admin")
@@ -193,19 +177,13 @@ class AnalyticsAuditTests(unittest.TestCase):
             f"/events/{event['event_id']}/reprocess",
             {"expected_revision": 1},
         )
-        rebuilt = self.refresh(old_cutoff)["record_overview"]
+        rebuilt = self.summary(old_cutoff)["record_overview"]
         self.assertEqual(rebuilt["patient_confirmed_count"], 0)
         self.assertEqual(rebuilt["unknown_count"], 1)
-        now = self.refresh()["record_overview"]
+        now = self.summary()["record_overview"]
         self.assertEqual(now["patient_confirmed_count"], 1)
-        with self.case.db.connection(readonly=True) as conn:
-            original = conn.execute(
-                "SELECT result_json FROM s03_results WHERE result_id=?",
-                (old["statistics_id"],),
-            ).fetchone()[0]
-        self.assertIn('"patient_confirmed_count":0', original)
 
-    def test_revoked_source_scopes_cannot_replay_old_summary_or_read_old_body(self):
+    def test_revoked_source_scopes_limit_summary(self):
         self.plan()
         self.move("2026-11-16T13:00:00+00:00")
         self.report(self.slots()[0])
@@ -230,8 +208,7 @@ class AnalyticsAuditTests(unittest.TestCase):
             ["summary:read", "statistics:read", "measurements:read"]
         )
         cutoff = stamp(self.case.clock())
-        operation = support.key()
-        shared = self.refresh(cutoff, self.case.f, operation)
+        shared = self.summary(cutoff, self.case.f)
         self.assertEqual(shared["record_overview"]["patient_confirmed_count"], 1)
         self.assertTrue(
             any(item["latest_value"] == 7 for item in shared["measurement_overview"])
@@ -247,10 +224,7 @@ class AnalyticsAuditTests(unittest.TestCase):
                 "confirmed": True,
             },
         )
-        refused = self.refresh(cutoff, self.case.f, operation, expected=403)
-        self.assertEqual(refused["code"], "SOURCE_ACCESS_CHANGED")
-        self.read("summary", cutoff, self.case.f, expected=409)
-        limited = self.refresh(cutoff, self.case.f)
+        limited = self.summary(cutoff, self.case.f)
         self.assertIsNone(limited["record_overview"])
         self.assertEqual(limited["measurement_overview"], [])
         self.assertTrue(

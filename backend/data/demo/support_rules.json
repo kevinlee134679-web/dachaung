@@ -1,6 +1,0 @@
-{
-  "profiles": [
-    {"profile_id": "support-default", "version": "s06-support-v1", "mode_seconds": 7200, "invitation_seconds": 86400, "offer_cooldown_seconds": 86400, "node_offsets": [7, 28], "node_window_seconds": 86400, "state_events": false, "is_simulated": true},
-    {"profile_id": "support-explicit-needs", "version": "s06-support-v2", "mode_seconds": 7200, "invitation_seconds": 86400, "offer_cooldown_seconds": 86400, "node_offsets": [7, 28], "node_window_seconds": 86400, "state_events": true, "is_simulated": true}
-  ]
-}

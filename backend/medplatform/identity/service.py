@@ -12,7 +12,7 @@ from ..core.config import ROOT
 from ..core.documents import (
     all_docs,
     changed,
-    encode,
+    digest,
     expected,
     fingerprint,
     fingerprint_bytes,
@@ -26,10 +26,9 @@ from ..core.documents import (
 from ..core.errors import AppError
 from ..core.idempotency import Receipts, Result
 from ..core.protection import protect
-from ..medication.schedule import SHANGHAI
+from ..medication.schedule import SHANGHAI, insert_slot, occurrences, require_coverage
 from ..profile.questionnaire import VERSION, definition, descriptive_profile
-from .actions import READS
-from .auth import Principal, digest
+from .auth import Principal
 from .authority import PersistentAuthority
 
 RESOURCE_KINDS = {
@@ -236,15 +235,13 @@ class IdentityService:
             if source["respondent_account_id"] != principal.account_id:
                 self.auth.require_patient(principal, patient, "questionnaire:read", c)
 
-    def handle(
-        self, action, principal, params, query, body=None, key=None, content=None
-    ):
+    def handle(self, action, principal, params, query, body, key, content, is_read):
         body = body or {}
         with self.db.connection(readonly=True) as c:
             self.authorize(c, action, principal, params, body)
             doc = self.resource(c, action, params)
             patient = params.get("p") or (doc["patient_id"] if doc else None)
-            if action in READS:
+            if is_read:
                 result = self.read(c, action, principal, params, query)
                 self.authorize(c, action, principal, params, body)
                 return Result(result)
@@ -439,22 +436,9 @@ class IdentityService:
             for plan in all_docs(c, "PlanVersion", p):
                 left = max(start, plan["effective_from"])
                 right = min(end, plan["effective_until"] or end)
-                if right <= left:
-                    continue
-                windows = c.execute(
-                    "SELECT window_start,window_end FROM o_schedule_windows WHERE plan_id=? AND plan_version=? ORDER BY window_start",
-                    (plan["plan_id"], plan["plan_version"]),
-                ).fetchall()
-                covered = left
-                for window in windows:
-                    if window[0] <= covered:
-                        covered = max(covered, window[1])
-                if covered < right:
-                    raise AppError(
-                        409,
-                        "SCHEDULE_WINDOW_NOT_READY",
-                        "该窗口尚未显式物化，不能当作零安排",
-                    )
+                require_coverage(
+                    c, plan, left, right, "该窗口尚未显式物化，不能当作零安排"
+                )
             items = [
                 {
                     k: r[k]
@@ -1022,11 +1006,6 @@ class IdentityService:
                 plan_entry_id=uid(), medication_name_snapshot=med["name"]
             )
             if entry["min_interval_minutes"]:
-                occurrences = []
-                # Validate the recurrence where this entry actually starts,
-                # independently of the 31-day slot materialization window.
-                # Fifteen local days include two occurrences even when the
-                # first weekly time on the effective day has already passed.
                 inspection_start = max(
                     first_day, date.fromisoformat(entry["start_date"])
                 )
@@ -1038,22 +1017,18 @@ class IdentityService:
                 inspection_days = min(
                     15, max(0, (inspection_end - inspection_start).days + 1)
                 )
-                for shift in range(inspection_days):
-                    day = inspection_start + timedelta(days=shift)
-                    if (
-                        entry["schedule"]["kind"] == "weekly"
-                        and day.isoweekday() not in entry["schedule"]["weekdays"]
-                    ):
-                        continue
-                    for local in entry["schedule"]["times"]:
-                        moment = datetime.combine(
-                            day, time.fromisoformat(local), SHANGHAI
-                        )
-                        if stamp(moment) >= b["effective_from"]:
-                            occurrences.append(moment)
+                moments = [
+                    moment
+                    for moment in occurrences(
+                        entry,
+                        inspection_start,
+                        inspection_start + timedelta(days=inspection_days - 1),
+                    )
+                    if stamp(moment) >= b["effective_from"]
+                ]
                 gaps = [
                     (later - earlier).total_seconds() / 60
-                    for earlier, later in itertools.pairwise(occurrences)
+                    for earlier, later in itertools.pairwise(moments)
                 ]
                 if gaps and min(gaps) < entry["min_interval_minutes"]:
                     raise AppError(
@@ -1096,26 +1071,6 @@ class IdentityService:
         )
         save(c, "Draft", b["draft_id"], p, confirmed)
         self.materialize(c, plan)
-        ref = {
-            "resource_type": "PlanVersion",
-            "resource_id": plan_id,
-            "resource_revision": version,
-        }
-        c.execute(
-            "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (
-                uid(),
-                "O",
-                p,
-                "demo",
-                "plan_published",
-                encode(ref),
-                f"plan:{plan_id}:{version}",
-                at,
-                at,
-                1,
-            ),
-        )
         return Result(plan, 201, resource_type="PlanVersion", resource_id=plan_id)
 
     def materialize(self, c, plan):
@@ -1124,40 +1079,9 @@ class IdentityService:
         end = start + timedelta(days=31)
         right = datetime.combine(end, time(), SHANGHAI)
         for entry in plan["entries"]:
-            for days in range(31):
-                day = start + timedelta(days=days)
-                if str(day) < entry["start_date"] or (
-                    entry["end_date"] and str(day) > entry["end_date"]
-                ):
-                    continue
-                schedule = entry["schedule"]
-                if (
-                    schedule["kind"] == "weekly"
-                    and day.isoweekday() not in schedule["weekdays"]
-                ):
-                    continue
-                for local in schedule["times"]:
-                    scheduled = datetime.combine(
-                        day, time.fromisoformat(local), SHANGHAI
-                    )
-                    if scheduled < effective:
-                        continue
-                    c.execute(
-                        "INSERT INTO dose_slots VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(patient_id,data_environment,plan_id,plan_version,plan_entry_id,scheduled_at) DO NOTHING",
-                        (
-                            uid(),
-                            plan["patient_id"],
-                            "demo",
-                            plan["plan_id"],
-                            plan["plan_version"],
-                            entry["plan_entry_id"],
-                            entry["medication_id"],
-                            stamp(scheduled),
-                            "active",
-                            "flow-v0.1-slot-v1",
-                            1,
-                        ),
-                    )
+            for scheduled in occurrences(entry, start, end - timedelta(days=1)):
+                if scheduled >= effective:
+                    insert_slot(c, plan, entry, scheduled)
         c.execute(
             "INSERT INTO o_schedule_windows VALUES (?,?,?,?)",
             (

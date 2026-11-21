@@ -1,13 +1,23 @@
 """Strict inputs for the registered B contracts."""
 
-from datetime import datetime
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from ..core.errors import AppError
-from ..web.inputs import ID, DateTime, Input, Short, Text, Version, utc
+from ..web.inputs import (
+    ID,
+    DateTime,
+    Input,
+    Short,
+    Text,
+    Version,
+    query_fields,
+    query_limit,
+    query_text,
+    query_window,
+)
 
 TurnCount = Annotated[int, Field(ge=0)]
 Reason = Annotated[str, Field(min_length=1, max_length=500)]
@@ -210,7 +220,6 @@ class Trigger(Input):
         "empty_response",
         "invalid_json",
         "knowledge_empty",
-        "star_mid_failure",
         "receipt_late",
     ]
     scenario_run_id: ID
@@ -296,12 +305,6 @@ class ModelProbe(Input):
     allow_external_call: bool
 
 
-class ModelProfile(Input):
-    profile_id: ID
-    expected_config_version: ID
-    confirmed: Literal[True]
-
-
 QUERY_KEYS = {
     "cases": PAGE,
     "sessions": PAGE | PATIENT_QUERY | {"case_id"},
@@ -318,15 +321,10 @@ QUERY_KEYS = {
 
 
 def query_input(action, pairs):
-    query = dict(pairs)
     try:
-        if len(pairs) != len(query) or set(query) - QUERY_KEYS.get(action, set()):
-            raise ValueError()
+        query = query_fields(pairs, QUERY_KEYS.get(action, set()))
         if "limit" in query:
-            value = query["limit"]
-            if not value.isascii() or not value.isdigit() or not 1 <= int(value) <= 100:
-                raise ValueError()
-            query["limit"] = int(value)
+            query["limit"] = query_limit(query["limit"])
         for name in (
             "cursor",
             "case_id",
@@ -334,10 +332,8 @@ def query_input(action, pairs):
             "session_id",
             "patient_id",
         ):
-            if name in query and not 1 <= len(query[name]) <= (
-                4096 if name == "cursor" else 128
-            ):
-                raise ValueError()
+            if name in query:
+                query_text(query[name], 4096 if name == "cursor" else 128)
         for name in ("include_history", "include_unreviewed"):
             if name in query:
                 if query[name] not in ("true", "false"):
@@ -346,13 +342,7 @@ def query_input(action, pairs):
         if action in {"sessions", "export"} and "patient_id" not in query:
             raise ValueError()
         if action in {"feedback", "export"}:
-            query["window_start"] = utc(query["window_start"])
-            query["window_end"] = utc(query["window_end"])
-            interval = datetime.fromisoformat(
-                query["window_end"]
-            ) - datetime.fromisoformat(query["window_start"])
-            if not 0 < interval.total_seconds() <= 31 * 86400:
-                raise ValueError()
+            query_window(query)
         if (
             "status" in query
             and query["status"] not in INVITATION_STATES

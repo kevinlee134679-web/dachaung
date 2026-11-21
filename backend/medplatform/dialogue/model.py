@@ -1,13 +1,10 @@
-"""Single-pass model boundary, with an offline default and injectable transport."""
+"""Mock model boundary."""
 
 import json
 from dataclasses import dataclass
 
-from .star import mock_payload
-
 MODEL_LABEL = "local-support-mock"
 PROMPT_VERSION = "s04-support-zh-v1"
-RULE_VERSION = "s04-support-v1"
 MODEL_PROFILE_ID = "mock-single-pass"
 
 SYSTEM_PROMPT = (
@@ -34,114 +31,14 @@ class Completion:
     content: str | None
     error_code: str | None = None
     outcome_unknown: bool = False
-    transient: bool = False
-    usage: dict | None = None
-    provider_model_version: str | None = None
-
-
-class OpenAICompatible:
-    """A transport may be injected by an authorized integration or an offline test."""
-
-    mode = "real"
-
-    def __init__(
-        self,
-        transport,
-        model,
-        *,
-        provider_label,
-        supports_json=False,
-        output_parameter=None,
-    ):
-        if output_parameter not in (None, "max_tokens", "max_completion_tokens"):
-            raise ValueError("unregistered output budget parameter")
-        self.transport = transport
-        self.model_label = model
-        self.provider_label = provider_label
-        self.supports_json = supports_json
-        self.output_parameter = output_parameter
-
-    def complete(self, messages, *, timeout, output_limit, scenario=None):
-        payload = {
-            "model": self.model_label,
-            "messages": messages,
-            "n": 1,
-            "stream": False,
-        }
-        if self.supports_json:
-            payload["response_format"] = {"type": "json_object"}
-        if self.output_parameter is not None and output_limit is not None:
-            payload[self.output_parameter] = output_limit
-        try:
-            code, data = self.transport(payload, timeout)
-        except TimeoutError, OSError:
-            return Completion(None, "PROVIDER_RESULT_UNKNOWN", outcome_unknown=True)
-        if code in (401, 403):
-            return Completion(None, "PROVIDER_AUTH_FAILED")
-        if code == 429:
-            return Completion(None, "PROVIDER_RATE_LIMITED", transient=True)
-        if code >= 500:
-            return Completion(None, "PROVIDER_RESULT_UNKNOWN", outcome_unknown=True)
-        if code != 200:
-            return Completion(None, "PROVIDER_REQUEST_REJECTED")
-        try:
-            (choice,) = data["choices"]
-            if choice["finish_reason"] != "stop":
-                return Completion(None, "PROVIDER_OUTPUT_INCOMPLETE")
-            content = choice["message"]["content"]
-            if not isinstance(content, str) or not content.strip():
-                return Completion(None, "PROVIDER_EMPTY_RESPONSE")
-        except KeyError, TypeError, ValueError:
-            return Completion(None, "PROVIDER_OUTPUT_INVALID")
-        counts = data.get("usage")
-        usage = missing_usage("供应商未返回可用用量")
-        if isinstance(counts, dict):
-            actual = {
-                out: counts.get(key)
-                for out, key in (
-                    ("input_tokens", "prompt_tokens"),
-                    ("output_tokens", "completion_tokens"),
-                    ("total_tokens", "total_tokens"),
-                )
-            }
-            actual = {
-                key: value if type(value) is int and value >= 0 else None
-                for key, value in actual.items()
-            }
-            if any(value is not None for value in actual.values()):
-                usage = dict(
-                    actual,
-                    source="reported",
-                    missing_reason="部分用量未提供"
-                    if any(value is None for value in actual.values())
-                    else None,
-                )
-        version = data.get("model_version")
-        safe_version = (
-            version
-            if isinstance(version, str)
-            and version.isascii()
-            and all(char.isalnum() or char in "-_." for char in version)
-            and 0 < len(version) <= 128
-            else None
-        )
-        return Completion(content, usage=usage, provider_model_version=safe_version)
 
 
 class MockModel:
     mode = "mock"
     provider_label = "local-mock"
     model_label = MODEL_LABEL
-    output_parameter = None
 
-    def complete(self, messages, *, timeout, output_limit, scenario=None):
-        if scenario == "star_mid_failure" and any(
-            m["content"].startswith("STAR_STAGE_DATA:")
-            and '"stage":"strategy"' in m["content"]
-            for m in messages
-            if m["role"] == "system"
-        ):
-            return Completion(None, "STAR_STEP_FAILED")
+    def complete(self, messages, *, scenario=None):
         if scenario == "llm_timeout":
             return Completion(None, "PROVIDER_RESULT_UNKNOWN", outcome_unknown=True)
         if scenario == "empty_response":
@@ -235,21 +132,29 @@ class MockModel:
                 "type": "small_step",
                 "description": "只写下一件今天希望得到帮助的事",
             }
+        readiness = next(
+            (
+                {"state": state, "evidence": phrase, "source_message_id": message_id}
+                for phrase, state in (
+                    ("准备试试", "preparing"),
+                    ("已经在做", "acting"),
+                    ("继续保持", "maintaining"),
+                )
+                if phrase in text
+            ),
+            None,
+        )
         return Completion(
             json.dumps(
-                mock_payload(
-                    {
-                        "assistant_reply": reply,
-                        "support_focus": focus,
-                        "communication_strategy": strategies,
-                        "difficulty_cues": cues,
-                        "suggested_action": action,
-                        "knowledge_citations": citations,
-                        "change_readiness": None,
-                    },
-                    messages,
-                    scenario,
-                ),
+                {
+                    "assistant_reply": reply,
+                    "support_focus": focus,
+                    "communication_strategy": strategies,
+                    "difficulty_cues": cues,
+                    "suggested_action": action,
+                    "knowledge_citations": citations,
+                    "change_readiness": readiness,
+                },
                 ensure_ascii=False,
             )
         )

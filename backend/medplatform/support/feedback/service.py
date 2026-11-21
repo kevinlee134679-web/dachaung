@@ -7,7 +7,7 @@ from urllib.parse import quote, urlencode
 from ...core.documents import encode, fingerprint, get, meta, stamp, uid
 from ...core.errors import AppError
 from ...core.idempotency import Result
-from ..common import CONTRACT
+from ..common import CONTRACT, next_cursor, page_after, read_guarded
 from .api import DIMENSIONS
 
 ELIGIBLE = frozenset({"completed", "cancelled", "failed"})
@@ -73,15 +73,12 @@ class Feedback:
                 save,
             )
         with self.db.connection(readonly=True) as conn:
-            conn.execute("BEGIN")
-            patient, doc = guard(conn)
-            headers = {}
-            if action == "feedback_history":
-                data = self.history(conn, principal, doc, query)
-            else:
-                data, headers = self.source_page(conn, principal, patient, query)
-            conn.commit()
-            guard(conn)
+            with read_guarded(conn, guard) as (patient, doc):
+                headers = {}
+                if action == "feedback_history":
+                    data = self.history(conn, principal, doc, query)
+                else:
+                    data, headers = self.source_page(conn, principal, patient, query)
             return Result(data, headers=headers)
 
     def save(self, conn, patient, service, body):
@@ -149,27 +146,6 @@ class Feedback:
                 encode(doc),
             ),
         )
-        conn.execute(
-            "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (
-                uid(),
-                "C",
-                patient,
-                "demo",
-                "c_feedback_changed",
-                encode(
-                    {
-                        "resource_type": "ServiceFeedback",
-                        "resource_id": identifier,
-                        "resource_revision": revision + 1,
-                    }
-                ),
-                "service-feedback:" + identifier,
-                at,
-                at,
-                1,
-            ),
-        )
         return Result(doc, 201, resource_type="ServiceFeedback", resource_id=identifier)
 
     def history(self, conn, principal, service, query):
@@ -180,12 +156,7 @@ class Feedback:
             service["patient_id"],
             service["service_id"],
         ]
-        after = 0
-        if query.get("cursor"):
-            last = self.auth.read_cursor(query["cursor"], context)
-            if len(last) != 1 or type(last[0]) is not int:
-                raise AppError(422, "INVALID_CURSOR", "反馈分页位置无效")
-            after = last[0]
+        after = page_after(self.auth, query, context, [0])[0]
         limit = query.get("limit", 20)
         rows = conn.execute(
             """SELECT document_json FROM c_service_feedback
@@ -201,24 +172,19 @@ class Feedback:
                         (*DIMENSIONS, "willing_to_continue", "missing_reason")
                     )
                 )
-        cursor = (
-            self.auth.cursor(context, [docs[-1]["feedback_revision"]])
-            if len(rows) > limit
-            else None
+        cursor = next_cursor(
+            rows, limit, self.auth, context, lambda _: [docs[-1]["feedback_revision"]]
         )
         return {"items": docs, "next_cursor": cursor}
 
     def source(self, conn, principal, patient, window):
-        """Return the C15 shape and the precise immutable refs used in this read."""
-        if principal is None:
-            return source_status("restricted", "此执行入口没有患者反馈授权"), []
         scopes = self.auth.scopes(principal, patient, conn)
         if not READ_SCOPES.issubset(scopes):
-            return source_status("restricted", "当前授权不含反馈及底层服务读取"), []
+            return source_status("restricted", "当前授权不含反馈及底层服务读取")
         own = self.auth.is_self(principal, patient, conn)
         try:
             rows = self.source_rows(conn, patient, window)
-            records, refs = [], []
+            records = []
             for row in rows:
                 feedback = (
                     json.loads(row["feedback_json"]) if row["feedback_json"] else None
@@ -238,33 +204,16 @@ class Feedback:
                         is_simulated=True,
                     )
                 )
-                refs.append(
-                    {
-                        "resource_type": "Service",
-                        "resource_id": row["service_id"],
-                        "resource_revision": row["service_revision"],
-                    }
-                )
-                if feedback:
-                    refs.append(
-                        {
-                            "resource_type": "ServiceFeedback",
-                            "resource_id": feedback["feedback_id"],
-                            "resource_revision": feedback["feedback_revision"],
-                        }
-                    )
             if not records:
-                return source_status(
-                    "not_collected", "此窗口暂无可见 C 服务或反馈记录"
-                ), []
+                return source_status("not_collected", "此窗口暂无可见 C 服务或反馈记录")
             reason = None
             if not own:
                 reason = "当前仅可读取获准状态和引用，反馈描述由本人查看"
             elif all(rec[name] is None for rec in records for name in DIMENSIONS):
                 reason = "已记录服务状态，此窗口暂无已填写的三维描述"
-            return source_status("available", reason, records), refs
+            return source_status("available", reason, records)
         except sqlite3.DatabaseError:
-            return source_status("unavailable", "C反馈来源暂不可用"), []
+            return source_status("unavailable", "C反馈来源暂不可用")
 
     def source_rows(self, conn, patient, window):
         left, right = window["window_start"], window["window_end"]
@@ -292,13 +241,10 @@ class Feedback:
         limit = query.get("limit", 20)
         window = {name: query[name] for name in ("window_start", "window_end")}
         context = [principal.account_id, "C15", patient, window]
-        cutoff, after = stamp(self.clock()), ["", ""]
-        if query.get("cursor"):
-            prior = self.auth.read_cursor(query["cursor"], context)
-            if len(prior) != 3 or not all(isinstance(value, str) for value in prior):
-                raise AppError(422, "INVALID_CURSOR", "反馈分页位置无效")
-            cutoff, *after = prior
-        data, _ = self.source(conn, principal, patient, dict(window, as_of=cutoff))
+        cutoff, *after = page_after(
+            self.auth, query, context, [stamp(self.clock()), "", ""]
+        )
+        data = self.source(conn, principal, patient, dict(window, as_of=cutoff))
         if data["availability"] == "unavailable":
             raise AppError(503, "SUPPORT_FEEDBACK_UNAVAILABLE", data["reason"])
         records = [
@@ -310,13 +256,16 @@ class Feedback:
             return source_status(
                 "not_collected", "该分页位置后没有其他获准反馈引用"
             ), {}
-        data["records"] = records[:limit]
-        if len(records) <= limit:
-            return data, {}
-        last = records[limit - 1]
-        token = self.auth.cursor(
-            context, [cutoff, last["recorded_at"], last["record_id"]]
+        token = next_cursor(
+            records,
+            limit,
+            self.auth,
+            context,
+            lambda row: [cutoff, row["recorded_at"], row["record_id"]],
         )
+        data["records"] = records[:limit]
+        if token is None:
+            return data, {}
         target = (
             "/api/v1/patients/"
             + quote(patient, safe="")

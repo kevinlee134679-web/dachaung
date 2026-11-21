@@ -8,7 +8,7 @@ from datetime import timedelta
 import fixtures as baseline
 from medplatform.core.documents import stamp
 from medplatform.core.errors import AppError
-from medplatform.medication.execution import ROUTES, Execution
+from medplatform.medication.execution import Execution
 from medplatform.medication.execution_inputs import query_input
 
 
@@ -91,8 +91,7 @@ class ExecutionTests(unittest.TestCase):
             expected=expected,
         )
 
-    def test_registered_routes_inputs_query_and_no_browser_creation(self):
-        self.assertEqual(len(ROUTES), 9)
+    def test_inputs_query_and_no_browser_creation(self):
         self.assertEqual(query_input("tasks", [("limit", "1")]), {"limit": "1"})
         for q in (
             [("limit", "1"), ("limit", "2")],
@@ -101,25 +100,26 @@ class ExecutionTests(unittest.TestCase):
         ):
             with self.assertRaises(AppError):
                 query_input("tasks", q)
+        task = self.ready()
         body = {
-            "patient_id": baseline.PA,
-            "kind": "refresh_statistics",
-            "owner_module": "A",
-            "owner_operation_key": "demo:stats",
-            "scheduled_at": stamp(self.f.clock()),
-            "valid_until": stamp(self.f.clock() + timedelta(hours=1)),
-            "payload": {
-                "window_start": stamp(self.f.clock()),
-                "window_end": stamp(self.f.clock() + timedelta(hours=1)),
-                "data_environment": "demo",
-            },
-            "rule_version": "A-v0.4",
+            key: task[key]
+            for key in (
+                "patient_id",
+                "kind",
+                "owner_module",
+                "owner_operation_key",
+                "scheduled_at",
+                "valid_until",
+                "payload",
+                "intervention_id",
+                "rule_version",
+            )
         }
         self.f.call(self.f.a, "POST", "/tasks", body, expected=403)
         created = self.f.call(self.admin_client, "POST", "/tasks", body, expected=201)
         same = self.f.call(self.admin_client, "POST", "/tasks", body, expected=201)
         self.assertEqual(created["task_id"], same["task_id"])
-        body["valid_until"] = stamp(self.f.clock() + timedelta(hours=2))
+        body["valid_until"] = stamp(self.f.clock() + timedelta(minutes=20))
         self.assertEqual(
             self.f.call(self.admin_client, "POST", "/tasks", body, expected=409)[
                 "code"
@@ -166,9 +166,7 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(executed["delivery_status"], "submitted")
         self.assertIsNone(executed["delivered_at"])
         self.assertTrue(executed["is_simulated"])
-        restarted = Execution(
-            self.f.db, self.s.auth, self.s.receipts, self.f.clock, self.s.analytics
-        )
+        restarted = Execution(self.f.db, self.s.auth, self.s.receipts, self.f.clock)
         replay = restarted.run_once(
             self.admin, task["task_id"], task["meta"]["revision"], operation
         ).data
@@ -446,31 +444,13 @@ class ExecutionTests(unittest.TestCase):
                         c, slot, altered, self.f.clock() + timedelta(minutes=5)
                     )
 
-    def test_delivery_receipt_future_expiry_conflict_and_no_delivered(self):
-        task = self.ready()
-        result = self.execute_task(task)
+    def test_delivery_receipt_route_unavailable(self):
         body = {
             "provider_event_id": baseline.key(),
-            "execution_id": result["execution_id"],
+            "execution_id": baseline.key(),
             "occurred_at": stamp(self.f.clock()),
             "status": "delivered",
         }
-        receipt = self.s.receive_delivery_receipt("demo-mock-channel", body)
-        self.assertFalse(receipt["applied"])
-        self.assertIsNone(receipt["execution"]["delivered_at"])
-        same = self.s.receive_delivery_receipt("demo-mock-channel", body)
-        self.assertEqual(receipt, same)
-        body["status"] = "submitted"
-        with self.assertRaises(AppError):
-            self.s.receive_delivery_receipt("demo-mock-channel", body)
-        body["provider_event_id"] = baseline.key()
-        body["occurred_at"] = stamp(self.f.clock() + timedelta(seconds=1))
-        with self.assertRaises(AppError):
-            self.s.receive_delivery_receipt("demo-mock-channel", body)
-        self.f.time[0] += timedelta(minutes=31)
-        body.update(provider_event_id=baseline.key(), occurred_at=stamp(self.f.clock()))
-        receipt = self.s.receive_delivery_receipt("demo-mock-channel", body)
-        self.assertFalse(receipt["applied"])
         self.f.call(
             self.admin_client,
             "POST",
@@ -479,43 +459,52 @@ class ExecutionTests(unittest.TestCase):
             expected=503,
         )
 
-    def test_analytics_task_and_failure_rolls_back_then_settles(self):
-        self.plan()
-        window = {
-            "window_start": stamp(self.f.clock()),
-            "window_end": stamp(self.f.clock() + timedelta(hours=2)),
-            "data_environment": "demo",
-        }
-        body = {
-            "patient_id": baseline.PA,
-            "kind": "refresh_statistics",
-            "owner_module": "A",
-            "owner_operation_key": "fixture-compute",
-            "scheduled_at": stamp(self.f.clock()),
-            "valid_until": stamp(self.f.clock() + timedelta(hours=1)),
-            "payload": window,
-            "rule_version": "A-v0.4",
-        }
-        task = self.f.call(self.admin_client, "POST", "/tasks", body, expected=201)
-        old = self.s.analytics.refresh_statistics_in_transaction
+    def test_local_task_failure_rolls_back_then_settles(self):
+        session = self.f.call(
+            self.f.a,
+            "POST",
+            "/sessions",
+            {
+                "patient_id": baseline.PA,
+                "case_id": None,
+                "entry_source": "user",
+                "invitation_id": None,
+            },
+            expected=201,
+        )
+        self.f.call(
+            self.f.a,
+            "PUT",
+            "/sessions/" + session["session_id"] + "/ui-mode",
+            {
+                "ui_mode": "simplified",
+                "expected_revision": 1,
+                "confirmed": True,
+                "source_suggestion_id": None,
+            },
+        )
+        task = self.tasks()[0]
+        self.f.time[0] += timedelta(hours=2, seconds=1)
+        old = self.s.support_state.run_task
 
         def fail(*args):
+            old(*args)
             raise AppError(503, "INJECTED_COMPUTE_FAILURE", "隔离计算依赖失败")
 
-        self.s.analytics.refresh_statistics_in_transaction = fail
+        self.s.support_state.run_task = fail
         first = self.execute_task(task)
         self.assertEqual(first["execution_status"], "failed")
         self.assertTrue(first["retryable"])
         current = self.f.call(self.f.a, "GET", "/tasks/" + task["task_id"])
         self.assertEqual(current["status"], "retry_wait")
-        self.s.analytics.refresh_statistics_in_transaction = old
+        self.s.support_state.run_task = old
         self.f.time[0] += timedelta(seconds=60)
         result = self.execute_task(current)
         self.assertEqual(result["execution_status"], "completed")
         self.assertIsNotNone(result["result_ref"])
         self.assertEqual(result["delivery_status"], "not_applicable")
 
-    def test_rolling_materialization_stable_slots_and_notice_consumption(self):
+    def test_rolling_materialization_stable_slots(self):
         self.plan()
         self.reminders()
         self.maintain()
@@ -544,15 +533,6 @@ class ExecutionTests(unittest.TestCase):
                         (start,),
                     )
                 ],
-            )
-            self.assertEqual(
-                c.execute(
-                    "SELECT count(*) FROM a_notice_consumptions WHERE consumer='A' AND status='applied'"
-                ).fetchone()[0],
-                1,
-            )
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM s03_invalidations").fetchone()[0], 1
             )
 
     def test_family_notification_requires_live_grant_and_retains_exact_reference(self):

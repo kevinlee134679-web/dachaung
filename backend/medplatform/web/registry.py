@@ -3,16 +3,8 @@ import re
 
 class ModuleRegistry:
     def __init__(self):
-        self.operations = {}
         self.routes = set()
         self.names = set()
-
-    def register_operation(self, name, operation):
-        if not isinstance(name, str) or not name or not callable(operation):
-            raise ValueError("operation must have an explicit name and callable")
-        if name in self.operations:
-            raise ValueError("duplicate operation registration")
-        self.operations[name] = operation
 
     def include_router(self, app, router):
         proposed = []

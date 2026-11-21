@@ -49,7 +49,6 @@ class VersionRef(StrictModel):
 class ConfigStatus(StrictModel):
     auth_mode: Literal["demo", "external"]
     llm_mode: Literal["mock", "real"]
-    requested_pipeline: Literal["single_pass", "star"]
     model_configured: bool
     model_connectivity: Literal["unverified", "available", "unavailable"]
     capabilities: list[Capability]

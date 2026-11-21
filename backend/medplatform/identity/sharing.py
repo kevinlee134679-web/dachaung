@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 
 from ..core.config import ROOT
-from ..core.documents import encode, get, stamp, uid
+from ..core.documents import encode, stamp, uid
 from ..core.errors import AppError
 from ..core.migrations import status
 
@@ -93,7 +93,7 @@ class SharingAuthority:
         ).fetchone()
         return row is not None and tuple(row) == recipient_identity(resource)
 
-    def terms(self, conn, principal, patient, resource, categories):
+    def validate_consent(self, conn, principal, patient, resource, categories):
         self.auth.require_patient(principal, patient, "", conn, self_only=True)
         required = set(resource["required_shared_categories"])
         chosen = set(categories)
@@ -111,43 +111,9 @@ class SharingAuthority:
                 "SHARING_CONFIRMATION_REQUIRED",
                 "该资源版本没有有效的 O 接收主体登记",
             )
-        # The approved C34 demo example is a direct grant of scope by the patient.
-        # None of these non-family demo recipients depends on a household Grant.
-        return {}
-
-    @staticmethod
-    def grant_status(conn, patient, grant_versions, at):
-        for identifier, version in grant_versions.items():
-            grant = get(conn, "Grant", identifier, required=False)
-            if (
-                not grant
-                or grant["patient_id"] != patient
-                or grant["grant_version"] != version
-            ):
-                return "revoked"
-            if grant["status"] != "active":
-                return "expired" if grant["status"] == "expired" else "revoked"
-            binding = get(conn, "FamilyBinding", grant["binding_id"], required=False)
-            if (
-                not binding
-                or binding["patient_id"] != patient
-                or binding["status"] != "active"
-                or binding["family_account_id"] != grant["grantee_account_id"]
-            ):
-                return "revoked"
-            if at < grant["confirmed_at"] or (
-                grant["valid_until"] is not None and at >= grant["valid_until"]
-            ):
-                return "expired"
-        return "active"
 
     def issue(self, conn, principal, patient, resource, categories, now):
-        grant_versions = self.terms(conn, principal, patient, resource, categories)
         at, end = stamp(now), stamp(now + VALIDITY)
-        if self.grant_status(conn, patient, grant_versions, at) != "active":
-            raise AppError(
-                409, "SHARING_CONFIRMATION_REQUIRED", "必要 O 授权已失效，请重新核对"
-            )
         recipient, kind, purpose = recipient_identity(resource)
         scope = {
             "sharing_scope_ref_id": uid(),
@@ -157,7 +123,6 @@ class SharingAuthority:
             "recipient_type": kind,
             "purpose_code": purpose,
             "data_categories": categories,
-            "related_grant_ids": sorted(grant_versions),
             "status": "active",
             "confirmed_at": at,
             "valid_until": end,
@@ -165,14 +130,13 @@ class SharingAuthority:
         }
         raw = encode(scope)
         conn.execute(
-            "INSERT INTO o_sharing_scopes VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO o_sharing_scopes VALUES (?,?,?,?,?,?)",
             (
                 scope["sharing_scope_ref_id"],
                 patient,
                 resource["resource_id"],
                 resource["resource_version"],
                 1,
-                encode(grant_versions),
                 raw,
             ),
         )
@@ -192,11 +156,6 @@ class SharingAuthority:
                 503, "SHARING_AUTHORITY_UNAVAILABLE", "暂时无法核验 O 共享范围"
             )
         scope = json.loads(row["document_json"])
-        versions = json.loads(row["grant_versions_json"])
-        if scope["related_grant_ids"] != sorted(versions):
-            raise AppError(
-                503, "SHARING_AUTHORITY_UNAVAILABLE", "暂时无法核验 O 授权版本"
-            )
         if at is not None and scope["status"] == "active":
             resource = load_resource(conn, row["resource_id"], row["resource_version"])
             if (
@@ -212,13 +171,11 @@ class SharingAuthority:
                 scope["status"] = "revoked"
             elif not scope["confirmed_at"] <= at < scope["valid_until"]:
                 scope["status"] = "expired"
-            else:
-                scope["status"] = self.grant_status(conn, patient, versions, at)
-        return scope, versions
+        return scope
 
     def revoke(self, conn, principal, identifier, patient, at, reason):
         self.auth.require_patient(principal, patient, "", conn, self_only=True)
-        scope, _ = self.scope(conn, identifier, patient)
+        scope = self.scope(conn, identifier, patient)
         if scope["status"] == "revoked":
             return
         scope.update(status="revoked", scope_version=scope["scope_version"] + 1)
@@ -232,14 +189,8 @@ class SharingAuthority:
             (identifier, scope["scope_version"], raw, principal.account_id, at, reason),
         )
 
-    def membership_authorized(self, conn, service, at):
-        """An accepted membership uses current revocation and dependent grants.
-
-        The application deadline still controls initial dispatch/acceptance.
-        """
-        scope, versions = self.scope(
-            conn, service["sharing_scope_ref_id"], service["patient_id"]
-        )
+    def membership_authorized(self, conn, service):
+        scope = self.scope(conn, service["sharing_scope_ref_id"], service["patient_id"])
         resource = load_resource(
             conn, service["resource_id"], service["resource_version"]
         )
@@ -249,14 +200,4 @@ class SharingAuthority:
             and self.registered(conn, resource)
             and (scope["recipient_id"], scope["recipient_type"], scope["purpose_code"])
             == recipient_identity(resource)
-            and self.grant_status(conn, service["patient_id"], versions, at) == "active"
         )
-
-    @staticmethod
-    def deadline(conn, scope, grant_versions):
-        cutoffs = [scope["valid_until"]]
-        for identifier in grant_versions:
-            grant = get(conn, "Grant", identifier)
-            if grant["valid_until"] is not None:
-                cutoffs.append(grant["valid_until"])
-        return min(cutoffs)

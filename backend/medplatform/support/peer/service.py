@@ -3,15 +3,13 @@
 import json
 import re
 import secrets
-import sqlite3
 import unicodedata
 
 from ...core.documents import changed, encode, fingerprint, get, meta, stamp, uid
 from ...core.errors import AppError
 from ...core.idempotency import Result
 from ..catalog.service import CURRENT
-from ..common import CONTRACT, missing
-from ..points.sources import points_notice
+from ..common import CONTRACT, missing, next_cursor, page_after, read_guarded
 
 POSTS = """SELECT p.*,m.alias,h.revision,h.status,h.recorded_at AS status_at
            FROM c_peer_posts p JOIN c_peer_memberships m USING(membership_id)
@@ -125,9 +123,7 @@ class Peer:
         if self.group(conn, group)["availability"] != "available":
             return False
         service = self.services.service(conn, service_id)
-        return self.services.drafts.sharing.membership_authorized(
-            conn, service, stamp(self.clock())
-        )
+        return self.services.drafts.sharing.membership_authorized(conn, service)
 
     def authorize(self, conn, action, principal, path, query):
         identifier = path.get("id")
@@ -177,10 +173,13 @@ class Peer:
             return self.authorize(conn, action, principal, path, query)
 
         if action in {"groups", "group", "posts", "my_memberships"}:
-            try:
-                with self.db.connection(readonly=True) as conn:
-                    conn.execute("BEGIN")
-                    authorized = guard(conn)
+
+            def verify(authorized, current):
+                if current != authorized:
+                    raise membership_required()
+
+            with self.db.connection(readonly=True) as conn:
+                with read_guarded(conn, guard, verify) as authorized:
                     if action == "groups":
                         data = self.groups(conn, principal, authorized, query)
                     elif action == "group":
@@ -191,16 +190,7 @@ class Peer:
                         data = self.posts(
                             conn, principal, identifier, authorized, query
                         )
-                    conn.commit()
-                    if guard(conn) != authorized:
-                        raise membership_required()
-                    return Result(data)
-            except sqlite3.DatabaseError:
-                if action in {"groups", "group"}:
-                    raise AppError(
-                        503, "PEER_GROUPS_UNAVAILABLE", "小组目录暂不可用"
-                    ) from None
-                raise
+                return Result(data)
 
         def operate(conn):
             authorized = guard(conn)
@@ -254,7 +244,7 @@ class Peer:
             raise AppError(503, "PEER_GROUPS_UNAVAILABLE", "模拟小组目录尚未登记")
         wanted, limit = query.get("group_id"), query.get("limit", 20)
         context = [principal.account_id, "C16", patient, wanted]
-        after = self.after(query, context, [""])[0]
+        after = page_after(self.auth, query, context, [""])[0]
         rows = conn.execute(
             """
             SELECT group_id FROM c_peer_groups WHERE group_id>? AND (? IS NULL OR group_id=?)
@@ -263,16 +253,16 @@ class Peer:
             (after, wanted, wanted, limit + 1),
         ).fetchall()
         ids = [r[0] for r in rows[:limit]]
+        items = [self.group(conn, identifier) for identifier in ids]
+        cursor = next_cursor(rows, limit, self.auth, context, lambda row: [row[0]])
         return {
-            "items": [self.group(conn, identifier) for identifier in ids],
-            "next_cursor": self.auth.cursor(context, [ids[-1]])
-            if len(rows) > limit
-            else None,
+            "items": items,
+            "next_cursor": cursor,
         }
 
     def my_memberships(self, conn, principal, patient, query):
         context = [principal.account_id, "C41", patient]
-        after = self.after(query, context, [""])[0]
+        after = page_after(self.auth, query, context, [""])[0]
         limit = query.get("limit", 20)
         rows = conn.execute(
             """
@@ -291,26 +281,14 @@ class Peer:
             )
             for row in rows[:limit]
         ]
-        cursor = (
-            self.auth.cursor(context, [items[-1]["membership_id"]])
-            if len(rows) > limit
-            else None
+        cursor = next_cursor(
+            rows, limit, self.auth, context, lambda row: [row["membership_id"]]
         )
         return {"items": items, "next_cursor": cursor}
 
-    def after(self, query, context, defaults):
-        if not query.get("cursor"):
-            return defaults
-        result = self.auth.read_cursor(query["cursor"], context)
-        if len(result) != len(defaults) or not all(
-            isinstance(value, str) for value in result
-        ):
-            raise AppError(422, "INVALID_CURSOR", "分页位置无效，请重新读取")
-        return result
-
     def validate_join(self, conn, principal, patient, group, body):
         try:
-            draft, resource, _ = self.services.prepared(
+            prepared = self.services.prepared(
                 conn, principal, patient, body, stamp(self.clock())
             )
         except AppError as exc:
@@ -320,18 +298,24 @@ class Peer:
             }:
                 raise join_required() from None
             raise
+        draft, resource, _ = prepared
         if (
             resource["service_kind"] != "peer_support"
             or resource["peer_group_id"] != group
             or draft["peer_group_id"] != group
         ):
             raise join_required()
-        return resource
+        return prepared
 
     def join(self, conn, principal, patient, group, body):
-        resource = self.validate_join(conn, principal, patient, group, body)
+        prepared = self.validate_join(conn, principal, patient, group, body)
         service = self.services.submit(
-            conn, principal, patient, body, resource_id=resource["resource_id"]
+            conn,
+            principal,
+            patient,
+            body,
+            resource_id=prepared[1]["resource_id"],
+            prepared=prepared,
         )
         member = self.membership(conn, "service_id", service["service_id"])
         if member["status"] == "left":
@@ -441,7 +425,7 @@ class Peer:
             group,
             list(member) if member else "moderation",
         ]
-        after = self.after(query, cursor_context, ["", ""])
+        after = page_after(self.auth, query, cursor_context, ["", ""])
         limit = query.get("limit", 20)
         rows = conn.execute(
             POSTS
@@ -453,12 +437,12 @@ class Peer:
             (group, *after, member is None, member[0] if member else None, limit + 1),
         ).fetchall()
         items = [self.public_post(row) for row in rows[:limit]]
-        cursor = (
-            self.auth.cursor(
-                cursor_context, [items[-1]["created_at"], items[-1]["post_id"]]
-            )
-            if len(rows) > limit
-            else None
+        cursor = next_cursor(
+            rows,
+            limit,
+            self.auth,
+            cursor_context,
+            lambda row: [row["created_at"], row["post_id"]],
         )
         return {"items": items, "next_cursor": cursor}
 
@@ -575,9 +559,4 @@ class Peer:
                 at,
             ),
         )
-        owner = conn.execute(
-            "SELECT patient_id FROM c_peer_memberships WHERE membership_id=?",
-            (row["membership_id"],),
-        ).fetchone()
-        points_notice(conn, owner["patient_id"], "PeerPost", identifier, revision, at)
         return self.public_post(self.post(conn, identifier))

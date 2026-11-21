@@ -2,7 +2,6 @@
 
 import copy
 import json
-import sqlite3
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -282,10 +281,6 @@ class RecordTests(unittest.TestCase):
             self.assertEqual(
                 conn.execute("SELECT count(*) FROM s03_match_history").fetchone()[0], 3
             )
-            self.assertEqual(
-                conn.execute("SELECT count(*) FROM evidence_slot_links").fetchone()[0],
-                0,
-            )
 
     def test_review_and_reprocess_require_controlled_identity(self):
         event = self.medication()
@@ -308,22 +303,6 @@ class RecordTests(unittest.TestCase):
                     {"id": event["event_id"]} if action == "records_reprocess" else {},
                 )
             self.assertEqual(caught.exception.code, "ADMIN_REQUIRED")
-        before = None
-        with self.case.db.connection(readonly=True) as conn:
-            before = conn.execute(
-                "SELECT count(*) FROM s03_quality_history"
-            ).fetchone()[0]
-        self.call(
-            "records_reprocess",
-            {"expected_revision": 1},
-            {"id": event["event_id"]},
-            client=self.admin,
-        )
-        with self.case.db.connection(readonly=True) as conn:
-            self.assertEqual(
-                conn.execute("SELECT count(*) FROM s03_quality_history").fetchone()[0],
-                before,
-            )
 
     def test_simulator_reuses_common_source_and_binding_revocation_blocks_old_key(self):
         binding = self.call(
@@ -424,20 +403,22 @@ class RecordTests(unittest.TestCase):
         event = self.medication()
         q = query_input(
             "records_medications",
-            {
-                "window_start": stamp(self.case.clock() - timedelta(hours=2)),
-                "window_end": stamp(self.case.clock() + timedelta(hours=1)),
-                "data_environment": "demo",
-                "as_of": stamp(self.case.clock()),
-            },
+            [
+                ("window_start", stamp(self.case.clock() - timedelta(hours=2))),
+                ("window_end", stamp(self.case.clock() + timedelta(hours=1))),
+                ("data_environment", "demo"),
+                ("as_of", stamp(self.case.clock())),
+            ],
         )
         with self.case.db.connection(readonly=True) as conn:
-            before = conn.execute("SELECT count(*) FROM change_notices").fetchone()[0]
+            before = conn.execute("SELECT count(*) FROM s03_match_history").fetchone()[
+                0
+            ]
         result = self.call("records_medications", params={"p": support.PA}, q=q)
         self.assertEqual(result["items"][0]["event_id"], event["event_id"])
         with self.case.db.connection(readonly=True) as conn:
             self.assertEqual(
-                conn.execute("SELECT count(*) FROM change_notices").fetchone()[0],
+                conn.execute("SELECT count(*) FROM s03_match_history").fetchone()[0],
                 before,
             )
         for pairs in [[("limit", "1"), ("limit", "2")], [("unknown", "field")]]:
@@ -477,27 +458,6 @@ class RecordTests(unittest.TestCase):
                 {"id": event["event_id"]},
             )
 
-    def test_ingest_and_notices_roll_back_together(self):
-        with self.case.db.transaction() as conn:
-            conn.execute(
-                "CREATE TRIGGER test_notice_failure BEFORE INSERT ON change_notices BEGIN SELECT RAISE(ABORT,'isolated failure'); END"
-            )
-        with self.assertRaises(sqlite3.IntegrityError):
-            self.medication()
-        with self.case.db.connection(readonly=True) as conn:
-            for table in (
-                "source_events",
-                "event_revisions",
-                "s03_quality_history",
-                "s03_match_history",
-                "evidence_slot_links",
-            ):
-                self.assertEqual(
-                    conn.execute("SELECT count(*) FROM " + table).fetchone()[0],
-                    0,
-                    table,
-                )
-
     def test_concurrent_source_replay_has_one_original_fact(self):
         source = support.key()
         with ThreadPoolExecutor(max_workers=2) as pool:
@@ -523,7 +483,7 @@ class RecordTests(unittest.TestCase):
         first = self.call(
             "records_medications",
             params={"p": support.PA},
-            q=query_input("records_medications", raw),
+            q=query_input("records_medications", list(raw.items())),
         )
         self.assertIsNotNone(first["next_cursor"])
         self.case.time[0] += timedelta(minutes=1)
@@ -532,7 +492,7 @@ class RecordTests(unittest.TestCase):
         second = self.call(
             "records_medications",
             params={"p": support.PA},
-            q=query_input("records_medications", raw),
+            q=query_input("records_medications", list(raw.items())),
         )
         self.assertEqual(len(second["items"]), 1)
         self.assertNotEqual(
@@ -544,7 +504,7 @@ class RecordTests(unittest.TestCase):
             self.call(
                 "records_medications",
                 params={"p": support.PB},
-                q=query_input("records_medications", raw),
+                q=query_input("records_medications", list(raw.items())),
                 client=self.case.b,
             )
 
@@ -558,9 +518,6 @@ class RecordTests(unittest.TestCase):
             )
             conn.execute(
                 "DELETE FROM s03_match_history WHERE event_id=?", (event["event_id"],)
-            )
-            conn.execute(
-                "DELETE FROM evidence_slot_links WHERE event_id=?", (event["event_id"],)
             )
         self.case.time[0] += timedelta(minutes=1)
         self.call(
@@ -753,7 +710,6 @@ class RecordTests(unittest.TestCase):
                         for table in (
                             "s03_quality_history",
                             "s03_match_history",
-                            "change_notices",
                             "idempotency_receipts",
                         )
                     ]
@@ -771,7 +727,6 @@ class RecordTests(unittest.TestCase):
                         for table in (
                             "s03_quality_history",
                             "s03_match_history",
-                            "change_notices",
                             "idempotency_receipts",
                         )
                     ]
@@ -781,9 +736,7 @@ class RecordTests(unittest.TestCase):
                     "valid",
                 )
 
-    def test_same_input_rule_reprocess_does_not_duplicate_derived_facts_or_notices(
-        self,
-    ):
+    def test_same_input_rule_reprocess_does_not_duplicate_derived_facts(self):
         event = self.medication()
         identifier = event["event_id"]
         with self.case.db.connection(readonly=True) as conn:
@@ -793,7 +746,6 @@ class RecordTests(unittest.TestCase):
                     "event_revisions",
                     "s03_quality_history",
                     "s03_match_history",
-                    "change_notices",
                 )
             ]
         for _ in range(2):
@@ -811,7 +763,6 @@ class RecordTests(unittest.TestCase):
                     "event_revisions",
                     "s03_quality_history",
                     "s03_match_history",
-                    "change_notices",
                 )
             ]
         self.assertEqual(before, after)

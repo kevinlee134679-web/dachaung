@@ -1,6 +1,7 @@
-import type { Draft } from '../pages/medication/draft-page'
-import type { DemoTask } from '../pages/profile/demo-page'
-import type { Response } from '../pages/profile/questionnaire-page'
+import type { DemoTask } from '../features/admin/demo-page'
+import type { OnboardingStep } from '../features/onboarding/onboarding'
+import type { Draft } from '../features/plan-drafts/drafts'
+import type { Response } from '../features/questionnaire/answers'
 import type { Store, StoreSetter } from 'solid-js'
 import { createStore, flush } from 'solid-js'
 import * as v from 'valibot'
@@ -50,6 +51,7 @@ export interface SessionState {
   response: Response | null
   draft: Draft | null
   demoTask: DemoTask | null
+  onboarding: OnboardingStep | null
 }
 
 const sessionStore = createStore<SessionState>({
@@ -62,6 +64,7 @@ const sessionStore = createStore<SessionState>({
   response: null,
   draft: null,
   demoTask: null,
+  onboarding: null,
 })
 export const state: Store<SessionState> = sessionStore[0]
 const setState: StoreSetter<SessionState> = sessionStore[1]
@@ -120,6 +123,7 @@ export function resetSession(): void {
     draft.response = null
     draft.draft = null
     draft.demoTask = null
+    draft.onboarding = null
   })
 }
 

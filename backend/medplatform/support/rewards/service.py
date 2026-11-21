@@ -1,12 +1,11 @@
 """C-owned redemption, ledger links, and authorized read projections."""
 
 import json
-import sqlite3
 
 from ...core.documents import encode, fingerprint, get, meta, stamp, uid
 from ...core.errors import AppError
 from ...core.idempotency import Result
-from ..common import CONTRACT, missing
+from ..common import CONTRACT, missing, next_cursor, page_after, read_guarded
 from .catalog import CURRENT, reward_view
 from .fulfillment import RewardFulfillment
 
@@ -20,11 +19,6 @@ SERVICE_INPUT = (
 DIGITAL_DEADLINE = "9999-12-31T23:59:59.999999+00:00"
 ORDER_STATE = """SELECT h.* FROM c_redemption_history h JOIN c_redemptions r USING(redemption_id)
                  WHERE h.redemption_id=? ORDER BY h.revision DESC LIMIT 1"""
-READ_ERRORS = {
-    "reward_list": ("REWARD_CATALOG_UNAVAILABLE", "模拟权益目录暂不可用"),
-    "redemption_list": ("REDEMPTION_STORE_UNAVAILABLE", "兑换历史暂不可用"),
-    "fulfillment_read": ("FULFILLMENT_UNAVAILABLE", "交付详情暂不可用"),
-}
 
 
 class Rewards:
@@ -58,10 +52,6 @@ class Rewards:
                 encode(order),
                 encode(fulfillment),
             ),
-        )
-        conn.execute(
-            "INSERT INTO c_redemption_notices VALUES (?,?,?)",
-            (order["redemption_id"], order["meta"]["revision"], at),
         )
 
     @staticmethod
@@ -128,10 +118,17 @@ class Rewards:
                 operate,
             )
 
-        try:
-            with self.db.connection(readonly=True) as conn:
-                conn.execute("BEGIN")
-                patient, state = guard(conn)
+        def verify(authorized, current):
+            if (
+                current[0] != authorized[0]
+                or self.auth.scopes(principal, patient, conn) != scopes
+            ):
+                raise AppError(
+                    403, "SOURCE_ACCESS_CHANGED", "授权或患者已变化，请重新读取"
+                )
+
+        with self.db.connection(readonly=True) as conn:
+            with read_guarded(conn, guard, verify) as (patient, state):
                 scopes = self.auth.scopes(principal, patient, conn)
                 own = self.auth.is_self(principal, patient, conn)
                 if action == "reward_read":
@@ -148,20 +145,7 @@ class Rewards:
                         result["task_id"] = None
                 else:
                     result = self.page(conn, principal, patient, action, query, scopes)
-                conn.commit()
-                if (
-                    guard(conn)[0] != patient
-                    or self.auth.scopes(principal, patient, conn) != scopes
-                ):
-                    raise AppError(
-                        403, "SOURCE_ACCESS_CHANGED", "授权或患者已变化，请重新读取"
-                    )
-                return Result(result)
-        except sqlite3.Error, json.JSONDecodeError:
-            code, message = READ_ERRORS.get(
-                action, ("REDEMPTION_STORE_UNAVAILABLE", "兑换数据暂不可用")
-            )
-            raise AppError(503, code, message) from None
+            return Result(result)
 
     @staticmethod
     def order_view(order, scopes):
@@ -170,14 +154,7 @@ class Rewards:
     def page(self, conn, principal, patient, action, query, scopes):
         catalog = action == "reward_list"
         context = [principal.account_id, patient, action]
-        after = [""] if catalog else ["", ""]
-        if "cursor" in query:
-            cursor = self.auth.read_cursor(query["cursor"], context)
-            if len(cursor) != len(after) or not all(
-                isinstance(value, str) for value in cursor
-            ):
-                raise AppError(422, "INVALID_CURSOR", "分页位置无效")
-            after = cursor
+        after = page_after(self.auth, query, context, [""] if catalog else ["", ""])
         limit = int(query.get("limit", 20))
         if catalog:
             if conn.execute("SELECT 1 FROM c_rewards LIMIT 1").fetchone() is None:
@@ -188,7 +165,6 @@ class Rewards:
                 CURRENT + " WHERE r.reward_id>? ORDER BY r.reward_id LIMIT ?",
                 (*after, limit + 1),
             ).fetchall()
-            items = [reward_view(conn, row) for row in rows[:limit]]
             fields = ("reward_id",)
         else:
             rows = conn.execute(
@@ -196,15 +172,21 @@ class Rewards:
                                   AND (redeemed_at,redemption_id)>(?,?) ORDER BY redeemed_at,redemption_id LIMIT ?""",
                 (patient, *after, limit + 1),
             ).fetchall()
-            items = [
+            fields = ("redeemed_at", "redemption_id")
+        items = (
+            [reward_view(conn, row) for row in rows[:limit]]
+            if catalog
+            else [
                 self.order_view(self.state(conn, row["redemption_id"])[0], scopes)
                 for row in rows[:limit]
             ]
-            fields = ("redeemed_at", "redemption_id")
-        cursor = (
-            self.auth.cursor(context, [rows[limit - 1][field] for field in fields])
-            if len(rows) > limit
-            else None
+        )
+        cursor = next_cursor(
+            rows,
+            limit,
+            self.auth,
+            context,
+            lambda row: [row[field] for field in fields],
         )
         return {"items": items, "next_cursor": cursor}
 
@@ -279,9 +261,10 @@ class Rewards:
                     "SERVICE_CONFIRMATION_REQUIRED",
                     "请本人核对并确认原服务草稿和共享范围",
                 )
-            draft, resource, deadline = self.services.prepared(
+            prepared = self.services.prepared(
                 conn, principal, patient, service_input, at, redemption_id=identifier
             )
+            draft, resource, deadline = prepared
             if (draft["resource_id"], resource["resource_version"]) != (
                 reward["resource_id"],
                 row["resource_version"],
@@ -292,7 +275,12 @@ class Rewards:
                     "原草稿与此兑换权益的资源版本不一致",
                 )
             service = self.services.submit(
-                conn, principal, patient, service_input, redemption_id=identifier
+                conn,
+                principal,
+                patient,
+                service_input,
+                redemption_id=identifier,
+                prepared=prepared,
             )
             service_id = service["service_id"]
         elif any(value is not None for value in service_input.values()):

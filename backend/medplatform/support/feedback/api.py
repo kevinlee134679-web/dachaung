@@ -1,11 +1,19 @@
 """C13–C15 request fields and strict feedback-window query handling."""
 
-from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from ...web.inputs import ID, Input, Reason, Text, utc
+from ...web.inputs import (
+    ID,
+    Input,
+    Reason,
+    Text,
+    query_fields,
+    query_limit,
+    query_text,
+    query_window,
+)
 
 DIMENSIONS = ("support_needs", "support_acceptance", "intervention_effectiveness")
 
@@ -39,31 +47,13 @@ ROUTES = [
 
 
 def query_input(action, pairs):
-    query = dict(pairs)
     paging = {"cursor", "limit"}
     window = {"window_start", "window_end"} if action == "feedback_source" else set()
-    if len(query) != len(pairs) or set(query) - (
-        set() if action == "save_feedback" else paging | window
-    ):
-        raise ValueError()
-    for field in window:
-        query[field] = utc(query[field])
+    query = query_fields(pairs, set() if action == "save_feedback" else paging | window)
     if window:
-        left, right = (
-            datetime.fromisoformat(query[key]) for key in ("window_start", "window_end")
-        )
-        if not timedelta() < right - left <= timedelta(days=31):
-            raise ValueError()
-    if "cursor" in query and not 1 <= len(query["cursor"]) <= 4096:
-        raise ValueError()
+        query_window(query)
+    if "cursor" in query:
+        query_text(query["cursor"], 4096)
     if "limit" in query:
-        value = query["limit"]
-        if (
-            not value.isascii()
-            or not value.isdecimal()
-            or not 1 <= len(value) <= 3
-            or not 1 <= int(value) <= 100
-        ):
-            raise ValueError()
-        query["limit"] = int(value)
+        query["limit"] = query_limit(query["limit"], 3)
     return query

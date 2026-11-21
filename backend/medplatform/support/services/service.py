@@ -1,13 +1,19 @@
 """The single C service creator, patient views, and legal service transitions."""
 
 import json
-import secrets
 
 from ...core.documents import changed, encode, fingerprint, get, meta, stamp, uid
 from ...core.errors import AppError
 from ...core.idempotency import Result
 from ..catalog.service import current_resource
-from ..common import CONTRACT, missing
+from ..common import (
+    CONTRACT,
+    authenticate_provider,
+    missing,
+    next_cursor,
+    page_after,
+    read_guarded,
+)
 from ..drafts.service import scope_descriptor
 
 TRANSITIONS = {
@@ -33,20 +39,14 @@ class Services:
         self.rewards = None
 
     def authenticate_provider(self, header):
-        secret = self.settings.DEMO_SERVICE_RECEIPT_TOKEN.get_secret_value()
-        subject = self.settings.DEMO_SERVICE_RECEIPT_SUBJECT
-        if not subject or len(secret) < 32:
-            raise AppError(
-                503,
-                "SERVICE_PROVIDER_UNAVAILABLE",
-                "可信服务方回执未配置，本地演示控制台仍可使用",
-            )
-        scheme, _, supplied = (header or "").partition(" ")
-        if scheme.lower() != "bearer" or not secrets.compare_digest(
-            supplied.encode(), secret.encode()
-        ):
-            raise AppError(401, "AUTH_REQUIRED", "需使用独立的模拟服务方凭据")
-        return subject
+        return authenticate_provider(
+            header,
+            self.settings.DEMO_SERVICE_RECEIPT_TOKEN.get_secret_value(),
+            self.settings.DEMO_SERVICE_RECEIPT_SUBJECT,
+            "SERVICE_PROVIDER_UNAVAILABLE",
+            "可信服务方回执未配置，本地演示控制台仍可使用",
+            "需使用独立的模拟服务方凭据",
+        )
 
     def service(self, conn, identifier):
         row = conn.execute(
@@ -82,18 +82,18 @@ class Services:
     def handle(self, action, principal, path, query, body, key):
         if action == "provider_receipt":
             return self.provider_receipt(principal, body, key)
-        with self.db.connection(readonly=True) as conn:
-            conn.execute("BEGIN")
-            patient, doc = self.authorize(conn, action, principal, path)
-            if action in {"list_services", "read_service"}:
-                data = self.read(conn, principal, patient, doc, query)
-                conn.commit()
-                self.authorize(conn, action, principal, path)
-                return Result(data)
-        scope = ["demo", "account", principal.account_id, patient, "C", action, path]
 
         def authorize(conn):
             return self.authorize(conn, action, principal, path)
+
+        with self.db.connection(readonly=True) as conn:
+            if action in {"list_services", "read_service"}:
+                with read_guarded(conn, authorize) as (patient, doc):
+                    data = self.read(conn, principal, patient, doc, query)
+                return Result(data)
+            conn.execute("BEGIN")
+            patient, _ = authorize(conn)
+        scope = ["demo", "account", principal.account_id, patient, "C", action, path]
 
         def operation(conn):
             _, current = authorize(conn)
@@ -148,11 +148,9 @@ class Services:
         descending = query.get("order", "asc") == "desc"
         if descending:
             context.append("desc")
-        after = ["\uffff", "\uffff"] if descending else ["", ""]
-        if "cursor" in query:
-            after = self.auth.read_cursor(query["cursor"], context)
-            if len(after) != 2 or not all(isinstance(x, str) for x in after):
-                raise AppError(422, "INVALID_CURSOR", "分页位置无效，请重新读取列表")
+        after = page_after(
+            self.auth, query, context, ["\uffff", "\uffff"] if descending else ["", ""]
+        )
         limit = query.get("limit", 20)
         # Only internal constants enter SQL; cursors remain bound to sort direction.
         comparison, ordering = ("<", "DESC") if descending else (">", "ASC")
@@ -165,12 +163,12 @@ class Services:
             (patient, *after, query.get("status"), query.get("status"), limit + 1),
         ).fetchall()
         items = [visible(json.loads(r[0])) for r in rows[:limit]]
-        cursor = (
-            self.auth.cursor(
-                context, [items[-1]["submitted_at"], items[-1]["service_id"]]
-            )
-            if len(rows) > limit
-            else None
+        cursor = next_cursor(
+            rows,
+            limit,
+            self.auth,
+            context,
+            lambda _: [items[-1]["submitted_at"], items[-1]["service_id"]],
         )
         return {"items": items, "next_cursor": cursor}
 
@@ -200,7 +198,7 @@ class Services:
             purpose,
         ):
             raise confirmation_required()
-        scope, versions = self.drafts.sharing.scope(
+        scope = self.drafts.sharing.scope(
             conn, doc["sharing_scope_ref_id"], doc["patient_id"], at
         )
         categories = scope["data_categories"]
@@ -216,10 +214,8 @@ class Services:
             != consent["descriptor_hash"]
         ):
             raise confirmation_required("O 共享授权已变更或失效，请重新核对")
-        deadline = min(
-            consent["valid_until"], self.drafts.sharing.deadline(conn, scope, versions)
-        )
-        return resource, scope, versions, deadline
+        deadline = min(consent["valid_until"], scope["valid_until"])
+        return resource, scope, deadline
 
     def prepared(self, conn, principal, patient, body, at, *, redemption_id=None):
         self.auth.require_patient(
@@ -245,19 +241,9 @@ class Services:
         ).fetchone()
         if link is None:
             raise confirmation_required()
-        resource, scope, versions, deadline = self.consent(
+        resource, _, deadline = self.consent(
             conn, dict(draft) | body | {"redemption_id": redemption_id}, at
         )
-        try:
-            current_grants = self.drafts.sharing.terms(
-                conn, principal, patient, resource, scope["data_categories"]
-            )
-        except AppError as exc:
-            if exc.code == "SHARING_CONFIRMATION_REQUIRED":
-                raise confirmation_required(exc.message) from None
-            raise
-        if versions != current_grants:
-            raise confirmation_required("O 授权版本已经变化，请本人重新确认")
         return draft, resource, deadline
 
     def submit(
@@ -271,10 +257,15 @@ class Services:
         suggestion_id=None,
         resource_id=None,
         redemption_id=None,
+        prepared=None,
     ):
         at = stamp(self.clock())
-        draft, resource, deadline = self.prepared(
-            conn, principal, patient, body, at, redemption_id=redemption_id
+        draft, resource, deadline = (
+            prepared
+            if prepared is not None
+            else self.prepared(
+                conn, principal, patient, body, at, redemption_id=redemption_id
+            )
         )
         if resource_id is not None and resource_id != draft["resource_id"]:
             raise confirmation_required("转介资源与已确认草稿不一致")
@@ -396,27 +387,6 @@ class Services:
                 occurred,
                 recorded,
                 encode(doc),
-            ),
-        )
-        conn.execute(
-            "INSERT INTO change_notices VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (
-                uid(),
-                "C",
-                doc["patient_id"],
-                "demo",
-                "c_service_changed",
-                encode(
-                    {
-                        "resource_type": "Service",
-                        "resource_id": identifier,
-                        "resource_revision": version,
-                    }
-                ),
-                f"service:{identifier}:{version}",
-                occurred,
-                recorded,
-                1,
             ),
         )
 

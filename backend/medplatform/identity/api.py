@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
@@ -13,7 +12,14 @@ from ..core.strict_json import loads
 from ..medication import inputs as medication_inputs
 from ..profile import inputs as profile_inputs
 from ..profile.questionnaire import validate_answers
-from ..web.inputs import Empty, Revoke, utc
+from ..web.inputs import (
+    Empty,
+    Revoke,
+    query_fields,
+    query_limit,
+    query_window,
+)
+from ..web.routes import dispatch
 from . import inputs
 
 # Only registered contract routes. No generic CRUD/command endpoint.
@@ -149,29 +155,17 @@ def query_input(request, action):
             "drafts": {"status"},
         }.get(action, set())
     )
-    if any(key not in allowed for key in request.query_params) or len(
-        request.query_params.multi_items()
-    ) != len(dict(request.query_params)):
-        raise AppError(422, "VALIDATION_ERROR", "查询字段不合法或重复")
-    q = dict(request.query_params)
     try:
-        if "limit" in q and (
-            not q["limit"].isascii()
-            or not q["limit"].isdigit()
-            or not 1 <= int(q["limit"]) <= 100
-        ):
-            raise ValueError()
+        q = query_fields(request.query_params.multi_items(), allowed)
+    except ValueError:
+        raise AppError(422, "VALIDATION_ERROR", "查询字段不合法或重复")
+    try:
+        if "limit" in q:
+            query_limit(q["limit"])
         if "cursor" in q and not q["cursor"]:
             raise ValueError()
         if action == "slots":
-            q["window_start"] = utc(q["window_start"])
-            q["window_end"] = utc(q["window_end"])
-            seconds = (
-                datetime.fromisoformat(q["window_end"])
-                - datetime.fromisoformat(q["window_start"])
-            ).total_seconds()
-            if not 0 < seconds <= 31 * 86400:
-                raise ValueError()
+            query_window(q)
         if (
             action == "drafts"
             and "status" in q
@@ -190,7 +184,7 @@ def router(service, envelope):
     result = APIRouter()
     for card, method, path, action, schema in ROUTES:
 
-        def endpoint(action=action, schema=schema):
+        def endpoint(action=action, schema=schema, method=method):
             async def handle(request: Request):
                 await run_in_threadpool(status, service.db)
                 principal = (
@@ -284,8 +278,10 @@ def router(service, envelope):
                     raise AppError(
                         422, "VALIDATION_ERROR", "请求结构或字段不合法，请核对当前表单"
                     ) from None
-                response = await run_in_threadpool(
-                    service.handle,
+                response, http = await dispatch(
+                    request,
+                    service,
+                    envelope,
                     action,
                     principal,
                     params,
@@ -293,20 +289,8 @@ def router(service, envelope):
                     b,
                     request.headers.get("Idempotency-Key"),
                     content,
+                    method == "GET",
                 )
-                body = envelope(
-                    request,
-                    response.data,
-                    **(
-                        {
-                            "code": response.error["code"],
-                            "message": response.error["message"],
-                        }
-                        if response.error
-                        else {}
-                    ),
-                )
-                http = JSONResponse(body, status_code=response.status)
                 if response.token:
                     remaining = max(
                         0,

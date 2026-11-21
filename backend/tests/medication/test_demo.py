@@ -24,7 +24,7 @@ class MedicationDemoTests(unittest.TestCase):
             replay = generate(path, add_late_report=True)
             self.assertEqual(after["patient_confirmation_ratio"], 11 / 14)
             self.assertEqual(replay["patient_confirmed_count"], 11)
-            self.assertNotEqual(before["statistics_id"], after["statistics_id"])
+            self.assertEqual(after["planned_dose_count"], 14)
 
     def test_fixture_refuses_a_normal_runtime_location(self):
         with self.assertRaises(ValueError):

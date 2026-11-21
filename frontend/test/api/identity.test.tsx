@@ -6,7 +6,7 @@ import { api } from '../../src/api/api'
 import { notice } from '../../src/notice/notice'
 import { Notice } from '../../src/notice/notice-view'
 import { state, updateSession, ViewChanged } from '../../src/session/session'
-import { Button } from '../../src/ui/components'
+import { Button } from '../../src/ui/button'
 
 function success(data: unknown) {
   return {

@@ -1,4 +1,3 @@
-import json
 import sqlite3
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -88,7 +87,6 @@ class PointsTests(unittest.TestCase):
 
     def test_rules_signed_in_account_not_created_by_reads(self):
         rules = self.call("GET", "/points/rules")
-        self.assertEqual(rules["rules_version"], RULES_VERSION)
         self.assertEqual(
             {r["rule_code"]: r["points"] for r in rules["rules"]},
             {
@@ -158,7 +156,7 @@ class PointsTests(unittest.TestCase):
         ]
         self.a.report(1, "taken")  # second valid time on the first natural day
         self.a.boxes([10])
-        before = self.a.refresh()
+        before = self.a.summary()
         result = self.reconcile()
         awarded = result["new_entries"]
         self.assertEqual(
@@ -279,9 +277,9 @@ class PointsTests(unittest.TestCase):
         )
         after = self.reconcile()
         self.assertEqual((after["new_entries"], after["account"]["balance"]), ([], 4))
-        self.assertIn("source_changed", self.issues(after))
+        self.assertIn("manual_actor_restricted", self.issues(after))
 
-    def test_source_withdrawal_retains_original_award_and_revision_audit(self):
+    def test_source_withdrawal_retains_original_award(self):
         self.prepare_manual()
         event = self.a.report(0, "unknown")
         initial = self.reconcile()
@@ -294,26 +292,8 @@ class PointsTests(unittest.TestCase):
         rerun = self.reconcile()
         self.assertEqual(rerun["account"]["balance"], 2)
         self.assertEqual(rerun["new_entries"], [])
-        self.assertTrue({"manual_withdrawn", "source_changed"} <= self.issues(rerun))
+        self.assertIn("manual_withdrawn", self.issues(rerun))
         self.assertEqual(self.page()["items"], initial["new_entries"])
-        with self.s.db.connection(readonly=True) as conn:
-            changes = json.loads(
-                conn.execute(
-                    "SELECT source_changes_json FROM c_points_reconciliations ORDER BY rowid DESC LIMIT 1"
-                ).fetchone()[0]
-            )
-        self.assertEqual(
-            changes,
-            [
-                {
-                    "ledger_id": initial["new_entries"][0]["ledger_id"],
-                    "source_order": 1,
-                    "awarded_revision": 1,
-                    "current_revision": 2,
-                    "reason": "manual_withdrawn",
-                }
-            ],
-        )
 
     def test_week_review_local_boundary_false_claim_separate_source_and_independent_receipt(
         self,

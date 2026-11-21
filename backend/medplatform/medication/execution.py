@@ -3,11 +3,12 @@
 import copy
 import json
 import threading
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 
 from ..core.documents import (
     all_docs,
     changed,
+    digest,
     encode,
     expected,
     fingerprint,
@@ -18,9 +19,8 @@ from ..core.documents import (
 )
 from ..core.errors import AppError
 from ..core.idempotency import Result
-from ..identity.auth import digest
 from . import execution_inputs as inputs
-from .schedule import SHANGHAI
+from .schedule import SHANGHAI, anchor_candidates, insert_slot, occurrences
 
 ROUTES = (
     ("A33", "POST", "/tasks", "task_create", inputs.TaskCreateInput),
@@ -52,9 +52,8 @@ RULE = "flow-v0.1-reminder-v1"
 
 
 class Execution:
-    def __init__(self, db, auth, receipts, clock, analytics=None):
+    def __init__(self, db, auth, receipts, clock):
         self.db, self.auth, self.receipts, self.clock = db, auth, receipts, clock
-        self.analytics = analytics
         self.support_state = None
         self.service_dispatch = None
         self.reward_fulfillment = None
@@ -319,11 +318,6 @@ class Execution:
                     503, "TASK_OWNER_NOT_INTEGRATED", "该任务的B或C业务处理器尚未接入"
                 )
             self.support_state.validate_task(c, body)
-        elif body["kind"].startswith("refresh_"):
-            if body["payload"]["data_environment"] != "demo":
-                raise AppError(403, "ENVIRONMENT_FORBIDDEN", "演示任务不能访问真实数据")
-            if self.analytics is None:
-                raise AppError(503, "ANALYTICS_UNAVAILABLE", "统计与摘要处理器尚未接入")
         else:
             self._reminder_eligible(c, body, check_time=False, snooze=snooze)
         row = c.execute(
@@ -724,22 +718,8 @@ class Execution:
                 assert self.reward_fulfillment is not None
                 self.reward_fulfillment.observe_unknown(c, task, execution, at)
         else:
-            # No external side effect exists in these local handlers.
-            # Let the caller roll back a failed computation in full; the
-            # persisted running attempt is recovered by explicit maintenance.
-            if task["kind"] == "refresh_statistics":
-                assert self.analytics is not None
-                result = self.analytics.refresh_statistics_in_transaction(
-                    c, None, task["patient_id"], {**task["payload"], "as_of": at}
-                )
-                execution["result_ref"] = result["statistics_id"]
-            elif task["kind"] == "refresh_summary":
-                assert self.analytics is not None
-                result = self.analytics.refresh_in_transaction(
-                    c, None, task["patient_id"], {**task["payload"], "as_of": at}
-                )
-                execution["result_ref"] = result["summary_id"]
-            elif (
+            # Local handlers have no external effect: a failure rolls back and maintenance recovers the running attempt
+            if (
                 task["kind"] in ("expire_b_state", "check_in_node")
                 and self.support_state is not None
             ):
@@ -852,8 +832,6 @@ class Execution:
                         continue
                     execution = json.loads(row[0])
                     local = task["kind"] in (
-                        "refresh_statistics",
-                        "refresh_summary",
                         "deliver_reminder",
                         "expire_b_state",
                         "check_in_node",
@@ -956,29 +934,14 @@ class Execution:
                 if entry["medication_id"] != slot["medication_id"]:
                     continue
                 first = current.astimezone(SHANGHAI).date()
-                for delta in range(9):
-                    day = first + timedelta(days=delta)
-                    if str(day) < entry["start_date"] or (
-                        entry["end_date"] and str(day) > entry["end_date"]
-                    ):
-                        continue
+                for dt in occurrences(entry, first, first + timedelta(days=8)):
+                    s = stamp(dt)
                     if (
-                        entry["schedule"]["kind"] == "weekly"
-                        and day.isoweekday() not in entry["schedule"]["weekdays"]
+                        current < dt <= right
+                        and s >= plan["effective_from"]
+                        and (not plan["effective_until"] or s < plan["effective_until"])
                     ):
-                        continue
-                    for hour in entry["schedule"]["times"]:
-                        dt = datetime.combine(day, time.fromisoformat(hour), SHANGHAI)
-                        s = stamp(dt)
-                        if (
-                            current < dt <= right
-                            and s >= plan["effective_from"]
-                            and (
-                                not plan["effective_until"]
-                                or s < plan["effective_until"]
-                            )
-                        ):
-                            candidates.append(dt)
+                        candidates.append(dt)
         return min(candidates) if candidates else None
 
     def _previous_slot_at(self, c, slot):
@@ -989,29 +952,14 @@ class Execution:
             for entry in plan["entries"]:
                 if entry["medication_id"] != slot["medication_id"]:
                     continue
-                for delta in range(9):
-                    day = first + timedelta(days=delta)
-                    if str(day) < entry["start_date"] or (
-                        entry["end_date"] and str(day) > entry["end_date"]
-                    ):
-                        continue
+                for dt in occurrences(entry, first, first + timedelta(days=8)):
+                    s = stamp(dt)
                     if (
-                        entry["schedule"]["kind"] == "weekly"
-                        and day.isoweekday() not in entry["schedule"]["weekdays"]
+                        dt < current
+                        and s >= plan["effective_from"]
+                        and (not plan["effective_until"] or s < plan["effective_until"])
                     ):
-                        continue
-                    for hour in entry["schedule"]["times"]:
-                        dt = datetime.combine(day, time.fromisoformat(hour), SHANGHAI)
-                        s = stamp(dt)
-                        if (
-                            dt < current
-                            and s >= plan["effective_from"]
-                            and (
-                                not plan["effective_until"]
-                                or s < plan["effective_until"]
-                            )
-                        ):
-                            candidates.append(dt)
+                        candidates.append(dt)
         return max(candidates) if candidates else None
 
     def _validate_shift(self, c, slot, entry, when):
@@ -1063,15 +1011,7 @@ class Execution:
 
     def _base_notification_time(self, c, slot, entry, preference):
         dose = datetime.fromisoformat(slot["scheduled_at"])
-        candidates = set()
-        for anchor in preference["anchors"]:
-            for offset in (-1, 0, 1):
-                day = dose.astimezone(SHANGHAI).date() + timedelta(days=offset)
-                moment = datetime.combine(
-                    day, time.fromisoformat(anchor["local_time"]), SHANGHAI
-                ) + timedelta(minutes=anchor["offset_minutes"])
-                if abs((moment - dose).total_seconds()) <= 3600:
-                    candidates.add(stamp(moment))
+        candidates = anchor_candidates(dose, preference["anchors"])
         if len(candidates) == 1:
             candidate = datetime.fromisoformat(next(iter(candidates)))
             try:
@@ -1294,42 +1234,10 @@ class Execution:
                 continue
             first = datetime.fromisoformat(left).astimezone(SHANGHAI).date()
             last = datetime.fromisoformat(right).astimezone(SHANGHAI).date()
-            days = (last - first).days + 1
             for entry in plan["entries"]:
-                for offset in range(days):
-                    day = first + timedelta(days=offset)
-                    if str(day) < entry["start_date"] or (
-                        entry["end_date"] and str(day) > entry["end_date"]
-                    ):
-                        continue
-                    schedule = entry["schedule"]
-                    if (
-                        schedule["kind"] == "weekly"
-                        and day.isoweekday() not in schedule["weekdays"]
-                    ):
-                        continue
-                    for local in schedule["times"]:
-                        at = stamp(
-                            datetime.combine(day, time.fromisoformat(local), SHANGHAI)
-                        )
-                        if left <= at < right:
-                            inserted = c.execute(
-                                "INSERT INTO dose_slots VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(patient_id,data_environment,plan_id,plan_version,plan_entry_id,scheduled_at) DO NOTHING",
-                                (
-                                    uid(),
-                                    patient,
-                                    "demo",
-                                    plan["plan_id"],
-                                    plan["plan_version"],
-                                    entry["plan_entry_id"],
-                                    entry["medication_id"],
-                                    at,
-                                    "active",
-                                    "flow-v0.1-slot-v1",
-                                    1,
-                                ),
-                            )
-                            count += inserted.rowcount
+                for scheduled in occurrences(entry, first, last):
+                    if left <= stamp(scheduled) < right:
+                        count += insert_slot(c, plan, entry, scheduled)
             c.execute(
                 "INSERT INTO o_schedule_windows VALUES (?,?,?,?) ON CONFLICT DO NOTHING",
                 (plan["plan_id"], plan["plan_version"], left, right),
@@ -1337,7 +1245,7 @@ class Execution:
         return count
 
     def maintenance(self, principal, patient, window_start, window_end):
-        """Explicit <=31-day slot/notice/reminder maintenance. Never dispatches."""
+        """Explicit <=31-day slot and reminder maintenance, never dispatches"""
         window = inputs.WindowTaskPayload.model_validate(
             {
                 "window_start": window_start,
@@ -1358,7 +1266,6 @@ class Execution:
         result = {
             "materialized_slots": 0,
             "created_tasks": 0,
-            "consumed_notices": 0,
             "issues": [],
             **due,
         }
@@ -1372,43 +1279,7 @@ class Execution:
             result["materialized_slots"] = self._materialize(c, patient, start, end)
             if self.support_state is not None:
                 self.support_state.maintain_invitations(c, patient)
-                self.support_state.consume_notices(c, patient)
-            for notice in c.execute(
-                "SELECT n.* FROM change_notices n LEFT JOIN a_notice_consumptions x ON n.notice_id=x.notice_id AND x.consumer='A' WHERE n.patient_id=? AND n.data_environment='demo' AND n.kind IN ('plan_published','event_revision_changed') AND x.notice_id IS NULL",
-                (patient,),
-            ).fetchall():
-                ref = json.loads(notice["source_ref"])
-                if notice["kind"] == "plan_published":
-                    source = get(
-                        c,
-                        "PlanVersion",
-                        ref["resource_id"] + ":" + str(ref["resource_revision"]),
-                    )
-                    if source["patient_id"] != patient:
-                        raise AppError(404, "RESOURCE_NOT_FOUND", "变更来源患者不一致")
-                elif not c.execute(
-                    "SELECT 1 FROM source_events WHERE event_id=? AND patient_id=? AND data_environment='demo'",
-                    (ref["resource_id"], patient),
-                ).fetchone():
-                    raise AppError(404, "RESOURCE_NOT_FOUND", "变更来源事件不可访问")
-                if self.analytics is not None and hasattr(
-                    self.analytics, "invalidate_in_transaction"
-                ):
-                    self.analytics.invalidate_in_transaction(c, patient, dict(notice))
-                elif notice["kind"] == "event_revision_changed":
-                    continue
-                c.execute(
-                    "INSERT INTO a_notice_consumptions VALUES (?,?,?,?,?,?)",
-                    (
-                        notice["notice_id"],
-                        "A",
-                        "applied",
-                        ref["resource_id"],
-                        None,
-                        stamp(self.clock()),
-                    ),
-                )
-                result["consumed_notices"] += 1
+                self.support_state.process_support_needs(c, patient)
             pref = get(c, "ReminderPreferences", patient, required=False)
             if not pref or not pref["enabled"]:
                 return result
@@ -1423,15 +1294,7 @@ class Execution:
                 _, _plan, entry = self._slot_context(c, patient, slot["dose_slot_id"])
                 dose = datetime.fromisoformat(slot["scheduled_at"])
                 when = dose
-                candidates = set()
-                for anchor in pref["anchors"]:
-                    for offset in (-1, 0, 1):
-                        day = dose.astimezone(SHANGHAI).date() + timedelta(days=offset)
-                        proposed = datetime.combine(
-                            day, time.fromisoformat(anchor["local_time"]), SHANGHAI
-                        ) + timedelta(minutes=anchor["offset_minutes"])
-                        if abs((proposed - dose).total_seconds()) <= 3600:
-                            candidates.add(stamp(proposed))
+                candidates = anchor_candidates(dose, pref["anchors"])
                 if len(candidates) > 1:
                     result["issues"].append(
                         {
@@ -1547,80 +1410,3 @@ class Execution:
                             }
                         )
         return result
-
-    def receive_delivery_receipt(self, provider_subject, body):
-        """Only a registered internal mock channel calls this; HTTP A40 is closed."""
-        if provider_subject != "demo-mock-channel":
-            raise AppError(503, "DELIVERY_ADAPTER_UNAVAILABLE", "渠道身份适配尚未接入")
-        body = inputs.DeliveryReceiptInput.model_validate(body).model_dump()
-        if body["occurred_at"] > stamp(self.clock()):
-            raise AppError(
-                422, "VALIDATION_ERROR", "渠道发生时间不能晚于当前服务器时钟"
-            )
-        with self.db.transaction() as c:
-            fp = fingerprint(body)
-            row = c.execute(
-                "SELECT * FROM a_delivery_receipts WHERE provider_subject=? AND provider_event_id=?",
-                (provider_subject, body["provider_event_id"]),
-            ).fetchone()
-            if row:
-                if row["request_fingerprint"] != fp:
-                    raise AppError(
-                        409, "RECEIPT_CONTENT_CONFLICT", "同一渠道事件编号内容冲突"
-                    )
-                return json.loads(row["document_json"])
-            execution = self._execution(c, body["execution_id"])
-            task = self._task(c, execution["task_id"])
-            if execution["channel"] not in ("mock", "in_app"):
-                raise AppError(
-                    409, "RECEIPT_CONTENT_CONFLICT", "计算执行没有渠道投递回执"
-                )
-            reason = None
-            if body["status"] == "delivered":
-                reason = "本地模拟渠道不证明真实送达，保留未确认"
-            elif task["status"] in ("cancelled", "expired", "failed") or execution[
-                "delivery_status"
-            ] in ("delivered", "failed", "cancelled", "expired"):
-                reason = "任务或投递已终止，晚到回执仅保留审计"
-            else:
-                try:
-                    if task["kind"] == "deliver_reminder":
-                        self._reminder_eligible(c, task, check_time=True)
-                except AppError:
-                    reason = "当前授权、配置或计划已变化，晚回执不恢复共享"
-            if not reason:
-                execution["delivery_status"] = body["status"]
-                if body["status"] == "submitted":
-                    execution["submitted_at"] = (
-                        execution["submitted_at"] or body["occurred_at"]
-                    )
-                else:
-                    execution.update(
-                        error_code=body["failure_code"],
-                        error_message=body["failure_message"],
-                        retryable=False,
-                    )
-                self._save_execution(c, execution)
-            receipt = {
-                "receipt_id": uid(),
-                "provider_event_id": body["provider_event_id"],
-                "execution_id": body["execution_id"],
-                "occurred_at": body["occurred_at"],
-                "received_at": stamp(self.clock()),
-                "status": body["status"],
-                "applied": reason is None,
-                "ignore_reason": reason,
-                "is_simulated": True,
-                "execution": execution,
-            }
-            c.execute(
-                "INSERT INTO a_delivery_receipts VALUES (?,?,?,?,?)",
-                (
-                    receipt["receipt_id"],
-                    provider_subject,
-                    body["provider_event_id"],
-                    fp,
-                    encode(receipt),
-                ),
-            )
-            return receipt

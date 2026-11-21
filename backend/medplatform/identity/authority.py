@@ -3,10 +3,10 @@ import json
 import secrets
 from contextlib import contextmanager
 
-from ..core.documents import all_docs, encode, get, stamp
+from ..core.documents import all_docs, digest, encode, get, stamp
 from ..core.errors import AppError
 from ..core.protection import protect, unprotect
-from .auth import Principal, digest
+from .auth import Principal
 from .inputs import SCOPES
 
 

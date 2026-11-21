@@ -1,6 +1,5 @@
 """Positive points evaluation and the authoritative C ledger."""
 
-import sqlite3
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
@@ -8,13 +7,12 @@ from ...core.documents import all_docs, encode, fingerprint, get, meta, now, sta
 from ...core.errors import AppError
 from ...core.idempotency import Result
 from ...core.migrations import status
-from ..common import CONTRACT
+from ..common import CONTRACT, next_cursor, page_after, read_guarded
 from ..points.sources import (
     ISSUES,
     PointsSources,
     iso_monday,
     patient_date,
-    points_notice,
 )
 
 RULES_VERSION = "points-demo-v1"
@@ -111,10 +109,31 @@ class Points:
             return self.authorize(conn, action, principal, patient)
 
         if action in {"rules", "account", "ledger", "reviews"}:
-            try:
-                with self.db.connection(readonly=True) as conn:
-                    conn.execute("BEGIN")
-                    guard(conn)
+
+            def verify(_authorized, _current):
+                if (
+                    scopes is not None
+                    and self.auth.scopes(principal, patient, conn) != scopes
+                ):
+                    raise AppError(
+                        403, "SOURCE_ACCESS_CHANGED", "来源授权已变化，请重新读取"
+                    )
+                if action == "ledger":
+                    peer_refs = {
+                        ref["record_id"]
+                        for entry in result["items"]
+                        for ref in entry["source_refs"]
+                        if ref["record_kind"] == "peer_post"
+                    }
+                    if peer_refs and not peer_refs.issubset(
+                        self.visible_peer_refs(conn, patient)
+                    ):
+                        raise AppError(
+                            403, "SOURCE_ACCESS_CHANGED", "来源授权已变化，请重新读取"
+                        )
+
+            with self.db.connection(readonly=True) as conn:
+                with read_guarded(conn, guard, verify):
                     scopes = (
                         self.auth.scopes(principal, patient, conn)
                         if action == "ledger"
@@ -128,41 +147,7 @@ class Points:
                         result = self.page(
                             conn, action, principal, patient, query, scopes
                         )
-                    conn.commit()
-                    guard(conn)
-                    if (
-                        scopes is not None
-                        and self.auth.scopes(principal, patient, conn) != scopes
-                    ):
-                        raise AppError(
-                            403, "SOURCE_ACCESS_CHANGED", "来源授权已变化，请重新读取"
-                        )
-                    if action == "ledger":
-                        peer_refs = {
-                            ref["record_id"]
-                            for entry in result["items"]
-                            for ref in entry["source_refs"]
-                            if ref["record_kind"] == "peer_post"
-                        }
-                        if peer_refs and not peer_refs.issubset(
-                            self.visible_peer_refs(conn, patient)
-                        ):
-                            raise AppError(
-                                403,
-                                "SOURCE_ACCESS_CHANGED",
-                                "来源授权已变化，请重新读取",
-                            )
-                    return Result(result)
-            except sqlite3.DatabaseError:
-                if action == "ledger":
-                    raise AppError(
-                        503, "POINTS_LEDGER_UNAVAILABLE", "积分流水暂不可用"
-                    ) from None
-                if action == "account":
-                    raise AppError(
-                        503, "POINTS_ACCOUNT_NOT_READY", "积分账户暂不可用"
-                    ) from None
-                raise
+                return Result(result)
 
         def operate(conn):
             doc = guard(conn)
@@ -205,11 +190,7 @@ class Points:
         left, right = query["window_start"], query["window_end"]
         limit = query.get("limit", 20)
         context = [principal.account_id, patient, action, left, right]
-        after = ["", ""]
-        if "cursor" in query:
-            after = self.auth.read_cursor(query["cursor"], context)
-            if len(after) != 2 or not all(isinstance(value, str) for value in after):
-                raise AppError(422, "INVALID_CURSOR", "分页位置无效，请重新读取")
+        after = page_after(self.auth, query, context, ["", ""])
         if action == "ledger":
             self.account(conn, patient)
             table, time, key = "c_points_ledger", "created_at", "ledger_id"
@@ -228,10 +209,8 @@ class Points:
             ]
         else:
             items = [self.review_view(row, own) for row in rows[:limit]]
-        cursor = (
-            self.auth.cursor(context, [rows[limit - 1][time], rows[limit - 1][key]])
-            if len(rows) > limit
-            else None
+        cursor = next_cursor(
+            rows, limit, self.auth, context, lambda row: [row[time], row[key]]
         )
         return {"items": items, "next_cursor": cursor}
 
@@ -365,7 +344,6 @@ class Points:
                 RULES_VERSION,
             ),
         )
-        points_notice(conn, patient, "ManagementReview", identifier, 1, at)
         saved = conn.execute(
             "SELECT * FROM c_management_reviews WHERE review_id=?", (identifier,)
         ).fetchone()
@@ -390,12 +368,7 @@ class Points:
         issues = set()
         days = self.sources.select_manual(conn, patient, left, right, at, plans, issues)
         reviews = self.sources.select_reviews(conn, patient, left, right, at, issues)
-        peers, posts = self.sources.select_peer(
-            conn, patient, left, right, at, zone, issues
-        )
-        changes = self.sources.check_previous(
-            conn, patient, left, right, at, plans, posts, issues
-        )
+        peers = self.sources.select_peer(conn, patient, left, right, at, zone, issues)
         source_issues = [
             {"code": code, "message": ISSUES[code], "field": None}
             for code in sorted(issues)
@@ -415,7 +388,7 @@ class Points:
             ),
         )
         conn.execute(
-            "INSERT INTO c_points_reconciliations VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO c_points_reconciliations VALUES (?,?,?,?,?,?)",
             (
                 operation,
                 patient,
@@ -423,7 +396,6 @@ class Points:
                 right,
                 RULES_VERSION,
                 encode(source_issues),
-                encode(changes),
             ),
         )
         entries, allocations = [], []
@@ -548,7 +520,7 @@ class Points:
         allocated = []
         for index, ref in enumerate(refs, 1):
             conn.execute(
-                "INSERT INTO c_points_award_sources VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO c_points_award_sources VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     identifier,
                     patient,
@@ -559,7 +531,6 @@ class Points:
                     ref.revision,
                     ref.recorded_at,
                     ref.anchor_at,
-                    ref.qualification_ref,
                     index,
                 ),
             )

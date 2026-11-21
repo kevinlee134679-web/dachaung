@@ -13,7 +13,7 @@ from unittest.mock import patch
 from medplatform import __main__ as cli
 from medplatform.core import backup
 from medplatform.core.database import Database
-from medplatform.core.migrations import migrate, status
+from medplatform.core.migrations import catalog, migrate, status
 
 
 class LifecycleTests(unittest.TestCase):
@@ -68,7 +68,7 @@ class LifecycleTests(unittest.TestCase):
                 ),
                 0,
             )
-        self.assertEqual(status(self.db), 16)
+        self.assertEqual(status(self.db), len(catalog()))
         target = next((self.root / "backups").iterdir())
         manifest = json.loads((target / "manifest.json").read_text())
         self.assertEqual(manifest["schema_version"], "0014")

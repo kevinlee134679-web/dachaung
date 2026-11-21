@@ -175,7 +175,7 @@ class FormalServiceTests(unittest.TestCase):
                 {(draft["service_draft_id"], 1), (second["service_draft_id"], 1)},
             )
 
-    def test_revoked_expired_edited_and_guarded_grant_block_new_services(self):
+    def test_revoked_expired_and_edited_confirmation_blocks_new_services(self):
         with self.subTest("edited"):
             draft, consent = self.prepare()
             current = self.d.read(draft)
@@ -198,20 +198,6 @@ class FormalServiceTests(unittest.TestCase):
                 self.create(self.body(draft, consent), expected=409)["code"],
                 "SERVICE_CONFIRMATION_REQUIRED",
             )
-        with self.subTest("grant"):
-            binding, grant = self.s.bind(drafts.FAMILY_SCOPES)
-            precise = {grant["grant_id"]: grant["grant_version"]}
-            with patch.object(self.d.service.sharing, "terms", return_value=precise):
-                grant_draft, grant_consent = self.prepare()
-                self.d.revise_grant(
-                    binding, grant["meta"]["revision"], ["support:read"]
-                )
-                self.assertEqual(
-                    self.create(self.body(grant_draft, grant_consent), expected=409)[
-                        "code"
-                    ],
-                    "SERVICE_CONFIRMATION_REQUIRED",
-                )
         with self.subTest("expires at boundary"):
             draft, consent = self.prepare()
             self.s.time[0] += timedelta(hours=24)
@@ -400,10 +386,6 @@ class FormalServiceTests(unittest.TestCase):
                 ],
                 ["submitted", "in_progress", "completed"],
             )
-            notices = conn.execute(
-                "SELECT * FROM change_notices WHERE kind='c_service_changed'"
-            ).fetchall()
-            self.assertEqual(len(notices), 3)
         self.assertEqual(self.counts(), (1, 3, 1, 1, 1, 0))
 
     def test_closed_failure_and_cancelled_tasks_never_dispatch(self):
@@ -435,7 +417,7 @@ class FormalServiceTests(unittest.TestCase):
             ]
         )
         with patch.object(
-            self.adapter, "adapter", return_value={"outcome_unknown": True}
+            self.adapter, "attempt", return_value={"outcome_unknown": True}
         ) as adapter:
             outcome = self.run_task(service)
             self.assertEqual(outcome["execution_status"], "outcome_unknown")
@@ -482,7 +464,7 @@ class FormalServiceTests(unittest.TestCase):
         }
         with patch.object(
             self.adapter,
-            "adapter",
+            "attempt",
             side_effect=[failure, {"delivery_status": "submitted"}],
         ) as adapter:
             result = self.run_task(service)
@@ -509,7 +491,7 @@ class FormalServiceTests(unittest.TestCase):
             return {"delivery_status": "submitted"}
 
         with (
-            patch.object(self.adapter, "adapter", side_effect=delayed) as adapter,
+            patch.object(self.adapter, "attempt", side_effect=delayed) as adapter,
             ThreadPoolExecutor(2) as pool,
         ):
             worker = pool.submit(self.run_task, service)

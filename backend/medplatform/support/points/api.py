@@ -1,11 +1,21 @@
 """Frozen C22–C25/C38–C39 points and management-review contracts."""
 
-from datetime import datetime, timedelta
 from typing import Literal
 
 from pydantic import field_validator, model_validator
 
-from ...web.inputs import ID, DateTime, Input, LocalDate, Short, Text, utc
+from ...web.inputs import (
+    ID,
+    DateTime,
+    Input,
+    LocalDate,
+    Short,
+    Text,
+    query_fields,
+    query_limit,
+    query_text,
+    query_window,
+)
 
 
 class Reconcile(Input):
@@ -46,39 +56,23 @@ ROUTES = [
 
 
 def query_input(action, pairs):
-    query = dict(pairs)
-    if len(query) != len(pairs):
-        raise ValueError()
+    allowed = (
+        {"rules_version"}
+        if action == "rules"
+        else {"window_start", "window_end", "cursor", "limit"}
+        if action in {"ledger", "reviews"}
+        else set()
+    )
+    query = query_fields(pairs, allowed)
     if action == "rules":
-        if (
-            set(query) - {"rules_version"}
-            or not 1 <= len(query.get("rules_version", "-")) <= 200
-        ):
+        if not 1 <= len(query.get("rules_version", "-")) <= 200:
             raise ValueError()
         return query
     if action not in {"ledger", "reviews"}:
-        if query:
-            raise ValueError()
         return query
-    if set(query) - {"window_start", "window_end", "cursor", "limit"}:
-        raise ValueError()
-    for field in ("window_start", "window_end"):
-        query[field] = utc(query[field])
-    left, right = (
-        datetime.fromisoformat(query[field]) for field in ("window_start", "window_end")
-    )
-    if not timedelta() < right - left <= timedelta(days=31):
-        raise ValueError()
-    if "cursor" in query and not 1 <= len(query["cursor"]) <= 4096:
-        raise ValueError()
+    query_window(query)
+    if "cursor" in query:
+        query_text(query["cursor"], 4096)
     if "limit" in query:
-        raw = query["limit"]
-        if (
-            not raw.isascii()
-            or not raw.isdecimal()
-            or len(raw) > 3
-            or not 1 <= int(raw) <= 100
-        ):
-            raise ValueError()
-        query["limit"] = int(raw)
+        query["limit"] = query_limit(query["limit"], 3)
     return query

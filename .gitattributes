@@ -28,4 +28,7 @@ backend/.python-version text eol=lf
 backend/data/demo/*.json text eol=lf
 
 # The POSIX launcher needs an LF shebang in every checkout.
-backend/start.sh text eol=lf
+start.sh text eol=lf
+
+# cmd.exe misparses labels in LF batch files
+*.cmd text eol=crlf

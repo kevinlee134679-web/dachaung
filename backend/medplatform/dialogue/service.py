@@ -9,7 +9,6 @@ from ..support.services.service import confirmation_required
 from . import knowledge, store
 from .generation import Dialogue, assessment
 from .model import MODEL_PROFILE_ID, MockModel, missing_usage
-from .star import PROFILES
 from .state import CASE_VERSION, CASES, SupportState, case
 
 READS = {
@@ -36,7 +35,6 @@ ADMIN = {
     "case_get",
     "case_reset",
     "probe",
-    "model_profile",
     "trigger",
     "knowledge_create",
     "knowledge_new_version",
@@ -76,10 +74,8 @@ class DialogueService:
     def __init__(self, db, auth, receipts, clock, settings, analytics, execution):
         self.db, self.auth, self.receipts = db, auth, receipts
         self.clock, self.settings, self.analytics = clock, settings, analytics
-        self.state = SupportState(clock, execution, settings)
-        self.dialogue = Dialogue(
-            db, auth, clock, settings, analytics, MockModel(), self.state
-        )
+        self.state = SupportState(clock, execution)
+        self.dialogue = Dialogue(db, auth, clock, settings, analytics, MockModel())
         self.formal_services = None
 
     def admin(self, conn, principal):
@@ -168,9 +164,7 @@ class DialogueService:
         def operation(conn):
             _, current = authorize(conn)
             if action == "message_send":
-                return self.dialogue.accept_message(
-                    conn, principal, current, body, self.profile(conn)
-                )
+                return self.dialogue.accept_message(conn, principal, current, body)
             if action == "generation_retry":
                 session = store.session(conn, current["session_id"])
                 return self.dialogue.accept_retry(conn, session, current, body)
@@ -395,11 +389,6 @@ class DialogueService:
         if action == "trigger":
             if self.dialogue.adapter.mode != "mock":
                 raise AppError(403, "DEMO_TRIGGER_DISABLED", "当前模拟流水线不可用")
-            if (
-                body["scenario"] == "star_mid_failure"
-                and self.profile(conn)["requested_pipeline"] != "star"
-            ):
-                raise AppError(403, "DEMO_TRIGGER_DISABLED", "请先选择 STAR 模拟配置")
             return self.state.trigger(conn, body)
         if action == "case_reset":
             return self.reset(conn, path["id"], body)
@@ -415,8 +404,8 @@ class DialogueService:
             raise AppError(
                 403, "QUALIFIED_REVIEWER_REQUIRED", "当前未接入可核验的医学审核资格"
             )
-        if action in {"probe", "model_profile"}:
-            return self.model_config(conn, action, body, at)
+        if action == "probe":
+            return self.probe(conn, body, at)
         raise RuntimeError("unregistered B write")
 
     @staticmethod
@@ -593,70 +582,26 @@ class DialogueService:
             },
         }
 
-    def profile(self, conn):
-        row = conn.execute(
-            "SELECT document_json FROM b_model_selection WHERE singleton=1"
-        ).fetchone()
-        if row is not None:
-            return json.loads(row[0])
-        return {
-            "profile_id": "mock-star"
-            if self.settings.DIALOGUE_PIPELINE == "star"
-            else MODEL_PROFILE_ID,
-            "previous_profile_id": None,
-            "mode": "mock",
-            "requested_pipeline": self.settings.DIALOGUE_PIPELINE,
-            "model_config_version": self.settings.CONFIG_VERSION,
-            "configuration_status": "ready",
-            "selected_at": None,
-        }
-
-    def model_config(self, conn, action, body, at):
-        old = self.profile(conn)
-        if body["expected_config_version"] != old["model_config_version"]:
+    def probe(self, conn, body, at):
+        if body["expected_config_version"] != self.settings.CONFIG_VERSION:
             raise AppError(
                 409, "MODEL_CONFIG_VERSION_CONFLICT", "模型配置已更新，请重新读取"
             )
-        if action == "probe":
-            if (
-                body["profile_id"] != old["profile_id"]
-                or old["configuration_status"] != "ready"
-            ):
-                raise AppError(
-                    503, "MODEL_NOT_CONFIGURED", "当前没有可探测的已启用适配"
-                )
-            doc = {
-                "probe_id": uid(),
-                "profile_id": old["profile_id"],
-                "mode": "mock",
-                "model_label": self.dialogue.adapter.model_label,
-                "model_config_version": old["model_config_version"],
-                "status": "available",
-                "network_attempt_count": 0,
-                "elapsed_ms": 0,
-                "usage": missing_usage("本地模拟探测无网络用量"),
-                "checked_at": at,
-            }
-            return store.insert(conn, "Probe", doc["probe_id"], doc)
-        if body["profile_id"] not in PROFILES:
-            raise AppError(422, "MODEL_PROFILE_NOT_READY", "该配置未登记或依赖尚未就绪")
-        doc = dict(
-            old,
-            profile_id=body["profile_id"],
-            previous_profile_id=old["profile_id"],
-            requested_pipeline=PROFILES[body["profile_id"]],
-            configuration_status="ready",
-            model_config_version=uid(),
-            selected_at=at,
-        )
-        conn.execute(
-            """
-            INSERT INTO b_model_selection VALUES (1,?)
-            ON CONFLICT(singleton) DO UPDATE SET document_json=excluded.document_json
-        """,
-            (encode(doc),),
-        )
-        return doc
+        if body["profile_id"] != MODEL_PROFILE_ID:
+            raise AppError(503, "MODEL_NOT_CONFIGURED", "当前没有可探测的已启用适配")
+        doc = {
+            "probe_id": uid(),
+            "profile_id": MODEL_PROFILE_ID,
+            "mode": "mock",
+            "model_label": self.dialogue.adapter.model_label,
+            "model_config_version": self.settings.CONFIG_VERSION,
+            "status": "available",
+            "network_attempt_count": 0,
+            "elapsed_ms": 0,
+            "usage": missing_usage("本地模拟探测无网络用量"),
+            "checked_at": at,
+        }
+        return store.insert(conn, "Probe", doc["probe_id"], doc)
 
     def feedback_source(self, conn, principal, patient, window):
         if principal is not None:
@@ -774,10 +719,6 @@ class DialogueService:
                 (identifier,),
             )
             conn.execute(
-                "DELETE FROM b_star_checkpoints WHERE generation_id IN (SELECT g.generation_id FROM b_generations g JOIN b_messages m ON m.message_id=g.user_message_id WHERE m.session_id=?)",
-                (identifier,),
-            )
-            conn.execute(
                 "DELETE FROM b_generations WHERE user_message_id IN (SELECT message_id FROM b_messages WHERE session_id=?)",
                 (identifier,),
             )
@@ -818,11 +759,6 @@ class DialogueService:
             conn.execute(
                 "UPDATE b_records SET session_id=NULL,document_json=? WHERE kind='ScenarioRun' AND record_id=?",
                 (encode(trigger), trigger["result"]["trigger_id"]),
-            )
-        for intervention in interventions:
-            conn.execute(
-                "DELETE FROM b_intervention_revisions WHERE intervention_id=?",
-                (intervention,),
             )
         for identifier in sessions:
             conn.execute("DELETE FROM b_sessions WHERE session_id=?", (identifier,))

@@ -13,8 +13,6 @@ from .core.migrations import migrate, status
 
 
 def seed(db):
-    from .core.documents import now
-    from .dialogue import rules
     from .identity.service import seed_demo
     from .identity.sharing import seed_support_recipients
     from .support.catalog.service import seed_catalog
@@ -29,7 +27,6 @@ def seed(db):
         "peer_groups": seed_peer_groups(db),
         "points": seed_points(db),
         "rewards": seed_rewards(db),
-        "support_rules": rules.seed(db, now),
     }
 
 
@@ -63,8 +60,6 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--target", type=int)
     parser.add_argument("--profile-id")
-    parser.add_argument("--rule-version")
-    parser.add_argument("--confirmed", action="store_true")
     parser.add_argument("--patient-id")
     parser.add_argument("--window-start")
     parser.add_argument("--window-end")
@@ -161,39 +156,18 @@ def main():
                     ).data
                 print(json.dumps(result, ensure_ascii=False))
             elif args.command in ("select-support-rule", "support-rule-status"):
-                from .core.documents import now
                 from .dialogue import rules
 
                 if args.command == "support-rule-status":
                     with db.connection(readonly=True) as conn:
-                        policy = rules.policy(conn, settings.SUPPORT_RULE_PROFILE)
-                        row = conn.execute(
-                            "SELECT revision FROM b_rule_selection WHERE singleton=1"
-                        ).fetchone()
                         result = {
-                            "profile_id": policy["profile_id"],
-                            "rule_version": rules.reference(policy),
-                            "revision": row["revision"] if row else 0,
+                            "profile_id": rules.active(conn),
                             "is_simulated": True,
                         }
                 else:
-                    if (
-                        not args.profile_id
-                        or args.expect_revision is None
-                        or not args.confirmed
-                    ):
-                        parser.error(
-                            "select-support-rule requires profile-id, expect-revision and confirmed"
-                        )
-                    result = rules.select(
-                        db,
-                        now,
-                        args.profile_id,
-                        args.expect_revision,
-                        confirmed=True,
-                        default_profile=settings.SUPPORT_RULE_PROFILE,
-                        version=args.rule_version,
-                    )
+                    if not args.profile_id:
+                        parser.error("select-support-rule requires --profile-id")
+                    result = rules.select(db, args.profile_id)
                 print(json.dumps(result))
             elif args.command == "worker":
                 from .medication.runner import Runner

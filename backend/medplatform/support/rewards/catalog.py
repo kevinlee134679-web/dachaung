@@ -135,7 +135,6 @@ def seed_rewards(db, clock=now):
                 "is_simulated": True,
             },
             "previous_version": None,
-            "review_status": "not_reviewed",
             "profile_types": [],
         }
     )
@@ -196,7 +195,7 @@ def seed_rewards(db, clock=now):
         for key, cost, name, description, template in entries
     ]
     with db.transaction() as conn:
-        install_catalog(conn, [resources], at, "medplatform/s05_reward_catalog.py")
+        install_catalog(conn, [resources], at)
         install_demo_recipients(
             conn,
             [
@@ -212,9 +211,9 @@ def seed_rewards(db, clock=now):
         return install_rewards(conn, fixtures, at)
 
 
-def reward_view(conn, row, raw=False):
+def reward_view(conn, row):
     data = json.loads(row["reward_json"])
-    if data["resource_id"] is not None and not raw:
+    if data["resource_id"] is not None:
         from ..catalog.service import current_resource
 
         resource = current_resource(
