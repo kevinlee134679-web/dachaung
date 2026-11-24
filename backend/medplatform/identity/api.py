@@ -11,7 +11,6 @@ from ..core.migrations import status
 from ..core.strict_json import loads
 from ..medication import inputs as medication_inputs
 from ..profile import inputs as profile_inputs
-from ..profile.questionnaire import validate_answers
 from ..web.inputs import (
     Empty,
     Revoke,
@@ -150,6 +149,7 @@ def query_input(request, action):
     allowed.update(
         {
             "definition": {"version"},
+            "current_profile": {"source"},
             "plans": {"plan_id"},
             "slots": {"window_start", "window_end"},
             "drafts": {"status"},
@@ -163,6 +163,8 @@ def query_input(request, action):
         if "limit" in q:
             query_limit(q["limit"])
         if "cursor" in q and not q["cursor"]:
+            raise ValueError()
+        if "source" in q and q["source"] != "latest_submission":
             raise ValueError()
         if action == "slots":
             query_window(q)
@@ -268,10 +270,8 @@ def router(service, envelope):
                         model = schema.model_validate(b)
                         b = model.model_dump(
                             exclude_unset=action
-                            in ("patient_patch", "medication_patch")
+                            in ("patient_patch", "medication_patch", "submit_response")
                         )
-                        if action == "answers":
-                            b["answers"] = validate_answers(b["answers"])
                     elif await request.body():
                         raise ValueError()
                 except ValidationError, ValueError, TypeError, KeyError:

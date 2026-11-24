@@ -1,0 +1,840 @@
+[
+  {
+    "question_id": "Q1",
+    "prompt": "用药知识",
+    "fields": [
+      {
+        "key": "knowledge",
+        "prompt": "我清楚了解所服药物的正确服用时间及漏服后的补救措施",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "非常不符合"
+          },
+          {
+            "code": "2",
+            "label": "不符合"
+          },
+          {
+            "code": "3",
+            "label": "一般"
+          },
+          {
+            "code": "4",
+            "label": "符合"
+          },
+          {
+            "code": "5",
+            "label": "非常符合"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q2",
+    "prompt": "漏服或未按时用药频率",
+    "fields": [
+      {
+        "key": "adherence_freq",
+        "prompt": "回顾最近一次规律用药的经历，您的漏服/未按时用药频率大约是？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "从不漏服",
+            "label": "从不漏服"
+          },
+          {
+            "code": "几乎从不漏服（两三周1次）",
+            "label": "几乎从不漏服（两三周1次）"
+          },
+          {
+            "code": "偶尔漏服（每周1-2次）",
+            "label": "偶尔漏服（每周1-2次）"
+          },
+          {
+            "code": "经常漏服（每周3-5次）",
+            "label": "经常漏服（每周3-5次）"
+          },
+          {
+            "code": "极度随性（想起来才吃，经常连续几天不吃）",
+            "label": "极度随性（想起来才吃，经常连续几天不吃）"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q3",
+    "prompt": "坚持用药的难度",
+    "fields": [
+      {
+        "key": "difficulty",
+        "prompt": "我觉得要坚持按方案服药很难",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "非常不符合"
+          },
+          {
+            "code": "2",
+            "label": "不符合"
+          },
+          {
+            "code": "3",
+            "label": "一般"
+          },
+          {
+            "code": "4",
+            "label": "符合"
+          },
+          {
+            "code": "5",
+            "label": "非常符合"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q4",
+    "prompt": "同一次用药经历中，是否实际发生过漏服或未按时用药？",
+    "fields": [
+      {
+        "key": "behavior",
+        "prompt": "实际用药情况",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "none",
+            "label": "未发生"
+          },
+          {
+            "code": "unintentional",
+            "label": "无意未按安排用药"
+          },
+          {
+            "code": "intentional",
+            "label": "主动选择推迟或略过"
+          },
+          {
+            "code": "both",
+            "label": "两种都发生"
+          },
+          {
+            "code": "uncertain",
+            "label": "不能判断"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q5",
+    "prompt": "用药方案与支持",
+    "fields": [
+      {
+        "key": "drug_type",
+        "prompt": "您最主要服用的是哪一类药物？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "中药/中成药（需自行煎煮或冲剂）",
+            "label": "中药/中成药（需自行煎煮或冲剂）"
+          },
+          {
+            "code": "外用药（药膏、贴剂等）",
+            "label": "外用药（药膏、贴剂等）"
+          },
+          {
+            "code": "心血管类药物（降压、降脂、抗凝等）",
+            "label": "心血管类药物（降压、降脂、抗凝等）"
+          },
+          {
+            "code": "消化系统/肠胃类药物",
+            "label": "消化系统/肠胃类药物"
+          },
+          {
+            "code": "激素类药物（甲状腺、糖尿病等）",
+            "label": "激素类药物（甲状腺、糖尿病等）"
+          },
+          {
+            "code": "精神/神经系统药物（抗抑郁、抗焦虑、安眠等）",
+            "label": "精神/神经系统药物（抗抑郁、抗焦虑、安眠等）"
+          },
+          {
+            "code": "靶向药/免疫抑制剂",
+            "label": "靶向药/免疫抑制剂"
+          },
+          {
+            "code": "其他",
+            "label": "其他"
+          }
+        ]
+      },
+      {
+        "key": "drug_duration",
+        "prompt": "您持续服用该药物的时长是？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "不到1个月",
+            "label": "不到1个月"
+          },
+          {
+            "code": "1-6个月",
+            "label": "1-6个月"
+          },
+          {
+            "code": "6个月-1年",
+            "label": "6个月-1年"
+          },
+          {
+            "code": "1-3年",
+            "label": "1-3年"
+          },
+          {
+            "code": "3年以上",
+            "label": "3年以上"
+          }
+        ]
+      },
+      {
+        "key": "drug_count",
+        "prompt": "您每天需要服用几种不同的药物（含中药/保健品）？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "1种",
+            "label": "1种"
+          },
+          {
+            "code": "2-3种",
+            "label": "2-3种"
+          },
+          {
+            "code": "4-5种",
+            "label": "4-5种"
+          },
+          {
+            "code": "6种及以上",
+            "label": "6种及以上"
+          }
+        ]
+      },
+      {
+        "key": "drug_freq",
+        "prompt": "您每天需要用药几次？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "1次",
+            "label": "1次"
+          },
+          {
+            "code": "2次",
+            "label": "2次"
+          },
+          {
+            "code": "3次",
+            "label": "3次"
+          },
+          {
+            "code": "4次及以上",
+            "label": "4次及以上"
+          }
+        ]
+      },
+      {
+        "key": "requirements",
+        "prompt": "您的用药是否有以下特殊要求？",
+        "kind": "multiple",
+        "options": [
+          {
+            "code": "req_before_meal",
+            "label": "需要饭前/空腹服用"
+          },
+          {
+            "code": "req_after_meal",
+            "label": "需要饭后服用"
+          },
+          {
+            "code": "req_diet",
+            "label": "有饮食禁忌（如不能碰酒精、葡萄柚等）"
+          },
+          {
+            "code": "req_prepare",
+            "label": "需要自行配制或特殊处理（如熬中药、冷藏保存等）"
+          },
+          {
+            "code": "req_inject",
+            "label": "需要定时注射"
+          },
+          {
+            "code": "req_none",
+            "label": "以上均无"
+          }
+        ]
+      },
+      {
+        "key": "followup",
+        "prompt": "您是否按照医生建议的时间定期复诊？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "总是按时复诊",
+            "label": "总是按时复诊"
+          },
+          {
+            "code": "大部分时候会去",
+            "label": "大部分时候会去"
+          },
+          {
+            "code": "偶尔会去",
+            "label": "偶尔会去"
+          },
+          {
+            "code": "基本不去复诊",
+            "label": "基本不去复诊"
+          }
+        ]
+      },
+      {
+        "key": "social_support",
+        "prompt": "在您目前的用药过程中，家人或身边的人给您提供的主要是哪类支持？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "单纯口头提醒我用药",
+            "label": "单纯口头提醒我用药"
+          },
+          {
+            "code": "鼓励和支持我坚持治疗（情感支持）",
+            "label": "鼓励和支持我坚持治疗（情感支持）"
+          },
+          {
+            "code": "严格监督我每次用药（有时会让我感到压力）",
+            "label": "严格监督我每次用药（有时会让我感到压力）"
+          },
+          {
+            "code": "基本不过问我的用药情况",
+            "label": "基本不过问我的用药情况"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q6",
+    "prompt": "用药感受与生活情境",
+    "fields": [
+      {
+        "key": "meal_irregular",
+        "prompt": "我经常三餐不定时，导致我常常错过了需要饭前或饭后服用的药物服用时间",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "life_unstable",
+        "prompt": "我的生活是不稳定的（充满出差、旅游或突发加班等不可控因素），影响规律用药",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "side_effect",
+        "prompt": "我担心用药后的副作用（如犯困、恶心、药物依赖等）影响我的学习或工作",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "worry_worsen",
+        "prompt": "我认为如果不严格按医嘱用药，我的健康状况会恶化或出现其他并发症",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "fatigue",
+        "prompt": "长期用药让我感到疲惫或厌烦，有时会产生不想再吃了的念头",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "cost_burden",
+        "prompt": "药物费用较高或报销比例低，给我或家庭带来了经济负担",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "skip_belief",
+        "prompt": "我认为偶尔漏服一两次药对身体没太大影响",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "stop_control",
+        "prompt": "当我感觉病情得到控制时，我会认为没有必要再继续用药了",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "emotion_impact",
+        "prompt": "当我心情低落、焦虑或有其他情绪波动时，我更容易忘记或不想用药",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "lose_confidence",
+        "prompt": "当我感觉病情加重时，我会对当前药物失去信心并自行停药",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "public_pressure",
+        "prompt": "在公共场合用药时，我会担心他人的目光或因药物味道、使用方式等原因感到不自在",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q7",
+    "prompt": "用药信心、工具接受与健康信息理解",
+    "fields": [
+      {
+        "key": "self_efficacy",
+        "prompt": "我有信心能坚持长期用药方案",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "tech_accept",
+        "prompt": "如果有一款智能设备或App能帮助我管理用药，我愿意尝试使用",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      },
+      {
+        "key": "health_literacy",
+        "prompt": "我能理解医生或药师给我的用药指导",
+        "kind": "scale",
+        "options": [
+          {
+            "code": "1",
+            "label": "1"
+          },
+          {
+            "code": "2",
+            "label": "2"
+          },
+          {
+            "code": "3",
+            "label": "3"
+          },
+          {
+            "code": "4",
+            "label": "4"
+          },
+          {
+            "code": "5",
+            "label": "5"
+          }
+        ]
+      }
+    ],
+    "options": []
+  },
+  {
+    "question_id": "Q8",
+    "prompt": "用药经历和个人背景",
+    "fields": [
+      {
+        "key": "stable_use",
+        "prompt": "在过去半年内，您是否有稳定服药（连续一周以上服药或按特定周期定期服药）的经历？",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "是",
+            "label": "是"
+          },
+          {
+            "code": "否",
+            "label": "否"
+          }
+        ]
+      },
+      {
+        "key": "age",
+        "prompt": "请选择您的年龄段",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "18岁以下",
+            "label": "18岁以下"
+          },
+          {
+            "code": "18-25岁",
+            "label": "18-25岁"
+          },
+          {
+            "code": "26-35岁",
+            "label": "26-35岁"
+          },
+          {
+            "code": "36-45岁",
+            "label": "36-45岁"
+          },
+          {
+            "code": "46-64岁",
+            "label": "46-64岁"
+          },
+          {
+            "code": "65岁以上",
+            "label": "65岁以上"
+          }
+        ]
+      },
+      {
+        "key": "gender",
+        "prompt": "请选择您的性别",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "男",
+            "label": "男"
+          },
+          {
+            "code": "女",
+            "label": "女"
+          }
+        ]
+      },
+      {
+        "key": "income",
+        "prompt": "您目前的月收入状况",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "3000元以下",
+            "label": "3000元以下"
+          },
+          {
+            "code": "3000-5000元",
+            "label": "3000-5000元"
+          },
+          {
+            "code": "5000-10000元",
+            "label": "5000-10000元"
+          },
+          {
+            "code": "10000元以上",
+            "label": "10000元以上"
+          }
+        ]
+      },
+      {
+        "key": "living",
+        "prompt": "您目前的居住状态",
+        "kind": "choice",
+        "options": [
+          {
+            "code": "与伴侣/家人同住",
+            "label": "与伴侣/家人同住"
+          },
+          {
+            "code": "与室友/朋友同住",
+            "label": "与室友/朋友同住"
+          },
+          {
+            "code": "独居",
+            "label": "独居"
+          },
+          {
+            "code": "其他",
+            "label": "其他"
+          }
+        ]
+      }
+    ],
+    "options": []
+  }
+]

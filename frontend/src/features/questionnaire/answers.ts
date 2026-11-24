@@ -62,14 +62,37 @@ interface Answer {
   value: AnswerValue | null
 }
 
-export interface Response {
+export interface LegacyResponse {
+  questionnaire_version: 'initial-v0.1'
   response_id: string
   status: string
   answers: Record<QuestionId, Answer>
   meta: { revision: number }
 }
 
+export const reviewVersion = 'initial-cas-review-v1'
+export type ReviewValue = Record<string, string | number | string[] | null>
+export interface ReviewResponse extends Omit<LegacyResponse, 'questionnaire_version' | 'answers'> {
+  questionnaire_version: typeof reviewVersion | 'initial-cas-review-v1-core1'
+  answers: Record<QuestionId, { state: string; value: ReviewValue | null }>
+}
+export type Response = LegacyResponse | ReviewResponse
+
+interface ReviewField {
+  key: string
+  prompt: string
+  kind: 'choice' | 'scale' | 'multiple' | 'selected_choice'
+  options: { code: string; label: string }[]
+}
+const fieldSchema: v.GenericSchema<unknown, ReviewField> = v.object({
+  key: v.string(),
+  prompt: v.string(),
+  kind: v.picklist(['choice', 'scale', 'multiple', 'selected_choice']),
+  options: v.array(v.object({ code: v.string(), label: v.string() })),
+})
+
 export interface Theme {
+  fields?: ReviewField[] | undefined
   question_id: QuestionId
   prompt: string
   options: { code: string; label: string }[]
@@ -88,7 +111,8 @@ function answerSchema(value: v.GenericSchema<unknown, AnswerValue>) {
   })
 }
 
-export const responseSchema: v.GenericSchema<unknown, Response> = v.looseObject({
+const legacyResponseSchema = v.looseObject({
+  questionnaire_version: v.literal('initial-v0.1'),
   response_id: v.string(),
   status: v.string(),
   answers: v.looseObject({
@@ -121,11 +145,37 @@ export const responseSchema: v.GenericSchema<unknown, Response> = v.looseObject(
   meta: v.looseObject({ revision: v.number() }),
 })
 
+const reviewAnswerSchema = v.object({
+  state: v.picklist(['answered', 'unknown', 'not_applicable', 'declined', 'prefer_not_to_answer', 'not_answered']),
+  value: v.nullable(v.record(v.string(), v.nullable(v.union([v.number(), v.string(), v.array(v.string())])))),
+})
+const reviewResponseSchema = v.looseObject({
+  questionnaire_version: v.picklist([reviewVersion, 'initial-cas-review-v1-core1']),
+  response_id: v.string(),
+  status: v.string(),
+  meta: v.object({ revision: v.number() }),
+  answers: v.object({
+    Q1: reviewAnswerSchema,
+    Q2: reviewAnswerSchema,
+    Q3: reviewAnswerSchema,
+    Q4: reviewAnswerSchema,
+    Q5: reviewAnswerSchema,
+    Q6: reviewAnswerSchema,
+    Q7: reviewAnswerSchema,
+    Q8: reviewAnswerSchema,
+  }),
+})
+export const responseSchema: v.GenericSchema<unknown, Response> = v.variant('questionnaire_version', [
+  legacyResponseSchema,
+  reviewResponseSchema,
+])
+
 export const definitionSchema: v.GenericSchema<unknown, Definition> = v.looseObject({
   purpose: v.string(),
   version: v.string(),
   themes: v.array(
     v.looseObject({
+      fields: v.optional(v.array(fieldSchema)),
       question_id: v.picklist(['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8']),
       prompt: v.string(),
       options: v.array(v.looseObject({ code: v.string(), label: v.string() })),
@@ -133,8 +183,8 @@ export const definitionSchema: v.GenericSchema<unknown, Definition> = v.looseObj
   ),
 })
 
-export interface Question {
-  response: Response
+export interface Question<T extends Response = Response> {
+  response: T
   index: number
 }
 

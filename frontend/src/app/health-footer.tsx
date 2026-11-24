@@ -31,7 +31,7 @@ export function HealthFooter(props: {
         </Show>
       </div>
       <Text class="text-xs">
-        演示资料不用于实际服药。涉及医嘱变更，请咨询医生或药师；未接入真实模型、人员或外部通知。
+        演示资料不用于实际服药。涉及医嘱变更，请咨询医生或药师。对话、人员服务和外部通知均为模拟。
       </Text>
     </footer>
   )

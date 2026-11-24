@@ -1,5 +1,5 @@
 import type { View } from '../../session/session'
-import type { Question, Theme, Response } from './answers'
+import type { Question, Theme, Response, LegacyResponse } from './answers'
 import type { JSX } from '@solidjs/web'
 import { createSignal, For, Show, untrack } from 'solid-js'
 import { api } from '../../api/api'
@@ -21,7 +21,7 @@ import {
 } from './answers'
 
 export function QuestionForm(props: {
-  question: Question
+  question: Question<LegacyResponse>
   theme: Theme
   onSaved: (response: Response, index: number) => void
   onSubmitted?: ((response: Response, view: View) => Promise<void>) | undefined
@@ -382,7 +382,7 @@ export function QuestionForm(props: {
               else notice('回答已提交。可以主动生成描述性画像。')
             }}
           >
-            提交问卷
+            {props.onSubmitted ? '提交问卷并生成画像' : '提交问卷'}
           </Button>
         </Show>
       </div>

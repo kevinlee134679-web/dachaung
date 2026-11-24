@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     DATABASE_PATH: Path = Field(default=ROOT / "var" / "app-demo.sqlite3", repr=False)
     AUTH_MODE: Literal["demo", "external"] = "demo"
     LLM_MODE: Literal["mock", "real"] = "mock"
+    CAS_RETRAINED_BUNDLE: Path | None = Field(default=None, repr=False)
     LLM_BASE_URL: str = Field(default="", repr=False)
     LLM_MODEL: str = ""
     LLM_API_KEY: SecretStr = Field(default_factory=lambda: SecretStr(""), repr=False)

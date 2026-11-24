@@ -1,0 +1,1123 @@
+{
+  "version": "cas-questionnaire-mapping-review-20261123-v1",
+  "status": "research_review_and_demo_specification_only",
+  "questionnaire": {
+    "version_candidate": "initial-cas-review-v1",
+    "previous_version": "initial-v0.1",
+    "meaning_of_eight": "eight numbered groups, not eight independent scalar answers",
+    "default_path": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4"
+    ],
+    "optional_complete_model_section": [
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8"
+    ],
+    "missing_states": [
+      "unknown",
+      "not_answered",
+      "not_applicable",
+      "prefer_not_to_answer"
+    ],
+    "research_collection_note": "Trained output compatibility requires original response wording and anchors; refusal or unknown yields missing, never defaults.",
+    "items": [
+      {
+        "id": "Q1",
+        "title": "用药知识",
+        "fields": [
+          {
+            "id": "knowledge",
+            "prompt": "我清楚了解所服药物的正确服用时间及漏服后的补救措施",
+            "input": "single_choice",
+            "options": {
+              "非常不符合": 1,
+              "不符合": 2,
+              "一般": 3,
+              "符合": 4,
+              "非常符合": 5
+            },
+            "required_for": "observed_cas"
+          }
+        ]
+      },
+      {
+        "id": "Q2",
+        "title": "漏服或未按时用药频率",
+        "fields": [
+          {
+            "id": "adherence_freq",
+            "prompt": "回顾最近一次规律用药的经历，您的漏服/未按时用药频率大约是？",
+            "input": "single_choice",
+            "options": {
+              "从不漏服": 5,
+              "几乎从不漏服（两三周1次）": 4,
+              "偶尔漏服（每周1-2次）": 3,
+              "经常漏服（每周3-5次）": 2,
+              "极度随性（想起来才吃，经常连续几天不吃）": 1
+            },
+            "required_for": "observed_cas"
+          }
+        ]
+      },
+      {
+        "id": "Q3",
+        "title": "坚持用药的难度",
+        "fields": [
+          {
+            "id": "difficulty",
+            "prompt": "我觉得要坚持按方案服药很难",
+            "input": "single_choice",
+            "options": {
+              "非常不符合": 1,
+              "不符合": 2,
+              "一般": 3,
+              "符合": 4,
+              "非常符合": 5
+            },
+            "required_for": "observed_cas"
+          }
+        ]
+      },
+      {
+        "id": "Q4",
+        "title": "实际遇到的用药障碍",
+        "fields": [
+          {
+            "id": "reported_pattern",
+            "prompt": "在与第2题同一次规律用药经历里，未按原安排用药主要是哪种情况？",
+            "input": "single_choice",
+            "options": {
+              "none_reported": "该次经历未发生漏服或未按时用药",
+              "unintentional": "无意发生",
+              "intentional": "主动选择",
+              "both": "两种情况都发生过",
+              "uncertain": "不能判断"
+            }
+          },
+          {
+            "id": "barriers",
+            "prompt": "哪些原因实际导致你未按原安排用药？可多选；仅有顾虑但没有影响用药时不用勾选。",
+            "input": "multiple_choice",
+            "options": {
+              "forgot_or_habit_disrupted": "忘记服药，或作息及日常习惯改变后忘了服药",
+              "execution_or_access": "有意按计划服药，但步骤复杂、缺药、配药或购药困难，导致未能按计划用药",
+              "knowledge_or_necessity_gap": "因为没有理解用药方法、用途或继续用药的必要性，选择推迟或略过",
+              "medication_concern_or_resistance": "因为担心药物影响、怀疑效果或对继续服药有抵触，选择推迟或略过",
+              "mood_or_treatment_fatigue": "因为情绪低落或对长期用药感到疲惫，选择推迟或略过",
+              "social_context_and_life_conflict": "在工作、外出或公共场合的具体情境下，既发生过疏忽，也因隐私或情境冲突主动推迟或略过",
+              "other": "其他原因"
+            },
+            "visible_when": "reported_pattern in unintentional,intentional,both"
+          },
+          {
+            "id": "main_barrier",
+            "prompt": "如果其中一个是最主要的原因，请从已选项中指出。",
+            "input": "optional_selected_choice",
+            "from": "Q4.barriers"
+          }
+        ]
+      },
+      {
+        "id": "Q5",
+        "title": "用药方案与支持",
+        "visible_when": "voluntary_model_section",
+        "fields": [
+          {
+            "id": "drug_duration",
+            "prompt": "您持续服用该药物的时长是？",
+            "input": "single_choice",
+            "options": {
+              "不到1个月": 1,
+              "1-6个月": 2,
+              "6个月-1年": 3,
+              "1-3年": 4,
+              "3年以上": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "drug_count",
+            "prompt": "您每天需要服用几种不同的药物（含中药/保健品）？",
+            "input": "single_choice",
+            "options": {
+              "1种": 1,
+              "2-3种": 2,
+              "4-5种": 3,
+              "6种及以上": 4
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "drug_freq",
+            "prompt": "您每天需要用药几次？",
+            "input": "single_choice",
+            "options": {
+              "1次": 1,
+              "2次": 2,
+              "3次": 3,
+              "4次及以上": 4
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "special_requirements",
+            "prompt": "您的用药是否有以下特殊要求？",
+            "input": "multiple_choice",
+            "options": {
+              "req_before_meal": "需要饭前/空腹服用",
+              "req_after_meal": "需要饭后服用",
+              "req_diet": "有饮食禁忌（如不能碰酒精、葡萄柚等）",
+              "req_prepare": "需要自行配制或特殊处理（如熬中药、冷藏保存等）",
+              "req_inject": "需要定时注射",
+              "req_none": "以上均无"
+            },
+            "exclusive": "req_none",
+            "required_for": "model_input"
+          },
+          {
+            "id": "drug_type",
+            "prompt": "您最主要服用的是哪一类药物？",
+            "input": "single_choice",
+            "options": {
+              "中药/中成药（需自行煎煮或冲剂）": "drug_中药/中成药（需自行煎煮或冲剂）",
+              "外用药（药膏、贴剂等）": "drug_外用药（药膏、贴剂等）",
+              "心血管类药物（降压、降脂、抗凝等）": "drug_心血管类药物（降压、降脂、抗凝等）",
+              "消化系统/肠胃类药物": "drug_消化系统/肠胃类药物",
+              "激素类药物（甲状腺、糖尿病等）": "drug_激素类药物（甲状腺、糖尿病等）",
+              "精神/神经系统药物（抗抑郁、抗焦虑、安眠等）": "drug_精神/神经系统药物（抗抑郁、抗焦虑、安眠等）",
+              "靶向药/免疫抑制剂": "drug_靶向药/免疫抑制剂",
+              "其他": "archive_reference_category"
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "followup",
+            "prompt": "您是否按照医生建议的时间定期复诊？",
+            "input": "single_choice",
+            "options": {
+              "总是按时复诊": 4,
+              "大部分时候会去": 3,
+              "偶尔会去": 2,
+              "基本不去复诊": 1
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "social_support",
+            "prompt": "在您目前的用药过程中，家人或身边的人给您提供的主要是哪类支持？",
+            "input": "single_choice",
+            "options": {
+              "单纯口头提醒我用药": 1,
+              "鼓励和支持我坚持治疗（情感支持）": 2,
+              "严格监督我每次用药（有时会让我感到压力）": 3,
+              "基本不过问我的用药情况": 4
+            },
+            "required_for": "model_input"
+          }
+        ]
+      },
+      {
+        "id": "Q6",
+        "title": "用药感受与生活情境",
+        "visible_when": "voluntary_model_section",
+        "fields": [
+          {
+            "id": "meal_irregular",
+            "prompt": "我经常三餐不定时，导致我常常错过了需要饭前或饭后服用的药物服用时间",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "life_unstable",
+            "prompt": "我的生活是不稳定的（充满出差、旅游或突发加班等不可控因素），影响规律用药",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "side_effect",
+            "prompt": "我担心用药后的副作用（如犯困、恶心、药物依赖等）影响我的学习或工作",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "worry_worsen",
+            "prompt": "我认为如果不严格按医嘱用药，我的健康状况会恶化或出现其他并发症",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "fatigue",
+            "prompt": "长期用药让我感到疲惫或厌烦，有时会产生不想再吃了的念头",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "cost_burden",
+            "prompt": "药物费用较高或报销比例低，给我或家庭带来了经济负担",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "skip_belief",
+            "prompt": "我认为偶尔漏服一两次药对身体没太大影响",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "stop_control",
+            "prompt": "当我感觉病情得到控制时，我会认为没有必要再继续用药了",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "emotion_impact",
+            "prompt": "当我心情低落、焦虑或有其他情绪波动时，我更容易忘记或不想用药",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "lose_confidence",
+            "prompt": "当我感觉病情加重时，我会对当前药物失去信心并自行停药",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "public_pressure",
+            "prompt": "在公共场合用药时，我会担心他人的目光或因药物味道、使用方式等原因感到不自在",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          }
+        ]
+      },
+      {
+        "id": "Q7",
+        "title": "用药信心、工具接受与健康信息理解",
+        "visible_when": "voluntary_model_section",
+        "fields": [
+          {
+            "id": "self_efficacy",
+            "prompt": "我有信心能坚持长期用药方案",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "tech_accept",
+            "prompt": "如果有一款智能设备或App能帮助我管理用药，我愿意尝试使用",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "health_literacy",
+            "prompt": "我能理解医生或药师给我的用药指导",
+            "input": "single_choice",
+            "options": {
+              "非常不同意": 1,
+              "不同意": 2,
+              "一般": 3,
+              "同意": 4,
+              "非常同意": 5
+            },
+            "required_for": "model_input"
+          }
+        ]
+      },
+      {
+        "id": "Q8",
+        "title": "用药经历和个人背景",
+        "visible_when": "voluntary_model_section",
+        "fields": [
+          {
+            "id": "stable_experience",
+            "prompt": "在过去半年内，您是否有稳定服药（连续一周以上服药或按特定周期定期服药）的经历？",
+            "input": "single_choice",
+            "options": {
+              "是": true,
+              "否": false
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "age",
+            "prompt": "请选择您的年龄段",
+            "input": "single_choice",
+            "options": {
+              "18岁以下": 1,
+              "18-25岁": 2,
+              "26-35岁": 3,
+              "36-45岁": 4,
+              "46-64岁": 5,
+              "65岁以上": 6
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "gender",
+            "prompt": "请选择您的性别",
+            "input": "single_choice",
+            "options": {
+              "男": 1,
+              "女": 0
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "income",
+            "prompt": "您目前的月收入状况",
+            "input": "single_choice",
+            "options": {
+              "3000元以下": 1,
+              "3000-5000元": 2,
+              "5000-10000元": 3,
+              "10000元以上": 4
+            },
+            "required_for": "model_input"
+          },
+          {
+            "id": "living",
+            "prompt": "您目前的居住状态",
+            "input": "single_choice",
+            "options": {
+              "独居": 1,
+              "与伴侣/家人同住": 0,
+              "与室友/朋友同住": 0,
+              "其他": 0
+            },
+            "required_for": "model_input"
+          }
+        ]
+      }
+    ]
+  },
+  "observed_cas": {
+    "identifier": "cas_observed",
+    "calculation": "Q1.knowledge + score(Q2.adherence_freq) + 6 - Q3.difficulty",
+    "type": "integer",
+    "range": [
+      3,
+      15
+    ],
+    "only_for_valid_self_report": true,
+    "incomplete": {
+      "value": null,
+      "status": "insufficient"
+    },
+    "invalid": "reject",
+    "uses_model": false
+  },
+  "original_predictor": {
+    "predicted_output": "cas_predicted",
+    "target": "CAS",
+    "arity": 21,
+    "required_model_weights": "unavailable_in_2.0_materials",
+    "inference_enabled": false,
+    "ordered_feature_names": [
+      "age",
+      "gender",
+      "income",
+      "live_alone",
+      "duration",
+      "complexity_z",
+      "social_support",
+      "followup",
+      "drug_中药/中成药（需自行煎煮或冲剂）",
+      "drug_外用药（药膏、贴剂等）",
+      "drug_心血管类药物（降压、降脂、抗凝等）",
+      "drug_消化系统/肠胃类药物",
+      "drug_激素类药物（甲状腺、糖尿病等）",
+      "drug_精神/神经系统药物（抗抑郁、抗焦虑、安眠等）",
+      "drug_靶向药/免疫抑制剂",
+      "F1_adherence_resistance",
+      "F2_burden_perception",
+      "F3_lifestyle_regularity",
+      "self_efficacy",
+      "tech_accept",
+      "health_literacy"
+    ],
+    "required_sources": [
+      "explicit completed Q5–Q8 with original coding",
+      "historically fitted transforms and verified model artifacts"
+    ],
+    "do_not_use": [
+      "cas_observed",
+      "knowledge",
+      "adherence_freq",
+      "difficulty",
+      "Q4 descriptive tags",
+      "objective record ratio"
+    ],
+    "direct_maps": {
+      "age": {
+        "18岁以下": 1,
+        "18-25岁": 2,
+        "26-35岁": 3,
+        "36-45岁": 4,
+        "46-64岁": 5,
+        "65岁以上": 6
+      },
+      "gender": {
+        "男": 1,
+        "女": 0
+      },
+      "income": {
+        "3000元以下": 1,
+        "3000-5000元": 2,
+        "5000-10000元": 3,
+        "10000元以上": 4
+      },
+      "duration": {
+        "不到1个月": 1,
+        "1-6个月": 2,
+        "6个月-1年": 3,
+        "1-3年": 4,
+        "3年以上": 5
+      },
+      "social_support": {
+        "单纯口头提醒我用药": 1,
+        "鼓励和支持我坚持治疗（情感支持）": 2,
+        "严格监督我每次用药（有时会让我感到压力）": 3,
+        "基本不过问我的用药情况": 4
+      },
+      "followup": {
+        "总是按时复诊": 4,
+        "大部分时候会去": 3,
+        "偶尔会去": 2,
+        "基本不去复诊": 1
+      },
+      "living_to_live_alone": {
+        "独居": 1,
+        "与伴侣/家人同住": 0,
+        "与室友/朋友同住": 0,
+        "其他": 0
+      }
+    },
+    "drug_dummy": {
+      "baseline_label": "其他",
+      "fields": [
+        "drug_中药/中成药（需自行煎煮或冲剂）",
+        "drug_外用药（药膏、贴剂等）",
+        "drug_心血管类药物（降压、降脂、抗凝等）",
+        "drug_消化系统/肠胃类药物",
+        "drug_激素类药物（甲状腺、糖尿病等）",
+        "drug_精神/神经系统药物（抗抑郁、抗焦虑、安眠等）",
+        "drug_靶向药/免疫抑制剂"
+      ]
+    },
+    "complexity": {
+      "formula": "sum((value - mean) / std over each element)",
+      "axis_order": [
+        "drug_count",
+        "drug_freq",
+        "special_requirements_count"
+      ],
+      "count_map": {
+        "1种": 1,
+        "2-3种": 2,
+        "4-5种": 3,
+        "6种及以上": 4
+      },
+      "frequency_map": {
+        "1次": 1,
+        "2次": 2,
+        "3次": 3,
+        "4次及以上": 4
+      },
+      "requirement_fields": [
+        "req_before_meal",
+        "req_after_meal",
+        "req_diet",
+        "req_prepare",
+        "req_inject"
+      ],
+      "requires_exclusive_none_for_zero": true,
+      "reference_ddof": 1,
+      "mean": [
+        1.7312714776632303,
+        2.01786941580756,
+        1.5402061855670104
+      ],
+      "std": [
+        0.6391229094425951,
+        0.7406154710245416,
+        0.8323736538878496
+      ]
+    },
+    "factor_projection": {
+      "kind": "PCA factor scores recovered from archived numeric outputs, not rotated loadings in the PDF",
+      "formula": "(x - center) @ components_input_by_output",
+      "source_inputs": [
+        "meal_irregular",
+        "life_unstable",
+        "side_effect",
+        "worry_worsen",
+        "fatigue",
+        "cost_burden",
+        "skip_belief",
+        "stop_control",
+        "emotion_impact",
+        "lose_confidence",
+        "public_pressure",
+        "self_efficacy",
+        "tech_accept",
+        "health_literacy"
+      ],
+      "outputs": [
+        "F1_adherence_resistance",
+        "F2_burden_perception",
+        "F3_lifestyle_regularity"
+      ],
+      "center": [
+        2.2714776632302405,
+        2.174570446735395,
+        2.729896907216495,
+        3.6556701030927834,
+        2.8171821305841926,
+        2.4804123711340207,
+        3.109278350515464,
+        2.6357388316151202,
+        2.841237113402062,
+        2.4714776632302407,
+        2.4123711340206184,
+        4.000687285223368,
+        4.5079037800687285,
+        4.472164948453608
+      ],
+      "components_input_by_output": [
+        [
+          0.2867493006313152,
+          0.010128418519957466,
+          0.4970173508549501
+        ],
+        [
+          0.29462933791648704,
+          0.06818133380138337,
+          0.6710903001106617
+        ],
+        [
+          0.30504364912886767,
+          0.33072636927901833,
+          -0.2214032996530167
+        ],
+        [
+          0.02947435010896768,
+          0.5118390029297855,
+          -0.2943247072999292
+        ],
+        [
+          0.3737329885737332,
+          0.06443869097932822,
+          -0.08206501640436137
+        ],
+        [
+          0.26105575697490224,
+          0.3906896622839055,
+          -0.09437442561785994
+        ],
+        [
+          0.2536644044459342,
+          -0.5030462533627463,
+          -0.22966508236077837
+        ],
+        [
+          0.32728052845754485,
+          -0.36434373580755386,
+          -0.20878997675097463
+        ],
+        [
+          0.38460277395166287,
+          -0.08191825435539152,
+          -0.12016966056154926
+        ],
+        [
+          0.3309773648078851,
+          -0.09950102976615688,
+          -0.17582830386124154
+        ],
+        [
+          0.28572923293216573,
+          0.21801634151558652,
+          0.03653692621728555
+        ],
+        [
+          -0.13210017419617748,
+          0.10059058016336343,
+          -0.07938706280117935
+        ],
+        [
+          -0.009111502171005844,
+          0.0468679236305673,
+          -0.031150511011008748
+        ],
+        [
+          -0.03351742019945372,
+          0.06956816136369352,
+          -0.031947726592396836
+        ]
+      ]
+    },
+    "deep_learning_standard_scaler": {
+      "formula": "float32((encoded - mean) / scale)",
+      "reference_ddof": 0,
+      "ordered_feature_names": [
+        "age",
+        "gender",
+        "income",
+        "live_alone",
+        "duration",
+        "complexity_z",
+        "social_support",
+        "followup",
+        "drug_中药/中成药（需自行煎煮或冲剂）",
+        "drug_外用药（药膏、贴剂等）",
+        "drug_心血管类药物（降压、降脂、抗凝等）",
+        "drug_消化系统/肠胃类药物",
+        "drug_激素类药物（甲状腺、糖尿病等）",
+        "drug_精神/神经系统药物（抗抑郁、抗焦虑、安眠等）",
+        "drug_靶向药/免疫抑制剂",
+        "F1_adherence_resistance",
+        "F2_burden_perception",
+        "F3_lifestyle_regularity",
+        "self_efficacy",
+        "tech_accept",
+        "health_literacy"
+      ],
+      "mean": [
+        3.308591065292096,
+        0.4247422680412371,
+        2.8872852233676976,
+        0.10446735395189004,
+        2.5106529209621993,
+        5.490071932768386e-17,
+        2.029553264604811,
+        3.2109965635738833,
+        0.2549828178694158,
+        0.08178694158075601,
+        0.17938144329896907,
+        0.27903780068728523,
+        0.06323024054982818,
+        0.09690721649484536,
+        0.010309278350515464,
+        -1.3917847401486498e-16,
+        4.028850563588197e-17,
+        1.7198918883196584e-16,
+        4.000687285223368,
+        4.5079037800687285,
+        4.472164948453608
+      ],
+      "scale": [
+        1.0289428771590052,
+        0.4943038273981134,
+        0.955905779995291,
+        0.3058658626100308,
+        1.1983909257031407,
+        2.1618538991740843,
+        0.8764694914825378,
+        0.7689078499892714,
+        0.43585155782764656,
+        0.27403984704349277,
+        0.38367139729063177,
+        0.4485261491539693,
+        0.24337661602922678,
+        0.2958313842141582,
+        0.10100988630033883,
+        2.6986844847600655,
+        1.3044290886773882,
+        1.1208787883886486,
+        0.7155606326845739,
+        0.6235135486746817,
+        0.5376688133607236
+      ],
+      "note": "Reconstruction of preprocessing used for the historical analysis. Original script fits the scaler before data split. Carry that limitation into historical result interpretation. No per-person or batch refit."
+    },
+    "scope_notes": [
+      "For OLS and RF see original separate training route; do not inherit DL scaling without model provenance.",
+      "Profile.cas existing estimated status is reserved for verified inference. Do not populate it with observed CAS under the current API contract.",
+      "Original survey screening must be yes for model prediction. Unknown, unseen or changed scale wording is not remapped automatically."
+    ]
+  },
+  "rule_based_profile": {
+    "rule_version_candidate": "cas-eda-plus-reported-barrier-demo-v1",
+    "enabled_in_product": false,
+    "classification_bands": {
+      "low": [
+        3,
+        9
+      ],
+      "middle": [
+        10,
+        13
+      ],
+      "high": [
+        14,
+        15
+      ]
+    },
+    "bands_origin": "Existing EDA code pd.cut(bins=[2.5, 9, 13, 15.5], right=True). The adjacent legacy comment disagrees; code governs archival reproduction.",
+    "output": "primary_type and other reported matching barrier tags are distinct. No category is estimated by the model.",
+    "type_definitions": {
+      "A": {
+        "label": "维持型",
+        "gate": "high",
+        "entry_codes": []
+      },
+      "B1": {
+        "label": "遗忘与习惯缺失型",
+        "gate": "unintentional",
+        "entry_codes": [
+          "reminder"
+        ]
+      },
+      "B2": {
+        "label": "操作与外部条件受限型",
+        "gate": "unintentional",
+        "entry_codes": [
+          "organize_plan",
+          "social_support"
+        ]
+      },
+      "C1": {
+        "label": "用药认知不足型",
+        "gate": "intentional",
+        "entry_codes": [
+          "knowledge"
+        ]
+      },
+      "C2": {
+        "label": "用药顾虑与心理抗拒型",
+        "gate": "intentional",
+        "entry_codes": [
+          "ai_support",
+          "knowledge"
+        ]
+      },
+      "C3": {
+        "label": "情绪低落与用药疲劳型",
+        "gate": "intentional",
+        "entry_codes": [
+          "ai_support"
+        ]
+      },
+      "D1": {
+        "label": "社会情境与生活冲突型",
+        "gate": "both",
+        "entry_codes": [
+          "organize_plan",
+          "social_support"
+        ]
+      }
+    },
+    "reason_code_to_type": {
+      "forgot_or_habit_disrupted": "B1",
+      "execution_or_access": "B2",
+      "knowledge_or_necessity_gap": "C1",
+      "medication_concern_or_resistance": "C2",
+      "mood_or_treatment_fatigue": "C3",
+      "social_context_and_life_conflict": "D1",
+      "other": null
+    },
+    "ordered_rules": [
+      "If CAS missing/invalid or Q4 reported_pattern absent/uncertain, return no type.",
+      "If Q2 is 从不漏服 and Q4 reports an event, or Q2 reports an event and Q4 says no event, return no type and flag answers for review.",
+      "High band plus no event and no reported barriers yields A; otherwise leave the type null and retain reported facts.",
+      "Middle band preserves the research band and reported facts. Primary type is null.",
+      "Low band first filters Q4 cause options by matching reported pattern. both retains B and C tag evidence, and D1 matches only explicit social/context response plus both.",
+      "One eligible category becomes primary when there is no explicit main choice. With multiple categories, set primary only if the participant selected an eligible main cause. An explicit other or unsupported main choice is not replaced.",
+      "Keep other eligible categories as separate descriptive evidence, even if no primary type was selected. Do not auto-assign D1 from co-occurrence.",
+      "Entry codes only point to voluntary existing pages. No alert, family disclosure, clinical instruction or intervention intensity is generated."
+    ],
+    "fictional_boundary_fixtures": [
+      {
+        "cas_observed": 3,
+        "reported_pattern": "unintentional",
+        "barriers": [
+          "forgot_or_habit_disrupted"
+        ],
+        "main_barrier": null,
+        "primary_type": "B1",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "unintentional",
+        "barriers": [
+          "execution_or_access"
+        ],
+        "main_barrier": null,
+        "primary_type": "B2",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "intentional",
+        "barriers": [
+          "knowledge_or_necessity_gap"
+        ],
+        "main_barrier": null,
+        "primary_type": "C1",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "intentional",
+        "barriers": [
+          "medication_concern_or_resistance"
+        ],
+        "main_barrier": null,
+        "primary_type": "C2",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "intentional",
+        "barriers": [
+          "mood_or_treatment_fatigue"
+        ],
+        "main_barrier": null,
+        "primary_type": "C3",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "both",
+        "barriers": [
+          "social_context_and_life_conflict"
+        ],
+        "main_barrier": null,
+        "primary_type": "D1",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "both",
+        "barriers": [
+          "forgot_or_habit_disrupted",
+          "medication_concern_or_resistance"
+        ],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": [
+          "B1",
+          "C2"
+        ]
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "both",
+        "barriers": [
+          "forgot_or_habit_disrupted",
+          "medication_concern_or_resistance"
+        ],
+        "main_barrier": "forgot_or_habit_disrupted",
+        "primary_type": "B1",
+        "reported_matching_types": [
+          "C2"
+        ]
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "uncertain",
+        "barriers": [],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 10,
+        "reported_pattern": "none_reported",
+        "barriers": [],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 13,
+        "reported_pattern": "none_reported",
+        "barriers": [],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 14,
+        "reported_pattern": "none_reported",
+        "barriers": [],
+        "main_barrier": null,
+        "primary_type": "A",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 15,
+        "reported_pattern": "none_reported",
+        "barriers": [],
+        "main_barrier": null,
+        "primary_type": "A",
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 15,
+        "reported_pattern": "intentional",
+        "barriers": [
+          "medication_concern_or_resistance"
+        ],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": null,
+        "reported_pattern": "unintentional",
+        "barriers": [
+          "forgot_or_habit_disrupted"
+        ],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "unintentional",
+        "barriers": [
+          "medication_concern_or_resistance"
+        ],
+        "main_barrier": null,
+        "primary_type": null,
+        "reported_matching_types": []
+      },
+      {
+        "cas_observed": 9,
+        "reported_pattern": "both",
+        "barriers": [
+          "other",
+          "forgot_or_habit_disrupted"
+        ],
+        "main_barrier": "other",
+        "primary_type": null,
+        "reported_matching_types": [
+          "B1"
+        ]
+      }
+    ]
+  },
+  "local_validation": {
+    "columns_in_source": 57,
+    "rows_compared": 1455,
+    "exact_observed_cas_matches": 1455,
+    "exploratory_cas_group_counts": {
+      "high": 230,
+      "low": 272,
+      "middle": 953
+    },
+    "all_21_columns_checked": true,
+    "max_abs_feature_reproduction_error": 3.397282455352979e-14,
+    "max_abs_complexity_reproduction_error": 3.108624468950438e-14,
+    "max_abs_factor_reproduction_error": 3.397282455352979e-14,
+    "max_abs_standardized_float32_error": 0.0,
+    "fictional_classification_cases": 17,
+    "evidence_scope": "Historical replay plus synthetic rule boundaries. Does not prove clinical validity, category accuracy, new-user questionnaire equivalence, or real model inference."
+  },
+  "reference_files": [
+    "clean_data.csv",
+    "feature_engineering.py",
+    "features_with_factors.csv",
+    "efa_analysis.py",
+    "建模分析报告.pdf",
+    "eda_analysis.py",
+    "dl_modeling.py",
+    "现有 O 画像字段卡",
+    "用户分类图"
+  ]
+}

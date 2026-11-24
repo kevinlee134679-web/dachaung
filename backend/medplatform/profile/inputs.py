@@ -11,7 +11,14 @@ class ResponseCreate(Input):
 
 
 class Answer(Input):
-    state: Literal["answered", "unknown", "not_applicable", "not_answered"]
+    state: Literal[
+        "answered",
+        "unknown",
+        "not_applicable",
+        "not_answered",
+        "declined",
+        "prefer_not_to_answer",
+    ]
     value: dict | None
 
     @model_validator(mode="after")
@@ -36,6 +43,7 @@ class AnswersPut(Input):
 class Submit(Input):
     expected_revision: Version
     confirmed: Literal[True]
+    same_episode: bool | None = None
 
 
 class ProfileCreate(Input):

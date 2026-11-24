@@ -20,7 +20,9 @@ import {
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { definitionSchema, responseSchema } from './answers'
+import { generateProfile } from './profile'
 import { QuestionForm } from './question-form'
+import { ReviewForm } from './review-form'
 
 let lastQuestion: { responseId: string; index: number } | null = null
 
@@ -28,9 +30,16 @@ export function QuestionnairePage(props: {
   onSubmitted?: (response: Response, view: View) => Promise<void>
 }): JSX.Element {
   const [definition, setDefinition] = createSignal<Definition | null>(null)
+  const [latestVersion, setLatestVersion] = createSignal('')
   const [question, setQuestion] = createSignal<Question | null>(null)
   const allowed = untrack(() => scope('questionnaire:assist'))
   const view = untrack(captureView)
+  async function generateAndView(response: Response, actionView: View): Promise<void> {
+    await generateProfile(response.response_id, actionView)
+    requireCurrentView(actionView)
+    navigate('profile', 'assessment')
+  }
+  const afterSubmission = props.onSubmitted ?? (own() ? generateAndView : undefined)
 
   function publish(response: Response, index: number): void {
     requireCurrentView(view)
@@ -57,7 +66,9 @@ export function QuestionnairePage(props: {
             response = await api(`/questionnaire-responses/${reference}`, responseSchema, 'GET', null, view)
             requireCurrentView(view)
             if (response.status === 'draft') {
-              const pending = Object.values(response.answers).findIndex(answer => answer.state === 'not_answered')
+              const pending = Object.values<{ state: string }>(response.answers).findIndex(
+                answer => answer.state === 'not_answered',
+              )
               index = pending < 0 ? 7 : pending
             }
           } catch (error) {
@@ -67,7 +78,19 @@ export function QuestionnairePage(props: {
           }
         }
         requireCurrentView(view)
-        setDefinition(result)
+        const savedDefinition =
+          response && response.questionnaire_version !== result.version
+            ? await api(
+                `/questionnaires/initial?version=${encodeURIComponent(response.questionnaire_version)}`,
+                definitionSchema,
+                'GET',
+                null,
+                view,
+              )
+            : result
+        requireCurrentView(view)
+        setLatestVersion(result.version)
+        setDefinition(savedDefinition)
         if (response) publish(response, index)
       } catch (error) {
         if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view)
@@ -87,6 +110,17 @@ export function QuestionnairePage(props: {
       actionView,
     )
     requireCurrentView(actionView)
+    if (definition()?.version !== version) {
+      const next = await api(
+        `/questionnaires/initial?version=${encodeURIComponent(version)}`,
+        definitionSchema,
+        'GET',
+        null,
+        actionView,
+      )
+      requireCurrentView(actionView)
+      setDefinition(next)
+    }
     localStorage.setItem(referenceKey('questionnaire'), response.response_id)
     publish(response, 0)
   }
@@ -129,17 +163,32 @@ export function QuestionnairePage(props: {
                           查看画像结果
                         </Button>
                       </Show>
-                      <Button onAction={async view => start(view, loaded().version, current.response)}>
-                        重新填写或更正
+                      <Button onAction={async view => start(view, latestVersion(), current.response)}>
+                        重新填写本次问卷
                       </Button>
                     </div>
                   </Card>
                 }
               >
                 <Show when={loaded().themes[current.index]} keyed>
-                  {theme => (
-                    <QuestionForm question={current} theme={theme} onSaved={publish} onSubmitted={props.onSubmitted} />
-                  )}
+                  {theme =>
+                    current.response.questionnaire_version === 'initial-v0.1' ? (
+                      <QuestionForm
+                        question={{ response: current.response, index: current.index }}
+                        theme={theme}
+                        onSaved={publish}
+                        onSubmitted={afterSubmission}
+                      />
+                    ) : (
+                      <ReviewForm
+                        response={current.response}
+                        index={current.index}
+                        theme={theme}
+                        onSaved={publish}
+                        onSubmitted={afterSubmission}
+                      />
+                    )
+                  }
                 </Show>
               </Show>
             )}

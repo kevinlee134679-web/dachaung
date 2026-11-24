@@ -15,6 +15,7 @@ from ..core.config import Settings, load_settings
 from ..core.database import Database
 from ..core.errors import AppError, SchemaError
 from ..core.migrations import status
+from ..profile import mapped_review, retrained
 from .models import ConfigStatus, Envelope, Health
 from .registry import ModuleRegistry
 
@@ -70,7 +71,12 @@ def create_app(
     from ..support.services.service import Services
     from .routes import router as domain_router
 
-    service = IdentityService(db, clock or now)
+    cas_predictor = (
+        retrained.Predictor.load(settings.CAS_RETRAINED_BUNDLE)
+        if settings.CAS_RETRAINED_BUNDLE
+        else None
+    )
+    service = IdentityService(db, clock or now, cas_predictor=cas_predictor)
     records = record_routes.Records(db, service.auth, service.receipts, clock or now)
     analytics = analytics_routes.Analytics(db, service.auth, clock or now, records)
     execution = execution_routes.Execution(
@@ -310,13 +316,25 @@ def create_app(
                 "model_connectivity": "unverified",
                 "capabilities": [
                     {"code": "foundation_storage", "available": True, "reason": None},
+                    {
+                        "code": "cas_observed",
+                        "available": True,
+                        "reason": "新版问卷本人同次经历的三题自报计分",
+                    },
+                    {
+                        "code": "cas",
+                        "available": cas_predictor is not None,
+                        "reason": f"本机研究演示使用重训模型 {retrained.MODEL}"
+                        if cas_predictor
+                        else "本机未启用 CAS 研究预测",
+                    },
                     *[
                         {
                             "code": code,
                             "available": False,
                             "reason": "尚未到对应业务阶段或真实依赖未接入",
                         }
-                        for code in ("system_notification", "external_auth", "cas")
+                        for code in ("system_notification", "external_auth")
                     ],
                     {
                         "code": "dialogue",
@@ -356,6 +374,26 @@ def create_app(
                 "version_refs": [
                     {"kind": "application", "version": __version__},
                     {"kind": "schema", "version": f"{schema:04d}"},
+                    {"kind": "questionnaire", "version": mapped_review.VERSION},
+                    {"kind": "input_mapping", "version": mapped_review.INPUT_MAPPING},
+                    {
+                        "kind": "assessment_method",
+                        "version": retrained.METHOD
+                        if cas_predictor
+                        else mapped_review.METHOD,
+                    },
+                    *(
+                        [
+                            {"kind": "cas_model", "version": retrained.MODEL},
+                            {
+                                "kind": "cas_preprocessing",
+                                "version": retrained.PREPROCESSING,
+                            },
+                        ]
+                        if cas_predictor
+                        else []
+                    ),
+                    {"kind": "classification_rule", "version": mapped_review.RULE},
                     {"kind": "contract", "version": "flow-v0.1"},
                     {"kind": "contract", "version": "B-v0.4"},
                     {"kind": "contract", "version": "C-v0.2"},

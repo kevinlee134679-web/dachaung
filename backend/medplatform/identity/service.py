@@ -27,9 +27,17 @@ from ..core.errors import AppError
 from ..core.idempotency import Receipts, Result
 from ..core.protection import protect
 from ..medication.schedule import SHANGHAI, insert_slot, occurrences, require_coverage
-from ..profile.questionnaire import VERSION, definition, descriptive_profile
+from ..profile import cas_review, mapped_review, retrained
+from ..profile.questionnaire import (
+    VERSION,
+    definition,
+    descriptive_profile,
+    validate_answers,
+)
 from .auth import Principal
 from .authority import PersistentAuthority
+
+REVIEW_VERSIONS = {m.VERSION: m for m in (cas_review, mapped_review)}
 
 RESOURCE_KINDS = {
     "revoke_binding": "FamilyBinding",
@@ -114,8 +122,9 @@ def seed_demo(db, clock=now):
 
 
 class IdentityService:
-    def __init__(self, db, clock=now):
+    def __init__(self, db, clock=now, *, cas_predictor=None):
         self.db, self.clock = db, clock
+        self.cas_predictor = cas_predictor
         self.auth = PersistentAuthority(db, clock)
         self.receipts = Receipts(db, clock)
         self.file_root = db.path.parent / "files-demo"
@@ -241,6 +250,23 @@ class IdentityService:
             self.authorize(c, action, principal, params, body)
             doc = self.resource(c, action, params)
             patient = params.get("p") or (doc["patient_id"] if doc else None)
+            if action == "answers":
+                if review := REVIEW_VERSIONS.get(doc["questionnaire_version"]):
+                    review.validate_answers(body["answers"])
+                else:
+                    if any(
+                        a["state"] in ("declined", "prefer_not_to_answer")
+                        for a in body["answers"].values()
+                    ):
+                        raise AppError(
+                            422, "INVALID_ANSWER", "旧版问卷不支持此作答状态"
+                        )
+                    try:
+                        validate_answers(body["answers"])
+                    except ValueError, KeyError, TypeError:
+                        raise AppError(
+                            422, "INVALID_ANSWER", "请核对原版问卷选项"
+                        ) from None
             if is_read:
                 result = self.read(c, action, principal, params, query)
                 self.authorize(c, action, principal, params, body)
@@ -363,12 +389,39 @@ class IdentityService:
                 ),
             )
         if action == "definition":
-            if q.get("version", VERSION) != VERSION:
+            version = q.get("version", mapped_review.VERSION)
+            if review := REVIEW_VERSIONS.get(version):
+                return review.definition()
+            if version != VERSION:
                 raise AppError(404, "QUESTIONNAIRE_VERSION_NOT_FOUND", "问卷版本不可用")
             return definition()
         if action in ("response", "profile", "plan", "file", "draft"):
             return doc
         if action == "current_profile":
+            if q.get("source") == "latest_submission":
+                self.auth.require_patient(principal, p, "", c, self_only=True)
+                submission = c.execute(
+                    """SELECT json_extract(document_json, '$.response_id') AS response_id,
+                              json_extract(document_json, '$.submitted_at') AS submitted_at
+                       FROM s02_documents
+                       WHERE patient_id=? AND resource_type='QuestionnaireResponse'
+                         AND json_extract(document_json, '$.status')='submitted'
+                       ORDER BY submitted_at DESC, rowid DESC LIMIT 1""",
+                    (p,),
+                ).fetchone()
+                if submission is None:
+                    raise AppError(404, "PROFILE_NOT_AVAILABLE", "尚无已提交的问卷")
+                saved = c.execute(
+                    """SELECT document_json FROM s02_documents
+                       WHERE patient_id=? AND resource_type='Profile'
+                         AND json_extract(document_json, '$.response_id')=?
+                       ORDER BY rowid DESC LIMIT 1""",
+                    (p, submission["response_id"]),
+                ).fetchone()
+                return {
+                    **dict(submission),
+                    "profile": json.loads(saved[0]) if saved else None,
+                }
             profiles = all_docs(c, "Profile", p)
             if not profiles:
                 raise AppError(404, "PROFILE_NOT_AVAILABLE", "尚未创建画像结果")
@@ -688,7 +741,8 @@ class IdentityService:
                 resource_id=identifier,
             )
         if action == "response_create":
-            if b["questionnaire_version"] != VERSION:
+            version = b["questionnaire_version"]
+            if version != VERSION and version not in REVIEW_VERSIONS:
                 raise AppError(404, "QUESTIONNAIRE_VERSION_NOT_FOUND", "问卷版本不可用")
             own = self.auth.is_self(principal, p, c)
             mode = "self" if own else "family_assisted"
@@ -704,11 +758,12 @@ class IdentityService:
             }
             if b.get("supersedes_response_id"):
                 source = get(c, "QuestionnaireResponse", b["supersedes_response_id"])
-                answers = copy.deepcopy(source["answers"])
+                if version == source["questionnaire_version"] == VERSION:
+                    answers = copy.deepcopy(source["answers"])
             new = {
                 "response_id": identifier,
                 "patient_id": p,
-                "questionnaire_version": VERSION,
+                "questionnaire_version": version,
                 "respondent_account_id": principal.account_id,
                 "respondent_mode": mode,
                 "status": "draft",
@@ -742,7 +797,11 @@ class IdentityService:
                             "updated_at": at,
                         }
             else:
-                if any(a["state"] == "not_answered" for a in doc["answers"].values()):
+                if doc["questionnaire_version"] in REVIEW_VERSIONS:
+                    new["same_episode"] = b.get("same_episode")
+                elif "same_episode" in b:
+                    raise AppError(422, "INVALID_ANSWER", "旧版问卷不含经历确认字段")
+                elif any(a["state"] == "not_answered" for a in doc["answers"].values()):
                     raise AppError(
                         422,
                         "INVALID_ANSWER",
@@ -760,10 +819,33 @@ class IdentityService:
                 raise AppError(404, "RESOURCE_NOT_FOUND", "资源不可访问")
             if response["status"] != "submitted":
                 raise AppError(409, "RESPONSE_NOT_SUBMITTED", "请先明确提交问卷修订")
+            review = REVIEW_VERSIONS.get(response["questionnaire_version"])
+            predictor = self.cas_predictor if review is mapped_review else None
+            method = (
+                retrained.METHOD if predictor else review.METHOD if review else None
+            )
             for profile in all_docs(c, "Profile", p):
                 if (
                     profile["response_id"] == b["response_id"]
-                    and profile["assessment_method_version"] is None
+                    and profile["assessment_method_version"] == method
+                    and (
+                        not predictor
+                        or (
+                            profile["cas"]["model_version"] == retrained.MODEL
+                            and profile["cas"]["preprocessing_version"]
+                            == retrained.PREPROCESSING
+                            and profile["cas"]["status"]
+                            in ("estimated", "insufficient")
+                        )
+                    )
+                    and (
+                        not review
+                        or (
+                            profile.get("input_mapping_version") == review.INPUT_MAPPING
+                            and profile.get("classification_rule_version")
+                            == review.RULE
+                        )
+                    )
                 ):
                     return Result(
                         profile,
@@ -772,11 +854,21 @@ class IdentityService:
                         resource_id=profile["profile_id"],
                     )
             identifier = uid()
+            assessment = (
+                review.assess(response) if review else descriptive_profile(response)
+            )
+            if predictor:
+                prediction = predictor.assess(response)
+                assessment.update(
+                    cas=prediction,
+                    cas_predicted=prediction,
+                    assessment_method_version=method,
+                )
             new = {
                 "profile_id": identifier,
                 "patient_id": p,
                 "response_id": b["response_id"],
-                **descriptive_profile(response),
+                **assessment,
                 "questionnaire_version": response["questionnaire_version"],
                 "generated_at": at,
                 "meta": meta(at),
