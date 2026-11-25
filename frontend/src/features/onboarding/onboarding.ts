@@ -14,7 +14,7 @@ import {
 
 export type OnboardingStep = 'questionnaire' | 'medication'
 
-export async function resolveOnboarding(view: View = captureView()): Promise<void> {
+export async function resolveOnboarding(view: View = captureView()): Promise<boolean> {
   let step: OnboardingStep | null = null
   if (own() && !isDemoAdmin()) {
     const skipped = (sessionStorage.getItem(referenceKey('onboarding-skipped')) ?? '').split(',')
@@ -35,6 +35,7 @@ export async function resolveOnboarding(view: View = captureView()): Promise<voi
   updateSession(draft => {
     draft.onboarding = step
   })
+  return step !== null
 }
 
 export async function skipOnboarding(step: OnboardingStep): Promise<void> {

@@ -1,95 +1,50 @@
-import type { View } from '../../session/session'
 import type { Entry, Medication } from './drafts'
 import type { JSX } from '@solidjs/web'
 import { createSignal, For, Show, untrack } from 'solid-js'
 import { Button } from '../../ui/button'
 import { Disclosure } from '../../ui/disclosure'
 import { Field, Fieldset, Input, Select } from '../../ui/form'
-import { Text } from '../../ui/typography'
 import { ScheduleFields } from './schedule-fields'
 
 export function EntryEditor(props: {
   entry: Entry
   index: number
   meds: Medication[]
-  suggestedName?: string | undefined
-  addMedication?: ((view: View, name: string, notes: string | null) => Promise<Medication>) | undefined
+  allowNew?: boolean
   removable: boolean
   remove: () => void
 }): JSX.Element {
   const entry = untrack(() => props.entry)
-  const [selected, setSelected] = createSignal(entry.medication_id)
-  const [search, setSearch] = createSignal('')
-  const [adding, setAdding] = createSignal(false)
-  let name!: HTMLInputElement
-  let notes!: HTMLInputElement
+  const [selected, setSelected] = createSignal(entry.new_medication_name !== undefined ? 'new' : entry.medication_id)
 
   function select(id: string): void {
-    entry.medication_id = id
+    entry.medication_id = id === 'new' ? '' : id
+    if (id === 'new') entry.new_medication_name = ''
+    else delete entry.new_medication_name
     setSelected(id)
-  }
-
-  async function add(view: View): Promise<void> {
-    if (!props.addMedication) return
-    const value = name.value.trim()
-    if (!value) throw new Error('请输入药品名称。')
-    const result = await props.addMedication(view, value, notes.value.trim() || null)
-    setSearch('')
-    select(result.medication_id)
-    setAdding(false)
   }
 
   return (
     <Fieldset legend={`药品条目 ${props.index + 1}`}>
-      <Show when={props.suggestedName}>{suggestion => <Text>资料候选药名 · {suggestion()}</Text>}</Show>
-      <Show when={entry.source_file_ids.length}>
-        <Text>关联 {entry.source_file_ids.length} 份用药原资料</Text>
-      </Show>
       <div class="grid gap-4 md:grid-cols-2">
-        <Show when={props.meds.length > 5}>
-          <Field label="搜索已有药品">
-            <Input
-              value={search()}
-              onInput={event => {
-                setSearch(event.currentTarget.value)
-              }}
-            />
-          </Field>
-        </Show>
         <Field label="选择已有药品">
           <Select value={selected()} onChange={event => select(event.currentTarget.value)}>
             <option value="">请选择药品</option>
-            <For each={props.meds}>
-              {med => (
-                <Show
-                  when={
-                    med.medication_id === selected() ||
-                    med.name.toLocaleLowerCase().includes(search().trim().toLocaleLowerCase())
-                  }
-                >
-                  <option value={med.medication_id}>{med.name}</option>
-                </Show>
-              )}
-            </For>
+            <For each={props.meds}>{med => <option value={med.medication_id}>{med.name}</option>}</For>
+            <Show when={props.allowNew}>
+              <option value="new">新增药品…</option>
+            </Show>
           </Select>
         </Field>
-        <Show when={props.addMedication}>
-          <div class="space-y-3 self-end">
-            <Show when={adding()} fallback={<Button onAction={() => setAdding(true)}>添加新药品资料</Button>}>
-              <Field label="新药品名称">
-                <Input ref={name} value={props.suggestedName ?? ''} />
-              </Field>
-              <Field label="新药品备注（可空）">
-                <Input ref={notes} />
-              </Field>
-              <div class="flex flex-wrap gap-2">
-                <Button onAction={add}>保存并选用</Button>
-                <Button variant="plain" onAction={() => setAdding(false)}>
-                  取消添加
-                </Button>
-              </div>
-            </Show>
-          </div>
+        <Show when={selected() === 'new'}>
+          <Field label="新药品名称">
+            <Input
+              value={entry.new_medication_name ?? ''}
+              onInput={event => {
+                entry.new_medication_name = event.currentTarget.value
+              }}
+            />
+          </Field>
         </Show>
         <Field label="每次剂量（原资料数值）">
           <Input

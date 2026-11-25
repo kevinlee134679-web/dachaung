@@ -54,6 +54,7 @@ export async function api<T>(
   method = 'GET',
   body: unknown = null,
   view: View = captureView(),
+  timeoutMs = 15000,
 ): Promise<T> {
   requireCurrentView(view)
   const headers: Record<string, string> = {}
@@ -90,7 +91,7 @@ export async function api<T>(
   requireCurrentView(view)
   const controller = new AbortController()
   options.signal = controller.signal
-  const timer = setTimeout(() => controller.abort(), 15000)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(`/api/v1${path}`, options)
     const json: unknown = await response.json()

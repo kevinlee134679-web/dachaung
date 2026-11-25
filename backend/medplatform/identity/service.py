@@ -26,7 +26,7 @@ from ..core.documents import (
 from ..core.errors import AppError
 from ..core.idempotency import Receipts, Result
 from ..core.protection import protect
-from ..medication.file_preview import medication_preview
+from ..medication.recognition import recognize
 from ..medication.schedule import SHANGHAI, insert_slot, occurrences, require_coverage
 from ..profile import cas_questionnaire as cas
 from .auth import Principal
@@ -43,7 +43,7 @@ RESOURCE_KINDS = {
     "medication_patch": "Medication",
     "file": "File",
     "file_content": "File",
-    "file_medication_preview": "File",
+    "file_medication_recognition": "File",
     "draft": "Draft",
     "draft_put": "Draft",
     "draft_submit": "Draft",
@@ -70,7 +70,7 @@ GUARDS = {
     "files": ("files:read", False),
     "file": ("files:read", False),
     "file_content": ("files:read", False),
-    "file_medication_preview": ("files:read", True),
+    "file_medication_recognition": ("files:read", False),
     "draft_create": ("drafts:write", False),
     "draft_put": ("drafts:write", False),
     "draft_submit": ("drafts:submit", False),
@@ -118,9 +118,10 @@ def seed_demo(db, clock=now):
 
 
 class IdentityService:
-    def __init__(self, db, clock=now, *, cas_model=None):
+    def __init__(self, db, clock=now, *, cas_model=None, llm=None):
         self.db, self.clock = db, clock
         self.cas_model = cas_model
+        self.llm = llm
         self.auth = PersistentAuthority(db, clock)
         self.receipts = Receipts(db, clock)
         self.file_root = db.path.parent / "files-demo"
@@ -242,16 +243,6 @@ class IdentityService:
 
     def handle(self, action, principal, params, query, body, key, content, is_read):
         body = body or {}
-        if action == "file_medication_preview":
-            with self.db.connection(readonly=True) as c:
-                self.authorize(c, action, principal, params, body)
-                source = self.read(c, "file_content", principal, params, query)
-            preview = medication_preview(
-                source["media_type"], base64.b64decode(source["content_base64"])
-            )
-            with self.db.connection(readonly=True) as c:
-                self.authorize(c, action, principal, params, body)
-            return Result(preview)
         with self.db.connection(readonly=True) as c:
             self.authorize(c, action, principal, params, body)
             doc = self.resource(c, action, params)
@@ -440,18 +431,15 @@ class IdentityService:
                 )
 
             return self.page(items, principal, action, params, q, order)
+        if action == "file_medication_recognition":
+            return recognize(
+                self.llm,
+                doc["media_type"],
+                self.stored_bytes(doc),
+                doc["original_name"],
+            )
         if action == "file_content":
-            try:
-                raw = (self.file_root / (doc["file_id"] + ".blob")).read_bytes()
-                if (
-                    fingerprint_bytes(raw) != doc["sha256"]
-                    or len(raw) != doc["size_bytes"]
-                ):
-                    raise ValueError()
-            except OSError, ValueError:
-                raise AppError(
-                    503, "FILE_CONTENT_UNAVAILABLE", "原文件暂不可用，请核对受控存储"
-                ) from None
+            raw = self.stored_bytes(doc)
             return {
                 "file_id": doc["file_id"],
                 "media_type": doc["media_type"],
@@ -1120,6 +1108,17 @@ class IdentityService:
                 stamp(right),
             ),
         )
+
+    def stored_bytes(self, doc):
+        try:
+            raw = (self.file_root / (doc["file_id"] + ".blob")).read_bytes()
+            if fingerprint_bytes(raw) != doc["sha256"] or len(raw) != doc["size_bytes"]:
+                raise ValueError()
+        except OSError, ValueError:
+            raise AppError(
+                503, "FILE_CONTENT_UNAVAILABLE", "原文件暂不可用，请核对受控存储"
+            ) from None
+        return raw
 
     def upload(self, c, principal, p, b, raw, at):
         claim = c.execute(

@@ -30,6 +30,15 @@ interface ValidatedPayload {
   observation: 'box_opened' | 'inferred_intake' | null
   dose_slot_id: string | null
   raw_text: string | null
+  missed_reason?:
+    | 'forgot'
+    | 'not_with_me'
+    | 'ran_out'
+    | 'unwell_or_side_effects'
+    | 'not_needed'
+    | 'other'
+    | null
+    | undefined
 }
 
 export interface RecordEvent {
@@ -65,6 +74,9 @@ const eventPayloadSchema = v.looseObject({
   observation: v.nullable(v.picklist(['box_opened', 'inferred_intake'])),
   dose_slot_id: v.nullable(v.string()),
   raw_text: v.nullable(v.string()),
+  missed_reason: v.optional(
+    v.nullable(v.picklist(['forgot', 'not_with_me', 'ran_out', 'unwell_or_side_effects', 'not_needed', 'other'])),
+  ),
 })
 
 export const recordEventSchema: v.GenericSchema<unknown, RecordEvent> = v.looseObject({

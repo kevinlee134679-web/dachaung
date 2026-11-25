@@ -120,10 +120,10 @@ ROUTES = [
     ("A03", "GET", "/files/{id}", "file", None),
     ("A04", "GET", "/files/{id}/content", "file_content", None),
     (
-        "A04-preview",
+        "A42",
         "GET",
-        "/files/{id}/medication-preview",
-        "file_medication_preview",
+        "/files/{id}/medication-recognition",
+        "file_medication_recognition",
         None,
     ),
     (

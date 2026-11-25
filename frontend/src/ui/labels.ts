@@ -1,3 +1,12 @@
+export const missedReasonLabels = {
+  forgot: '忘记了',
+  not_with_me: '药不在身边',
+  ran_out: '药吃完了',
+  unwell_or_side_effects: '身体不适或担心副作用',
+  not_needed: '觉得不需要',
+  other: '其他',
+} as const
+
 const statusLabels: Record<string, string> = {
   editing: '编辑中',
   pending_confirmation: '等待本人核对',

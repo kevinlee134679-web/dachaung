@@ -100,7 +100,7 @@ function ReminderForm(props: { current: Preferences | null; saved: (view: View) 
         <p class="text-sm/6 text-red-600 dark:text-red-400">
           这里保存提醒偏好；请在“提醒与执行”查看实际任务和结果。任务仅由显式维护和执行推进，不保证关闭网页后送达。
         </p>
-        <Button onAction={() => navigate('medication', 'executions')}>查看提醒与执行</Button>
+        <Button onAction={() => navigate('medication', 'reminders')}>查看提醒与执行</Button>
         <Checkbox ref={enabled} label="启用应用内提醒偏好" checked={settings.enabled} />
         <Field label="生活作息">
           <Select ref={routine} value={settings.routine_mode}>

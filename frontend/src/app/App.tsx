@@ -4,10 +4,9 @@ import * as v from 'valibot'
 import { LoginPage } from '../features/login/login-page'
 import { resolveOnboarding } from '../features/onboarding/onboarding'
 import { OnboardingLayout } from '../features/onboarding/onboarding-layout'
-import { restoreMedicationPage } from '../features/plan-drafts/navigation'
-import { restoreServicePage } from '../features/services/navigation'
 import { actionError } from '../notice/notice'
 import { Notice } from '../notice/notice-view'
+import { restorePage } from '../session/navigation'
 import { captureView, isCurrentView, loadContext, resetSession, state, ViewChanged } from '../session/session'
 import { Badge } from '../ui/badge'
 import { Brand } from '../ui/brand'
@@ -52,16 +51,14 @@ export function App(): JSX.Element {
       } catch {
         resetSession()
       }
-      const medicationRestored = restoreMedicationPage()
-      if (state.context && !medicationRestored) {
+      if (state.context) {
         const view = captureView()
         try {
-          await resolveOnboarding(view)
+          if (!(await resolveOnboarding(view))) restorePage()
         } catch (error) {
           if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view)
         }
       }
-      if (!medicationRestored) await restoreServicePage()
       setReady(true)
     })()
   })

@@ -4,6 +4,7 @@ import * as v from 'valibot'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { EventListPage } from '../../../src/features/dose-events/event-list-page'
 import { MedicationReportForm } from '../../../src/features/dose-events/report-form'
+import { SlotActions } from '../../../src/features/dose-events/slot-actions'
 import { currentNotice, notice } from '../../../src/notice/notice'
 import { updateSession } from '../../../src/session/session'
 import { choose, pageOf, success } from '../../support'
@@ -70,7 +71,7 @@ beforeEach(() => {
   choose({ scopes })
   updateSession(draft => {
     draft.page = 'medication'
-    draft.tab = 'records'
+    draft.tab = 'overview'
     draft.epoch++
   })
   notice('')
@@ -97,8 +98,8 @@ it('slot report retries an unknown result with the same source and idempotency k
       return Promise.resolve(success(event()))
     }),
   )
-  render(() => <MedicationReportForm slot={slot} />)
-  const save = screen.getByRole('button', { name: '明确保存服药报告' })
+  render(() => <SlotActions slot={slot} onSaved={() => {}} />)
+  const save = screen.getByRole('button', { name: '已服' })
   fireEvent.click(save)
   await waitFor(() => expect(currentNotice().error).toBe(true))
   fireEvent.click(save)
@@ -107,6 +108,25 @@ it('slot report retries an unknown result with the same source and idempotency k
   expect(posts[0]?.body).toEqual(posts[1]?.body)
   expect(posts[1]?.body['dose_slot_id']).toBe('slot-a')
   expect(posts[1]?.body).not.toHaveProperty('evidence_type')
+})
+
+it('requires a reason before recording a missed dose', async () => {
+  const posts: unknown[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((_url: string, options: RequestInit) => {
+      posts.push(requestBody(options))
+      return success(event({ reported_status: 'not_taken', missed_reason: 'forgot' }))
+    }),
+  )
+  render(() => <SlotActions slot={slot} onSaved={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: '没服' }))
+  expect(screen.queryByRole('button', { name: '记录没服' })).toBeNull()
+  fireEvent.click(await screen.findByLabelText('忘记了'))
+  fireEvent.input(screen.getByLabelText('备注（可选）'), { target: { value: '早上忘了' } })
+  fireEvent.click(await screen.findByRole('button', { name: '记录没服' }))
+  await waitFor(() => expect(posts).toHaveLength(1))
+  expect(posts[0]).toMatchObject({ missed_reason: 'forgot', raw_text: '早上忘了', dose_slot_id: 'slot-a' })
 })
 
 it('family report controls keep the family boundary and cannot act after patient switch', () => {

@@ -5,6 +5,7 @@ import * as v from 'valibot'
 import { all } from '../../api/api'
 import { dateText, today } from '../../date/date'
 import { actionError } from '../../notice/notice'
+import { navigate } from '../../session/navigation'
 import {
   captureView,
   isCurrentView,
@@ -22,7 +23,12 @@ import { statusTone } from '../../ui/labels'
 import { EmptyState, List } from '../../ui/list'
 import { Text } from '../../ui/typography'
 import { doseSlotSchema } from '../dose-events/events'
-import { MedicationReportForm } from '../dose-events/report-form'
+import { SlotActions } from '../dose-events/slot-actions'
+
+export function openScheduleDay(day: string): void {
+  sessionStorage.setItem(referenceKey('schedule-day'), day)
+  navigate('medication')
+}
 
 const planSchema = v.looseObject({
   plan_id: v.string(),
@@ -41,8 +47,7 @@ type Plan = v.InferOutput<typeof planSchema>
 export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.Element {
   const [slots, setSlots] = createSignal<DoseSlot[] | null>(null)
   const [plans, setPlans] = createSignal<Plan[]>([])
-  const [failure, setFailure] = createSignal('')
-  onSettled(() => {
+  function load(): void {
     const view = captureView()
     void (async () => {
       const start = `${props.day}T00:00:00+08:00`
@@ -58,13 +63,13 @@ export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.E
       setSlots(items)
     })().catch((error: unknown) => {
       if (!(error instanceof ViewChanged) && isCurrentView(view)) {
-        setFailure(error instanceof Error ? error.message : '请重新读取当日安排。')
         actionError(error, view)
       }
     })
-  })
+  }
+  onSettled(load)
   return (
-    <Show when={slots()} fallback={<Text>{failure() ? `安排读取失败 · ${failure()}` : '正在读取安排…'}</Text>}>
+    <Show when={slots()} fallback={<Text>正在读取安排…</Text>}>
       {items => (
         <>
           <Show when={!items().length}>
@@ -94,7 +99,7 @@ export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.E
                       </Show>
                     </Text>
                     <Show when={slot.status === 'active' && scope('records:report')}>
-                      <MedicationReportForm slot={slot} />
+                      <SlotActions slot={slot} onSaved={load} />
                     </Show>
                   </li>
                 )
@@ -112,7 +117,7 @@ export function SchedulePage(): JSX.Element {
   const key = untrack(() => referenceKey('schedule-day'))
   const requested = sessionStorage.getItem(key)
   sessionStorage.removeItem(key)
-  const initialDay = requested !== null && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : today()
+  const initialDay = requested ?? today()
   const [selection, setSelection] = createSignal({ day: initialDay })
   return (
     <Show when={scope('plan:read')} fallback={<p>当前未获正式安排查看权限。</p>}>

@@ -6,6 +6,10 @@ from pydantic import ConfigDict, Field, model_validator
 
 from ..web.inputs import ID, DateTime, Input, Revoke, Text, Version
 
+MissedReason = Literal[
+    "forgot", "not_with_me", "ran_out", "unwell_or_side_effects", "not_needed", "other"
+]
+
 
 class RecordInput(Input):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=False)
@@ -23,11 +27,14 @@ class EvidencePayload(RecordInput):
     dose_slot_id: ID | None
     plan_ref: PlanRef | None
     raw_text: Text | None
+    missed_reason: MissedReason | None = None
 
     @model_validator(mode="after")
     def one_kind(self):
         if (self.reported_status is None) == (self.observation is None):
             raise ValueError("exactly one report or observation required")
+        if self.missed_reason is not None and self.reported_status != "not_taken":
+            raise ValueError("missed reason requires not_taken")
         return self
 
 
@@ -39,6 +46,13 @@ class MedicationEventInput(RecordInput):
     dose_slot_id: ID | None = None
     plan_ref: PlanRef | None = None
     raw_text: Text | None = None
+    missed_reason: MissedReason | None = None
+
+    @model_validator(mode="after")
+    def reason_matches_status(self):
+        if self.missed_reason is not None and self.reported_status != "not_taken":
+            raise ValueError("missed reason requires not_taken")
+        return self
 
 
 class CorrectionInput(RecordInput):

@@ -119,13 +119,3 @@ export function ScheduleFields(props: {
     </Fieldset>
   )
 }
-
-export function checkedSchedule(schedule: Entry['schedule'], complete = false): Entry['schedule'] {
-  const times = schedule?.times.filter(Boolean) ?? []
-  if (!schedule || !times.length) return null
-  if (!['daily', 'weekly'].includes(schedule.kind)) throw new Error('请核对原资料并选择固定频次。')
-  if (complete && times.length !== schedule.times.length) throw new Error('请填写或移除空白服药时段。')
-  if (new Set(times).size !== times.length) throw new Error('同一种药的服药时段重复，请核对时间。')
-  if (schedule.kind === 'weekly' && !schedule.weekdays.length) throw new Error('请为每周安排选择至少一个服药日。')
-  return { kind: schedule.kind, weekdays: schedule.weekdays, times: times.sort() }
-}

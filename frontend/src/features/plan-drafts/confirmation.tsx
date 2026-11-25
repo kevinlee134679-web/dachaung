@@ -2,14 +2,13 @@ import type { View } from '../../session/session'
 import type { Draft, Plan } from './drafts'
 import type { JSX } from '@solidjs/web'
 import { createMemo, For } from 'solid-js'
-import * as v from 'valibot'
-import { api } from '../../api/api'
 import { dateText } from '../../date/date'
 import { notice } from '../../notice/notice'
-import { patientPath, requireCurrentView } from '../../session/session'
+import { requireCurrentView } from '../../session/session'
 import { Button } from '../../ui/button'
 import { Disclosure } from '../../ui/disclosure'
 import { Checkbox, Field, Input, Select } from '../../ui/form'
+import { confirmPlan } from './drafts'
 
 export function Confirmation(props: {
   draft: Draft
@@ -25,20 +24,7 @@ export function Confirmation(props: {
     const previous = props.plans
       .filter(plan => plan.plan_id === target.value)
       .sort((a, b) => b.plan_version - a.plan_version)[0]
-    await api(
-      patientPath('/plan-confirmations'),
-      v.unknown(),
-      'POST',
-      {
-        draft_id: props.draft.draft_id,
-        draft_revision: props.draft.content_revision,
-        existing_plan_id: target.value || null,
-        expected_plan_version: previous?.plan_version ?? null,
-        effective_from: new Date(`${effective.value}:00+08:00`).toISOString(),
-        confirmed: true,
-      },
-      view,
-    )
+    await confirmPlan(view, props.draft, previous ?? null, new Date(`${effective.value}:00+08:00`).toISOString())
     await props.saved(view)
     requireCurrentView(view)
     notice('正式计划、草稿引用和时段已共同保存。')

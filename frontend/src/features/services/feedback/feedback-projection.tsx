@@ -44,7 +44,7 @@ export function CFeedbackProjection(props: { source: FeedbackProjection }): JSX.
               <Button
                 onAction={() => {
                   sessionStorage.setItem(referenceKey('formal-service'), record.record_id)
-                  navigate('profile', 'formal-services')
+                  navigate('profile', 'authorizations')
                 }}
               >
                 查看该服务及反馈历史

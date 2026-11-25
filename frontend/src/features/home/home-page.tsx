@@ -19,7 +19,7 @@ import {
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { Text } from '../../ui/typography'
-import { canManageMedicationList } from '../plan-drafts/navigation'
+import { canManageMedicationList } from '../plan-drafts/medication-list'
 import { DoseSlotList } from '../schedule/schedule-page'
 import { supportSessionSchema } from '../support/conversation'
 import { HomeSupportInvitations, openSupportSession } from '../support/invitations'

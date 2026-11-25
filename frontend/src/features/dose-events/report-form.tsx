@@ -1,7 +1,7 @@
 import type { View } from '../../session/session'
 import type { DoseSlot, RecordEvent } from './events'
 import type { JSX } from '@solidjs/web'
-import { createSignal, Show } from 'solid-js'
+import { createSignal, For, Show } from 'solid-js'
 import { submitSource } from '../../api/source'
 import { inputDateTime, localDateTime } from '../../date/date'
 import { notice } from '../../notice/notice'
@@ -10,11 +10,14 @@ import { captureView, own, scope } from '../../session/session'
 import { StatusBadge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { Disclosure } from '../../ui/disclosure'
-import { Field, Input } from '../../ui/form'
+import { Field, Input, Select } from '../../ui/form'
+import { missedReasonLabels } from '../../ui/labels'
 import { Text } from '../../ui/typography'
 import { evidenceLabels } from './event-card'
 import { recordEventSchema } from './events'
 import { ReportSelect } from './report-select'
+
+export { submitSource } from '../../api/source'
 
 export function MedicationReportForm(props: {
   slot?: DoseSlot | null
@@ -23,6 +26,8 @@ export function MedicationReportForm(props: {
   let time!: HTMLInputElement
   let status!: HTMLSelectElement
   let notes!: HTMLInputElement
+  let reason!: HTMLSelectElement
+  const [selectedStatus, setSelectedStatus] = createSignal('taken')
   const [result, setResult] = createSignal<RecordEvent | null>(null)
   async function saveReport(view: View, patientId: string): Promise<void> {
     const slot = props.slot
@@ -33,6 +38,7 @@ export function MedicationReportForm(props: {
       dose_slot_id: slot?.dose_slot_id != null && slot.dose_slot_id !== '' ? slot.dose_slot_id : null,
       plan_ref: slot ? { plan_id: slot.plan_id, plan_version: slot.plan_version } : null,
       raw_text: notes.value || null,
+      missed_reason: selectedStatus() === 'not_taken' ? reason.value || null : null,
     }
     const saved = await submitSource(
       `/patients/${encodeURIComponent(patientId)}/medication-events`,
@@ -46,7 +52,7 @@ export function MedicationReportForm(props: {
     if (props.onSaved) await props.onSaved(view)
   }
   return (
-    <Disclosure summary={own() ? '记录本人的服药情况' : '记录家人报告'}>
+    <Disclosure summary="补记服药情况">
       <Text>
         {own()
           ? '这将保存本人的明确报告，不是客观吞服验证。'
@@ -57,10 +63,23 @@ export function MedicationReportForm(props: {
       </Field>
       <ReportSelect
         label="报告内容"
+        onChange={value => {
+          setSelectedStatus(value)
+        }}
         ref={element => {
           status = element
         }}
       />
+      <Show when={selectedStatus() === 'not_taken'}>
+        <Field label="未服原因">
+          <Select ref={reason}>
+            <option value="">未填写</option>
+            <For each={Object.entries(missedReasonLabels)}>
+              {([value, label]) => <option value={value}>{label}</option>}
+            </For>
+          </Select>
+        </Field>
+      </Show>
       <Field label="补充原话（可空）">
         <Input ref={notes} />
       </Field>
@@ -84,7 +103,7 @@ export function MedicationReportForm(props: {
                 <StatusBadge status={saved().link_status} />。
               </p>
               <Show when={props.slot && scope('records:read')}>
-                <Button onAction={() => navigate('medication', 'records')}>查看服药记录</Button>
+                <Button onAction={() => navigate('medication', 'overview')}>查看服药记录</Button>
               </Show>
             </div>
           )}

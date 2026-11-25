@@ -225,7 +225,7 @@ export function DemoPage(): JSX.Element {
             >
               明确取消或请求取消此任务
             </Button>
-            <Button onAction={() => navigate('medication', 'executions')}>查看当前患者全部任务</Button>
+            <Button onAction={() => navigate('medication', 'reminders')}>查看当前患者全部任务</Button>
           </Disclosure>
           <div aria-live="polite">{output()}</div>
         </div>

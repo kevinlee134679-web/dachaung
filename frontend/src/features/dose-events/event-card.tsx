@@ -13,6 +13,7 @@ import { Button } from '../../ui/button'
 import { IssueList } from '../../ui/data-display'
 import { Disclosure } from '../../ui/disclosure'
 import { Field, Input } from '../../ui/form'
+import { missedReasonLabels } from '../../ui/labels'
 import { Subheading, Text } from '../../ui/typography'
 import { revisionSchema } from './events'
 import { ReportSelect } from './report-select'
@@ -52,7 +53,12 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
           expected_revision: props.event.meta.revision,
           reason: reason.value,
           occurred_at: timeEdited ? inputDateTime(time.value) : props.event.occurred_at,
-          payload: { ...props.event.payload, reported_status: status.value, raw_text: notes.value || null },
+          payload: {
+            ...props.event.payload,
+            reported_status: status.value,
+            missed_reason: status.value === 'not_taken' ? props.event.payload.missed_reason : null,
+            raw_text: notes.value || null,
+          },
         }
     await api(
       `/events/${encodeURIComponent(props.event.event_id)}/${withdrawal ? 'withdrawals' : 'corrections'}`,
@@ -91,6 +97,9 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
         ；修订 {props.event.meta.revision}
       </p>
       <Text>{props.event.meta.is_simulated ? '演示记录' : '实际来源记录'}</Text>
+      {props.event.payload.missed_reason && (
+        <Text>未服原因：{missedReasonLabels[props.event.payload.missed_reason]}</Text>
+      )}
       <IssueList issues={props.event.quality.issues} />
       {props.event.payload.raw_text != null && props.event.payload.raw_text !== '' && (
         <p class="text-sm/6">原话：{props.event.payload.raw_text}</p>

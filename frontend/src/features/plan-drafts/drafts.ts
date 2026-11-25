@@ -1,4 +1,8 @@
+import type { View } from '../../session/session'
+import type { SourceFile } from '../medical-files/files'
 import * as v from 'valibot'
+import { api } from '../../api/api'
+import { patientPath } from '../../session/session'
 
 export interface Draft {
   draft_id: string
@@ -26,6 +30,7 @@ export interface Editor {
 export interface Entry {
   draft_entry_id: string
   medication_id: string
+  new_medication_name?: string
   dose_value: string | null
   dose_unit: string | null
   start_date: string | null
@@ -43,12 +48,6 @@ export interface Medication {
   name: string
 }
 
-export interface SourceFile {
-  file_id: string
-  original_name: string
-  media_type: string
-}
-
 export interface Plan {
   plan_id: string
   plan_version: number
@@ -58,12 +57,6 @@ export interface Plan {
 export const medicationSchema: v.GenericSchema<unknown, Medication> = v.looseObject({
   medication_id: v.string(),
   name: v.string(),
-})
-
-export const sourceFileSchema: v.GenericSchema<unknown, SourceFile> = v.looseObject({
-  file_id: v.string(),
-  original_name: v.string(),
-  media_type: v.string(),
 })
 
 const entryFields = {
@@ -129,4 +122,79 @@ export function newEntry(medicationId: string): Entry {
     min_interval_minutes: null,
     source_file_ids: [],
   }
+}
+
+function checkedSchedule(schedule: Entry['schedule'], complete = false): Entry['schedule'] {
+  const times = schedule?.times.filter(Boolean) ?? []
+  if (!schedule || !times.length) return null
+  if (!complete) return { ...schedule, times: [...times].sort() }
+  if (!['daily', 'weekly'].includes(schedule.kind)) throw new Error('请核对原资料并选择固定频次。')
+  if (times.length !== schedule.times.length) throw new Error('请填写或移除空白服药时段。')
+  if (new Set(times).size !== times.length) throw new Error('同一种药的服药时段重复，请核对时间。')
+  if (schedule.kind === 'weekly' && !schedule.weekdays.length) throw new Error('请为每周安排选择至少一个服药日。')
+  return { kind: schedule.kind, weekdays: schedule.weekdays, times: times.sort() }
+}
+
+export function isBlank(entry: Entry): boolean {
+  return (
+    entry.medication_id === '' &&
+    (entry.new_medication_name ?? '') === '' &&
+    entry.dose_value === null &&
+    entry.dose_unit === null &&
+    entry.schedule === null &&
+    entry.end_date === null &&
+    entry.meal_requirement === null &&
+    entry.medical_notes === null &&
+    entry.strict_timing === null &&
+    entry.min_interval_minutes === null &&
+    entry.source_file_ids.length === 0
+  )
+}
+
+export function draftBody(entries: Entry[], complete: boolean): { source_file_ids: string[]; entries: Entry[] } {
+  const prepared = entries.map((entry, index) => {
+    const heading = `药品条目 ${index + 1}`
+    if (complete && !entry.medication_id && (entry.new_medication_name ?? '').trim() === '')
+      throw new Error(`${heading}：请选择药品或填写新药品名称。`)
+    const schedule = checkedSchedule(entry.schedule, complete)
+    if (
+      complete &&
+      entry.dose_value !== null &&
+      (!/^\d+(?:\.\d+)?$/.test(entry.dose_value) || Number(entry.dose_value) <= 0)
+    ) {
+      throw new Error(`${heading}：请填写大于零的数值剂量。`)
+    }
+    if (complete && entry.start_date !== null && entry.end_date !== null && entry.end_date < entry.start_date)
+      throw new Error(`${heading}：结束日期早于开始日期。`)
+    if (
+      complete &&
+      (entry.dose_value === null || entry.dose_unit === null || entry.start_date === null || schedule === null)
+    ) {
+      throw new Error(`${heading}：请补齐每次剂量、单位、开始日期和服药时间。`)
+    }
+    return { ...entry, schedule }
+  })
+  return { source_file_ids: [...new Set(prepared.flatMap(entry => entry.source_file_ids))], entries: prepared }
+}
+
+export function confirmPlan(
+  view: View,
+  draft: Draft,
+  plan: Plan | null,
+  effectiveFrom: string = new Date().toISOString(),
+): Promise<Plan> {
+  return api(
+    patientPath('/plan-confirmations'),
+    planSchema,
+    'POST',
+    {
+      draft_id: draft.draft_id,
+      draft_revision: draft.content_revision,
+      existing_plan_id: plan?.plan_id ?? null,
+      expected_plan_version: plan?.plan_version ?? null,
+      effective_from: effectiveFrom,
+      confirmed: true,
+    },
+    view,
+  )
 }

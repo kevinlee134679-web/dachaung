@@ -272,7 +272,7 @@ export function FamilyPage(): JSX.Element {
               requireCurrentView(view)
               await loadContext(view)
               requireCurrentView({ ...view, sessionOnly: true })
-              navigate('profile', 'family')
+              navigate('profile', 'authorizations')
               notice('家庭关系已建立，请由患者选择具体授权范围。')
             }}
           >

@@ -103,6 +103,33 @@ class RecordTests(unittest.TestCase):
         self.assertEqual(one["evidence_type"], "self_report")
         self.assertEqual(one["link_status"], "matched")
 
+    def test_missed_reason_is_saved_and_requires_not_taken(self):
+        body = {
+            "source_event_id": support.key(),
+            "occurred_at": stamp(self.case.clock()),
+            "reported_status": "not_taken",
+            "missed_reason": "forgot",
+        }
+        event = self.case.call(
+            self.case.a,
+            "POST",
+            f"/patients/{support.PA}/medication-events",
+            body,
+            expected=201,
+        )
+        saved = self.case.call(
+            self.case.a, "GET", f"/medication-events/{event['event_id']}"
+        )
+        self.assertEqual(saved["payload"]["missed_reason"], "forgot")
+        body.update(source_event_id=support.key(), reported_status="taken")
+        self.case.call(
+            self.case.a,
+            "POST",
+            f"/patients/{support.PA}/medication-events",
+            body,
+            expected=422,
+        )
+
     def test_family_report_stays_family_and_revoked_rights_block_replay(self):
         binding, _ = self.case.bind(
             ["records:report", "records:read", "records:correct"]

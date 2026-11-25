@@ -1,12 +1,12 @@
 import type { View } from '../../session/session'
-import type { SourceFile } from '../plan-drafts/drafts'
+import type { SourceFile } from './files'
 import type { JSX } from '@solidjs/web'
-import { createSignal, For, onSettled, Show } from 'solid-js'
+import { For, Show } from 'solid-js'
 import * as v from 'valibot'
-import { all, api } from '../../api/api'
+import { api } from '../../api/api'
 import { dateText } from '../../date/date'
-import { actionError, notice } from '../../notice/notice'
-import { captureView, isCurrentView, patientPath, requireCurrentView, scope, ViewChanged } from '../../session/session'
+import { notice } from '../../notice/notice'
+import { requireCurrentView, scope } from '../../session/session'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { Field, Input } from '../../ui/form'
@@ -14,38 +14,22 @@ import { EmptyState, List } from '../../ui/list'
 import { Text } from '../../ui/typography'
 import { uploadMedicalFile } from './upload'
 
-const savedFileSchema = v.looseObject({
-  file_id: v.string(),
-  original_name: v.string(),
-  size_bytes: v.number(),
-  meta: v.looseObject({ created_at: v.string() }),
-})
-type SavedFile = v.InferOutput<typeof savedFileSchema>
-
-export function FilePage(props: { onUploaded: (file: SourceFile) => void }): JSX.Element {
+export function FilePage(props: { files: SourceFile[]; reload: (view: View) => Promise<void> }): JSX.Element {
   let chooser!: HTMLInputElement
-  const [files, setFiles] = createSignal<SavedFile[] | null>(null)
-
-  async function load(view: View): Promise<void> {
-    const result = await all(patientPath('/files'), savedFileSchema, view)
-    requireCurrentView(view)
-    setFiles(result)
-  }
 
   async function upload(view: View): Promise<void> {
     const file = chooser.files?.[0]
     if (!file) throw new Error('请先选择文件。')
-    const uploaded = await uploadMedicalFile(view, file)
+    await uploadMedicalFile(view, file)
     if (scope('files:read')) {
-      props.onUploaded(uploaded)
-      await load(view)
+      await props.reload(view)
     }
     requireCurrentView(view)
     chooser.value = ''
     notice('原始资料已保存，尚未识别或确认计划。')
   }
 
-  async function download(file: SavedFile, view: View): Promise<void> {
+  async function download(file: SourceFile, view: View): Promise<void> {
     const data = await api(
       `/files/${file.file_id}/content`,
       v.looseObject({ content_base64: v.string(), media_type: v.string() }),
@@ -61,14 +45,6 @@ export function FilePage(props: { onUploaded: (file: SourceFile) => void }): JSX
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 5000)
   }
-
-  onSettled(() => {
-    if (!scope('files:read')) return
-    const view = captureView()
-    void load(view).catch((error: unknown) => {
-      if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view)
-    })
-  })
 
   return (
     <div class="space-y-6">
@@ -94,7 +70,7 @@ export function FilePage(props: { onUploaded: (file: SourceFile) => void }): JSX
         }
       >
         <Card title="已保存资料">
-          <Show when={files()}>
+          <Show when={props.files}>
             {items => (
               <>
                 <Show when={!items().length}>

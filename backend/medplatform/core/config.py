@@ -40,8 +40,10 @@ class Settings(BaseSettings):
     def supported_modes(self):
         if self.APP_ENV == "production" or self.AUTH_MODE != "demo":
             raise ValueError("外部身份适配未接入，不能启动该模式")
-        if self.LLM_MODE != "mock":
-            raise ValueError("真实模型传输未启用，不能启动该模式")
+        if self.LLM_MODE == "real" and not (
+            self.LLM_BASE_URL and self.LLM_MODEL and self.LLM_API_KEY.get_secret_value()
+        ):
+            raise ValueError("LLM_MODE=real 需要 LLM_BASE_URL、LLM_MODEL、LLM_API_KEY")
         return self
 
     @property

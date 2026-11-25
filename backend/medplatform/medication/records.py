@@ -841,6 +841,7 @@ class Records:
                     "dose_slot_id",
                     "plan_ref",
                     "raw_text",
+                    "missed_reason",
                 )
             }
             payload["observation"] = None

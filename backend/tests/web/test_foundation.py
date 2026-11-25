@@ -368,8 +368,13 @@ class ConfigurationAndRegistryTests(Sandbox):
             {"PORT": 0},
         ):
             env = {key: str(value) for key, value in values.items()}
-            with patch.dict(
-                os.environ, {**env, "LLM_API_KEY": "PRIVATE_TEST_SECRET"}, clear=True
+            with (
+                patch.dict(Settings.model_config, {"env_file": None}),
+                patch.dict(
+                    os.environ,
+                    {**env, "LLM_API_KEY": "PRIVATE_TEST_SECRET"},
+                    clear=True,
+                ),
             ):
                 with self.assertRaises(ConfigurationError) as e:
                     load_settings()

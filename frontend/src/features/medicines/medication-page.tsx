@@ -10,7 +10,7 @@ import { Card } from '../../ui/card'
 import { Field, Input, Textarea } from '../../ui/form'
 import { EmptyState, List } from '../../ui/list'
 import { Text } from '../../ui/typography'
-import { canManageMedicationList, openMedicationList } from '../plan-drafts/navigation'
+import { canManageMedicationList, openMedicationList } from '../plan-drafts/medication-list'
 
 const medicationSchema = v.looseObject({
   medication_id: v.string(),

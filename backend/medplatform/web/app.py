@@ -14,6 +14,7 @@ from .. import __version__
 from ..core.config import Settings, load_settings
 from ..core.database import Database
 from ..core.errors import AppError, SchemaError
+from ..core.llm import LLMClient
 from ..core.migrations import status
 from .models import ConfigStatus, Envelope, Health
 from .registry import ModuleRegistry
@@ -71,7 +72,8 @@ def create_app(
         from ..profile.cas_model import CasModel
 
         cas_model = CasModel.load(settings.CAS_RETRAINED_BUNDLE)
-    service = IdentityService(db, clock or now, cas_model=cas_model)
+    llm = LLMClient(settings) if settings.LLM_MODE == "real" else None
+    service = IdentityService(db, clock or now, cas_model=cas_model, llm=llm)
     records = record_routes.Records(db, service.auth, service.receipts, clock or now)
     analytics = analytics_routes.Analytics(db, service.auth, clock or now, records)
     execution = execution_routes.Execution(

@@ -13,10 +13,15 @@ export function ReportSelect(props: {
   label: string
   ref: (element: HTMLSelectElement) => void
   value?: string | null | undefined
+  onChange?: (value: string) => void
 }): JSX.Element {
   return (
     <Field label={props.label}>
-      <Select ref={props.ref} value={props.value ?? 'taken'}>
+      <Select
+        ref={props.ref}
+        value={props.value ?? 'taken'}
+        onChange={event => props.onChange?.(event.currentTarget.value)}
+      >
         <For each={reportOptions}>{option => <option value={option[0]}>{option[1]}</option>}</For>
       </Select>
     </Field>

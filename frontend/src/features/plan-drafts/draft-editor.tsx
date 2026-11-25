@@ -1,5 +1,6 @@
 import type { View } from '../../session/session'
-import type { Editor, Medication, SourceFile } from './drafts'
+import type { SourceFile } from '../medical-files/files'
+import type { Editor, Medication } from './drafts'
 import type { JSX } from '@solidjs/web'
 import { createSignal, For, Show, untrack } from 'solid-js'
 import * as v from 'valibot'
@@ -9,9 +10,8 @@ import { patientPath, requireCurrentView, scope, updateSession } from '../../ses
 import { Button } from '../../ui/button'
 import { Checkbox, Fieldset } from '../../ui/form'
 import { Subheading } from '../../ui/typography'
-import { newEntry } from './drafts'
+import { draftBody, newEntry } from './drafts'
 import { EntryEditor } from './entry-editor'
-import { checkedSchedule } from './schedule-fields'
 
 export function DraftEditor(props: {
   editor: Editor
@@ -27,7 +27,7 @@ export function DraftEditor(props: {
     if (entries().some(entry => !entry.medication_id)) throw new Error('请为每个条目选择已有药品。')
     const body = {
       source_file_ids: props.files.filter(file => selectedFiles.has(file.file_id)).map(file => file.file_id),
-      entries: entries().map(entry => ({ ...entry, schedule: checkedSchedule(entry.schedule) })),
+      entries: draftBody(entries(), false).entries,
       ...(draft ? { expected_revision: draft.meta.revision } : {}),
     }
     await api(

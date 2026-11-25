@@ -16,7 +16,7 @@ export function LoginPage(): JSX.Element {
   async function enter(family: boolean): Promise<void> {
     await api('/auth/demo-session', v.unknown(), 'POST', { demo_account_id: chooser.value })
     await loadContext()
-    navigate(family ? 'profile' : 'home', family ? 'family' : 'overview')
+    navigate(family ? 'profile' : 'home', family ? 'authorizations' : 'overview')
     if (!family) await resolveOnboarding()
     notice('已进入演示，当前对象显示在页面上方。')
   }

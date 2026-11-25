@@ -1,5 +1,6 @@
 import type { View } from '../../session/session'
-import type { DraftData, Editor, Draft, Medication, SourceFile } from './drafts'
+import type { SourceFile } from '../medical-files/files'
+import type { DraftData, Editor, Draft, Medication } from './drafts'
 import type { JSX } from '@solidjs/web'
 import { createSignal, flush, For, onSettled, Show } from 'solid-js'
 import * as v from 'valibot'
@@ -26,24 +27,19 @@ import { EmptyState, List } from '../../ui/list'
 import { Subheading, Text } from '../../ui/typography'
 import { Confirmation } from './confirmation'
 import { DraftEditor } from './draft-editor'
-import { draftSchema, medicationSchema, sourceFileSchema, planSchema, newEntry } from './drafts'
+import { draftSchema, medicationSchema, planSchema, newEntry } from './drafts'
 
-export function DraftPage(props: { uploadedFiles: SourceFile[] }): JSX.Element {
+export function DraftPage(props: { files: SourceFile[]; reload: (view: View) => Promise<void> }): JSX.Element {
   const [data, setData] = createSignal<DraftData | null>(null)
   const [editor, setEditor] = createSignal<Editor | null>(null)
   const nextRead = readGate()
-  function availableFiles(files: SourceFile[]): SourceFile[] {
-    const ids = new Set(files.map(file => file.file_id))
-    return [...files, ...props.uploadedFiles.filter(file => !ids.has(file.file_id))]
-  }
   async function load(view: View): Promise<DraftData> {
     const check = nextRead()
     const drafts = await all(patientPath('/drafts'), draftSchema, view)
     const meds = scope('medication:read') ? await all(patientPath('/medications'), medicationSchema, view) : []
-    const files = scope('files:read') ? await all(patientPath('/files'), sourceFileSchema, view) : []
     const plans = meds.length && scope('plan:read') ? await all(patientPath('/plans'), planSchema, view) : []
     check()
-    const result = { drafts, meds, files, plans }
+    const result = { drafts, meds, files: props.files, plans }
     setData(result)
     flush()
     return result
@@ -109,14 +105,7 @@ export function DraftPage(props: { uploadedFiles: SourceFile[] }): JSX.Element {
                   </Show>
                 </Show>
                 <Show when={editor()} keyed>
-                  {value => (
-                    <DraftEditor
-                      editor={value}
-                      meds={current().meds}
-                      files={availableFiles(current().files)}
-                      saved={saved}
-                    />
-                  )}
+                  {value => <DraftEditor editor={value} meds={current().meds} files={props.files} saved={saved} />}
                 </Show>
                 <Subheading>草稿与核对进度</Subheading>
                 <Show when={current().drafts.length > 0} fallback={<EmptyState>还没有资料草稿。</EmptyState>}>
