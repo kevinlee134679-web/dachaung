@@ -1,5 +1,8 @@
 import * as v from 'valibot'
 
+// The model can take up to 60 seconds to respond
+export const dialogueTimeoutMs = 70_000
+
 export interface SupportSession {
   session_id: string
   status: 'active' | 'closed'
@@ -47,11 +50,11 @@ export const messageSchema: v.GenericSchema<unknown, Message> = v.looseObject({
 })
 interface Cue {
   label: string
-  evidence: string
 }
-export const cueSchema: v.GenericSchema<unknown, Cue> = v.looseObject({ label: v.string(), evidence: v.string() })
+export const cueSchema: v.GenericSchema<unknown, Cue> = v.looseObject({ label: v.string() })
 export interface Output {
   business_output: {
+    support_focus: string | null
     communication_strategy: (
       | 'reflection'
       | 'affirmation'
@@ -60,7 +63,7 @@ export interface Output {
       | 'permission_based_advice'
       | 'summary'
     )[]
-    difficulty_cues: { label: string; evidence: string }[]
+    difficulty_cues: { label: string }[]
     knowledge_citations: { knowledge_id: string; version: string; quote: string }[]
     suggested_action: { description: string } | null
   }
@@ -72,6 +75,7 @@ export interface Output {
 }
 export const outputSchema: v.GenericSchema<unknown, Output> = v.looseObject({
   business_output: v.looseObject({
+    support_focus: v.nullable(v.string()),
     communication_strategy: v.array(
       v.picklist([
         'reflection',

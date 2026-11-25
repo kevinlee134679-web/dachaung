@@ -7,6 +7,8 @@ export const missedReasonLabels = {
   other: '其他',
 } as const
 
+export const generationModeLabels = { mock: '本地模拟', real: 'AI 模型' } as const
+
 const statusLabels: Record<string, string> = {
   editing: '编辑中',
   pending_confirmation: '等待本人核对',

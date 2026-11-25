@@ -210,6 +210,20 @@ async function openComposer(handler: (url: string, options: RequestInit, current
   }
 }
 
+it('sends a selected opening message', async () => {
+  let content = ''
+  const env = await openComposer((_url, options) => {
+    if (typeof options.body !== 'string') throw new TypeError('Missing request body')
+    content = v.parse(v.object({ content: v.string() }), JSON.parse(options.body)).content
+    return Promise.resolve(success(generationOutput))
+  })
+  expect(screen.getByRole('button', { name: '这几天心情低落，只想先说说。' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '我吃药吃累了，想让日常安排简单一点。' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: '今天又忘了吃药，有点烦。' })).toBeTruthy()
+  env.click('我担心副作用，想把问题理一理。')
+  await waitFor(() => expect(content).toBe('我担心副作用，想把问题理一理。'))
+})
+
 it('rejected support turn with absent original refreshes the session and waits for explicit resend', async () => {
   const posts: { body: { client_message_id: string; expected_turn_count: number; content: string }; key: string }[] = []
   const env = await openComposer((url, options, current) => {

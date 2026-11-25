@@ -1,4 +1,6 @@
-"""Validation of model output against the public dialogue core and its evidence."""
+"""Validation of model output against the dialogue contracts."""
+
+from typing import get_args
 
 from pydantic import ValidationError
 
@@ -6,28 +8,25 @@ from ..core.strict_json import loads
 from . import inputs
 
 
-def validate_completion(raw, allowed_user_messages, citations):
-    """Reject an invalid core. Keep only structured auxiliary data with actual evidence."""
+def validate_completion(raw, citations):
     try:
         data = loads(raw)
-        fields = inputs.DialogueCore.model_fields
-        if set(data) != set(fields) | {
-            "difficulty_cues",
-            "suggested_action",
-            "knowledge_citations",
-            "change_readiness",
-        }:
-            raise ValueError("unexpected core structure")
         core = inputs.DialogueCore.model_validate(
-            {key: data[key] for key in fields}
+            {"assistant_reply": data["assistant_reply"]}
         ).model_dump()
-    except TypeError, ValueError, ValidationError, RecursionError:
+    except TypeError, ValueError, KeyError, ValidationError, RecursionError:
         return None, False
 
-    def evidence(item):
-        return item["evidence"] in allowed_user_messages.get(
-            item["source_message_id"], ""
-        )
+    focus = data.get("support_focus")
+    core["support_focus"] = focus if focus in get_args(inputs.SupportFocus) else None
+    strategies = data.get("communication_strategy", [])
+    if not isinstance(strategies, list):
+        strategies = [strategies]
+    kept = [s for s in strategies if s in get_args(inputs.Strategy)]
+    core["communication_strategy"] = list(dict.fromkeys(kept))[:2]
+    degraded = (focus is not None and core["support_focus"] is None) or len(
+        core["communication_strategy"]
+    ) != len(strategies)
 
     def verified_list(value, schema, accept):
         if not isinstance(value, list):
@@ -43,20 +42,20 @@ def validate_completion(raw, allowed_user_messages, citations):
         return valid, dropped
 
     cues, lost_cues = verified_list(
-        data["difficulty_cues"], inputs.DifficultyCue, evidence
+        data.get("difficulty_cues", []), inputs.DifficultyCue, bool
     )
     refs, lost_refs = verified_list(
-        data["knowledge_citations"], inputs.Citation, citations
+        data.get("knowledge_citations", []), inputs.Citation, citations
     )
-    readiness = verified(data["change_readiness"], inputs.Readiness, evidence)
-    action = verified(data["suggested_action"], inputs.SuggestedAction, bool)
-    degraded = (
+    readiness = verified(data.get("change_readiness"), inputs.Readiness, bool)
+    action = verified(data.get("suggested_action"), inputs.SuggestedAction, bool)
+    degraded |= (
         lost_cues
         or lost_refs
         or readiness is None
-        and data["change_readiness"] is not None
+        and data.get("change_readiness") is not None
     )
-    degraded |= action is None and data["suggested_action"] is not None
+    degraded |= action is None and data.get("suggested_action") is not None
     return dict(
         core,
         difficulty_cues=cues,

@@ -360,6 +360,20 @@ class WebTests(Sandbox):
 
 
 class ConfigurationAndRegistryTests(Sandbox):
+    def test_real_llm_requires_configuration(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(ValueError):
+                Settings(_env_file=None, APP_ENV="test", LLM_MODE="real")
+            settings = Settings(
+                _env_file=None,
+                APP_ENV="test",
+                LLM_MODE="real",
+                LLM_BASE_URL="https://api.deepseek.com",
+                LLM_MODEL="deepseek-flash",
+                LLM_API_KEY="test",
+            )
+        self.assertEqual(settings.LLM_MODE, "real")
+
     def test_explicit_real_external_production_fail_closed(self):
         for values in (
             {"LLM_MODE": "real"},

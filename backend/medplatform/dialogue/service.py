@@ -8,7 +8,7 @@ from ..core.idempotency import Result
 from ..support.services.service import confirmation_required
 from . import knowledge, store
 from .generation import Dialogue, assessment
-from .model import MODEL_PROFILE_ID, MockModel, missing_usage
+from .model import MODEL_PROFILE_ID, ChatModel, MockModel, missing_usage
 from .state import CASE_VERSION, CASES, SupportState, case
 
 READS = {
@@ -71,11 +71,18 @@ CREATES = {
 
 
 class DialogueService:
-    def __init__(self, db, auth, receipts, clock, settings, analytics, execution):
+    def __init__(self, db, auth, receipts, clock, settings, analytics, execution, llm):
         self.db, self.auth, self.receipts = db, auth, receipts
         self.clock, self.settings, self.analytics = clock, settings, analytics
         self.state = SupportState(clock, execution)
-        self.dialogue = Dialogue(db, auth, clock, settings, analytics, MockModel())
+        self.dialogue = Dialogue(
+            db,
+            auth,
+            clock,
+            settings,
+            analytics,
+            ChatModel(llm, settings) if llm else MockModel(),
+        )
         self.formal_services = None
 
     def admin(self, conn, principal):

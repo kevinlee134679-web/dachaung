@@ -7,7 +7,7 @@ import { requireCurrentView } from '../../session/session'
 import { Badge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { statusTone } from '../../ui/labels'
-import { generationState, outputSchema, pendingRefresh } from './conversation'
+import { dialogueTimeoutMs, generationState, outputSchema, pendingRefresh } from './conversation'
 import { refreshSupport } from './invitations'
 
 export function SupportMessage(props: { session: SupportSession; message: Message; canWrite: boolean }): JSX.Element {
@@ -18,6 +18,7 @@ export function SupportMessage(props: { session: SupportSession; message: Messag
       'POST',
       { generation_id: props.message.generation_id, expected_turn_count: props.session.turn_count },
       view,
+      dialogueTimeoutMs,
     )
     requireCurrentView(view)
     pendingRefresh.current = {

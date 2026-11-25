@@ -80,7 +80,14 @@ def create_app(
         db, service.auth, service.receipts, clock or now
     )
     support = DialogueService(
-        db, service.auth, service.receipts, clock or now, settings, analytics, execution
+        db,
+        service.auth,
+        service.receipts,
+        clock or now,
+        settings,
+        analytics,
+        execution,
+        llm,
     )
     catalog = Catalog(db, service.auth)
     drafts = Drafts(db, service, clock or now)

@@ -21,12 +21,13 @@ import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { Disclosure } from '../../ui/disclosure'
 import { Field, Select, Textarea } from '../../ui/form'
-import { statusTone } from '../../ui/labels'
+import { generationModeLabels, statusTone } from '../../ui/labels'
 import { EmptyState } from '../../ui/list'
 import { Subheading, Text } from '../../ui/typography'
 import {
   assessmentSource,
   cueSchema,
+  dialogueTimeoutMs,
   generationState,
   messageSchema,
   outputSchema,
@@ -56,6 +57,13 @@ type Assessment = v.InferOutput<typeof assessmentSchema>
 type Mode = v.InferOutput<typeof modeSchema>
 type Pending = v.InferOutput<typeof pendingSchema>
 
+const openers = [
+  '这几天心情低落，只想先说说。',
+  '我担心副作用，想把问题理一理。',
+  '我吃药吃累了，想让日常安排简单一点。',
+  '今天又忘了吃药，有点烦。',
+]
+
 function OutputDetails(props: { output: Output }): JSX.Element {
   const [documents, setDocuments] = createSignal<
     Record<string, { title: string; review_status: string; body: string; source_locator: string }>
@@ -77,15 +85,14 @@ function OutputDetails(props: { output: Output }): JSX.Element {
   }
   return (
     <Disclosure summary="本轮来源与沟通说明">
-      <p>实际来源 {props.output.generation.mode}</p>
-      <p>策略 {props.output.business_output.communication_strategy.join('、')}</p>
-      <For each={props.output.business_output.difficulty_cues}>
-        {cue => (
-          <p>
-            {cue.label} · {cue.evidence}
-          </p>
-        )}
-      </For>
+      <p>实际来源 {generationModeLabels[props.output.generation.mode]}</p>
+      <Show when={props.output.business_output.support_focus}>
+        <p>沟通重点 {props.output.business_output.support_focus}</p>
+      </Show>
+      <Show when={props.output.business_output.communication_strategy.length > 0}>
+        <p>策略 {props.output.business_output.communication_strategy.join('、')}</p>
+      </Show>
+      <For each={props.output.business_output.difficulty_cues}>{cue => <p>{cue.label}</p>}</For>
       <For each={props.output.business_output.knowledge_citations}>
         {citation => (
           <div>
@@ -221,8 +228,7 @@ export function SupportConversation(props: { session: SupportSession }): JSX.Ele
     if (!['accepted', 'running'].includes(status)) clearPending(pending)
     reload(view, { message: generationState[status] ?? '已核对原消息。' })
   }
-  async function send(view: View): Promise<void> {
-    const content = editor.value
+  async function send(view: View, content = editor.value): Promise<void> {
     if (!content.trim()) throw new Error('请先填写消息。')
     const hash = await sha(content)
     requireCurrentView(view)
@@ -239,6 +245,7 @@ export function SupportConversation(props: { session: SupportSession }): JSX.Ele
         'POST',
         { client_message_id: pending.id, expected_turn_count: pending.turn, content },
         view,
+        dialogueTimeoutMs,
       )
     } catch (error) {
       if (error instanceof ViewChanged) throw error
@@ -307,7 +314,7 @@ export function SupportConversation(props: { session: SupportSession }): JSX.Ele
         <div class="space-y-6">
           <div>
             <Subheading>{simplified() ? '极简对话' : '支持对话'}</Subheading>
-            <Text>本地模拟对话</Text>
+            <Text>AI 支持对话</Text>
           </div>
           <div class="flex flex-wrap gap-3">
             <Show when={canWrite() && mode()}>
@@ -325,7 +332,25 @@ export function SupportConversation(props: { session: SupportSession }): JSX.Ele
             </Show>
           </div>
           <div aria-label="对话历史" class="space-y-4">
-            <For each={messages()} fallback={<EmptyState>可以从你现在最想说的一件事开始。</EmptyState>}>
+            <For
+              each={messages()}
+              fallback={
+                <>
+                  <EmptyState>可以从你现在最想说的一件事开始。</EmptyState>
+                  <Show when={canWrite()}>
+                    <div class="flex flex-wrap gap-3">
+                      <For each={openers}>
+                        {opener => (
+                          <Button variant="secondary" onAction={view => send(view, opener)}>
+                            {opener}
+                          </Button>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </>
+              }
+            >
               {message => <SupportMessage session={props.session} message={message} canWrite={canWrite()} />}
             </For>
           </div>
@@ -339,13 +364,7 @@ export function SupportConversation(props: { session: SupportSession }): JSX.Ele
                       {assessmentSource[record.kind]} · {dateText(record.observed_at)}
                     </Text>
                     <For each={record.self_report_items}>{item => <p>{item.description}</p>}</For>
-                    <For each={record.cues}>
-                      {cue => (
-                        <p>
-                          {cue.label} · {cue.evidence}
-                        </p>
-                      )}
-                    </For>
+                    <For each={record.cues}>{cue => <p>{cue.label}</p>}</For>
                   </>
                 )}
               </For>

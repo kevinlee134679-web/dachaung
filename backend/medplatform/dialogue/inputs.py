@@ -77,16 +77,12 @@ class GenerationRetry(Input):
 class DifficultyCue(Input):
     category: CueKind
     label: Short
-    evidence: Text
-    source_message_id: ID
 
 
 class Readiness(Input):
     state: Literal[
         "not_considering", "ambivalent", "preparing", "acting", "maintaining"
     ]
-    evidence: Text
-    source_message_id: ID
 
 
 class SuggestedAction(Input):
@@ -106,22 +102,19 @@ class Citation(Input):
 
 class DialogueCore(Input):
     assistant_reply: Text
-    support_focus: Literal[
-        "listening", "clarifying", "exploring", "action_support", "closing"
-    ]
-    communication_strategy: Annotated[
-        list[
-            Literal[
-                "reflection",
-                "affirmation",
-                "open_question",
-                "autonomy_support",
-                "permission_based_advice",
-                "summary",
-            ]
-        ],
-        Field(min_length=1, max_length=2),
-    ]
+
+
+SupportFocus = Literal[
+    "listening", "clarifying", "exploring", "action_support", "closing"
+]
+Strategy = Literal[
+    "reflection",
+    "affirmation",
+    "open_question",
+    "autonomy_support",
+    "permission_based_advice",
+    "summary",
+]
 
 
 class SelfReportItem(Input):

@@ -2,13 +2,18 @@ import json
 import threading
 import unittest
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.parse import urlencode
 
+import httpx2
+
 import fixtures as existing
 from medplatform.core.documents import encode, stamp
+from medplatform.core.llm import Reply
 from medplatform.dialogue.completion import validate_completion
-from medplatform.dialogue.model import MockModel
+from medplatform.dialogue.crisis import CRISIS_REPLY
+from medplatform.dialogue.model import ChatModel, MockModel
 from medplatform.dialogue.state import CASE_VERSION
 from medplatform.web.app import create_app
 
@@ -143,7 +148,7 @@ class DialogueTests(unittest.TestCase):
         self.assertEqual(self.send(created, number=number), result)
         self.assertEqual(result["user_message"]["content"], "  心情低落，只想倾诉。  ")
         self.assertEqual(
-            result["business_output"]["difficulty_cues"][0]["evidence"], "心情低落"
+            result["business_output"]["difficulty_cues"][0]["label"], "表达情绪低落"
         )
         self.assertIsNone(result["intervention_id"])
         self.send(created, "不同正文", number=number, expected=409)
@@ -160,6 +165,13 @@ class DialogueTests(unittest.TestCase):
             len(self.api("GET", self.path(created, "/messages"))["items"]), 2
         )
         self.assertEqual(self.s.db.path.read_bytes(), before)
+
+    def test_crisis_reply_bypasses_adapter(self):
+        session = self.create()
+        with patch.object(self.b.dialogue.adapter, "complete") as complete:
+            result = self.send(session, "我想伤害自己")
+        complete.assert_not_called()
+        self.assertEqual(result["assistant_message"]["content"], CRISIS_REPLY)
 
     def test_stale_turn_recovers_without_saving_or_generating_rejected_message(self):
         session = self.create()
@@ -881,27 +893,36 @@ class DialogueTests(unittest.TestCase):
 
 class OfflineModelTests(unittest.TestCase):
     def test_invalid_core_and_forged_auxiliary(self):
-        self.assertEqual(validate_completion("{", {}, lambda _: False), (None, False))
+        self.assertEqual(validate_completion("{", lambda _: False), (None, False))
+        clean, degraded = validate_completion(
+            json.dumps({"assistant_reply": "原文"}), lambda _: False
+        )
+        self.assertFalse(degraded)
+        self.assertEqual(clean["assistant_reply"], "原文")
         raw = json.dumps(
             {
                 "assistant_reply": "原文",
-                "support_focus": "listening",
-                "communication_strategy": ["reflection"],
-                "suggested_action": None,
-                "knowledge_citations": [],
-                "change_readiness": None,
-                "difficulty_cues": [
-                    {
-                        "category": "low_mood",
-                        "label": "test",
-                        "evidence": "some",
-                        "source_message_id": "unrelated",
-                    }
-                ],
+                "knowledge_citations": [{"retrieval_id": "forged"}],
             }
         )
-        clean, degraded = validate_completion(
-            raw, {"actual": "some text"}, lambda _: False
-        )
+        clean, degraded = validate_completion(raw, lambda _: False)
         self.assertTrue(degraded)
-        self.assertEqual(clean["difficulty_cues"], [])
+        self.assertEqual(clean["knowledge_citations"], [])
+
+    def test_chat_model_mapping(self):
+        llm = SimpleNamespace(chat=lambda messages: Reply(None, None))
+        model = ChatModel(
+            llm,
+            SimpleNamespace(
+                LLM_BASE_URL="https://api.deepseek.com", LLM_MODEL="deepseek-flash"
+            ),
+        )
+        self.assertEqual(model.complete([]).error_code, "PROVIDER_EMPTY_RESPONSE")
+        llm.chat = lambda messages: Reply(
+            "{}", {"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5}
+        )
+        self.assertEqual(model.complete([]).usage["source"], "provider")
+        with patch.object(llm, "chat", side_effect=httpx2.TimeoutException("timeout")):
+            result = model.complete([])
+        self.assertEqual(result.error_code, "PROVIDER_RESULT_UNKNOWN")
+        self.assertTrue(result.outcome_unknown)

@@ -18,6 +18,7 @@ from ..core.errors import AppError
 from ..core.idempotency import Result
 from . import knowledge, rules, store
 from .completion import validate_completion
+from .crisis import crisis_completion
 from .model import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
@@ -53,7 +54,7 @@ def assessment(
     sources = list(
         dict.fromkeys(
             entry["source_message_id"]
-            for entry in (*cues, *items)
+            for entry in items
             if entry["source_message_id"] is not None
         )
     )
@@ -244,7 +245,7 @@ class Dialogue:
             "generation_id": uid(),
             "generation_status": "accepted",
             "created_at": at,
-            "is_simulated": True,
+            "is_simulated": self.adapter.mode == "mock",
         }
         conn.execute(
             "INSERT INTO b_messages VALUES (?,?,?,?,?,?,?)",
@@ -276,7 +277,7 @@ class Dialogue:
             "error_code": None,
             "started_at": at,
             "finished_at": None,
-            "is_simulated": True,
+            "is_simulated": self.adapter.mode == "mock",
         }
         conn.execute(
             "INSERT INTO b_generations VALUES (?,?,?,?,?,NULL)",
@@ -476,7 +477,6 @@ class Dialogue:
                     ),
                 }
             )
-        allowed = {}
         for identifier in [*snap["history_message_ids"], snap["user_message_id"]]:
             item = store.message(conn, identifier)
             if (
@@ -486,8 +486,6 @@ class Dialogue:
                 raise AppError(
                     409, "GENERATION_CONTEXT_CHANGED", "原始输入的对象归属不一致"
                 )
-            if item["role"] == "user":
-                allowed[identifier] = item["content"]
             msgs.append(
                 {
                     "role": item["role"],
@@ -496,7 +494,7 @@ class Dialogue:
                     ),
                 }
             )
-        return msgs, allowed, retrieval, snippets
+        return msgs, retrieval, snippets
 
     def _record_state(self, conn, gen, number, outcome, output=None):
         conn.execute(
@@ -532,16 +530,16 @@ class Dialogue:
                 )
                 self._record_state(conn, gen, number, "cancelled")
                 return self._result(conn, gen, row, "cancelled", request_status)
-            msgs, allowed, retrieval, used_snippets = self._input_messages(
-                conn, principal, gen
-            )
+            msgs, retrieval, used_snippets = self._input_messages(conn, principal, gen)
             gen["status"] = "running"
             self._record_state(conn, gen, number, "running")
             scenario = row["scenario"] if number == 1 else None
         call_started = self.clock()
         start_counter = monotonic()
         try:
-            attempt = self.adapter.complete(msgs, scenario=scenario)
+            attempt = crisis_completion(
+                json.loads(msgs[-1]["content"])["text"]
+            ) or self.adapter.complete(msgs, scenario=scenario)
         except Exception:  # noqa: BLE001
             attempt = Completion(None, "MODEL_ADAPTER_ERROR")
         elapsed = monotonic() - start_counter
@@ -562,7 +560,6 @@ class Dialogue:
             if error is None:
                 output, degraded = validate_completion(
                     attempt.content,
-                    allowed,
                     lambda citation: knowledge.verifies_citation(
                         citation, retrieval, snippets
                     ),
@@ -586,7 +583,7 @@ class Dialogue:
                     else "failed"
                     if error
                     else "succeeded",
-                    "usage": missing_usage("模拟无网络用量"),
+                    "usage": attempt.usage or missing_usage("模拟无网络用量"),
                     "elapsed_ms": int(elapsed * 1000),
                     "error_code": error,
                     "started_at": stamp(call_started),
@@ -624,7 +621,7 @@ class Dialogue:
             "generation_id": gen["generation_id"],
             "generation_status": "not_applicable",
             "created_at": at,
-            "is_simulated": True,
+            "is_simulated": self.adapter.mode == "mock",
         }
         conn.execute(
             "INSERT INTO b_messages VALUES (?,?,?,?,?,?,?)",
