@@ -203,7 +203,7 @@ class AuthRegressionTests(unittest.TestCase):
             f"/questionnaire-responses/{response['response_id']}/answers",
             {
                 "expected_revision": response["meta"]["revision"],
-                "answers": fixtures.unknown_answers(),
+                "answers": {"Q1": {"knowledge": 3}},
             },
             expected=403,
         )
@@ -211,7 +211,7 @@ class AuthRegressionTests(unittest.TestCase):
     def test_author_can_read_own_submitted_response_with_read_only_grant(self):
         binding, _ = self.fixture.bind(["questionnaire:assist"])
         response = self.fixture.response(
-            self.fixture.f, patient=fixtures.PA, answers=fixtures.unknown_answers()
+            self.fixture.f, patient=fixtures.PA, answers={"Q1": {"knowledge": 3}}
         )
         submitted = self.fixture.call(
             self.fixture.f,
@@ -232,7 +232,7 @@ class AuthRegressionTests(unittest.TestCase):
     ):
         self.fixture.bind(["questionnaire:assist"])
         own_draft = self.fixture.response(
-            self.fixture.f, patient=fixtures.PA, answers=fixtures.unknown_answers()
+            self.fixture.f, patient=fixtures.PA, answers={"Q1": {"knowledge": 3}}
         )
         self.assertEqual(
             self.fixture.call(
@@ -253,7 +253,7 @@ class AuthRegressionTests(unittest.TestCase):
             self.fixture.f,
             "PUT",
             f"/questionnaire-responses/{patients_draft['response_id']}/answers",
-            {"expected_revision": 1, "answers": fixtures.unknown_answers()},
+            {"expected_revision": 1, "answers": {"Q1": {"knowledge": 3}}},
             expected=403,
         )
         self.assertEqual(error["code"], "RESPONSE_AUTHOR_REQUIRED")

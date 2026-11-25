@@ -33,7 +33,7 @@ export function ConfirmHost(): JSX.Element {
         finish(false)
       }}
     >
-      <Text>{message()}</Text>
+      <Text class="whitespace-pre-line">{message()}</Text>
       <Show when={state.epoch + 1} keyed>
         <div class="mt-6 flex justify-end gap-3">
           <Button onAction={() => finish(false)}>取消</Button>

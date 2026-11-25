@@ -6,7 +6,6 @@ from urllib.parse import urlencode, urlsplit
 
 import fixtures as existing
 from medplatform.core.documents import stamp
-
 from support.services import test_services as services
 
 PA = existing.PA

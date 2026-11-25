@@ -1,7 +1,7 @@
 import type { DemoTask } from '../features/admin/demo-page'
 import type { OnboardingStep } from '../features/onboarding/onboarding'
 import type { Draft } from '../features/plan-drafts/drafts'
-import type { Response } from '../features/questionnaire/answers'
+import type { QuestionnaireResponse } from '../features/questionnaire/questionnaire'
 import type { Store, StoreSetter } from 'solid-js'
 import { createStore, flush } from 'solid-js'
 import * as v from 'valibot'
@@ -48,7 +48,7 @@ export interface SessionState {
   tab: string
   epoch: number
   switchingPatient: boolean
-  response: Response | null
+  response: QuestionnaireResponse | null
   draft: Draft | null
   demoTask: DemoTask | null
   onboarding: OnboardingStep | null

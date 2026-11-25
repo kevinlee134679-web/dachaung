@@ -9,7 +9,6 @@ from unittest.mock import patch
 import fixtures as existing
 from medplatform.core.documents import stamp
 from medplatform.web.app import create_app
-
 from support.drafts import test_drafts as drafts
 
 PA, PB = existing.PA, existing.PB

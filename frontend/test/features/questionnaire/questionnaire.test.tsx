@@ -1,29 +1,159 @@
+import type { AnswerValue, Definition, QuestionnaireResponse } from '../../../src/features/questionnaire/questionnaire'
 import type { SuccessResponse } from '../../support'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
+import * as v from 'valibot'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { AdherencePage } from '../../../src/features/questionnaire/adherence-page'
 import { ProfilePage } from '../../../src/features/questionnaire/profile-page'
+import { QuestionWizard } from '../../../src/features/questionnaire/question-wizard'
 import { QuestionnairePage } from '../../../src/features/questionnaire/questionnaire-page'
-import { ReviewForm } from '../../../src/features/questionnaire/review-form'
 import { currentNotice, notice } from '../../../src/notice/notice'
 import { Notice } from '../../../src/notice/notice-view'
 import { state, updateSession } from '../../../src/session/session'
-import { choose, success } from '../../support'
+import { ConfirmHost } from '../../../src/ui/confirm'
+import { choose, failure, success } from '../../support'
 
-const definition = {
+const definition: Definition = {
   questionnaire_id: 'initial',
-  purpose: 'fictional questionnaire',
-  version: 'initial-v0.1',
-  themes: Array.from({ length: 8 }, (_, index) => ({
-    question_id: `Q${index + 1}`,
-    prompt: '虚构问题',
-    interaction: 'scenario',
-    options: [{ code: 'none', label: '无' }],
-    allows_unknown: true,
-    allows_not_applicable: true,
-  })),
+  version: 'initial-cas-review-v1',
+  purpose: '用药评估',
+  themes: [
+    {
+      question_id: 'Q1',
+      title: '用药知识',
+      section: 'core',
+      fields: [
+        {
+          key: 'knowledge',
+          prompt: '了解用药',
+          kind: 'scale',
+          options: [
+            { code: 4, label: '符合' },
+            { code: 'unknown', label: '无法判断' },
+          ],
+        },
+      ],
+    },
+    {
+      question_id: 'Q2',
+      title: '漏服频率',
+      section: 'core',
+      fields: [
+        {
+          key: 'adherence_freq',
+          prompt: '漏服频率',
+          kind: 'choice',
+          options: [{ code: '从不漏服', label: '从不漏服' }],
+        },
+      ],
+    },
+    {
+      question_id: 'Q3',
+      title: '用药难度',
+      section: 'core',
+      fields: [{ key: 'difficulty', prompt: '用药难度', kind: 'scale', options: [{ code: 1, label: '没有难度' }] }],
+    },
+    {
+      question_id: 'Q4',
+      title: '用药障碍',
+      section: 'core',
+      fields: [
+        {
+          key: 'reported_pattern',
+          prompt: '实际行为',
+          kind: 'choice',
+          options: [
+            { code: 'none_reported', label: '未发生' },
+            { code: 'intentional', label: '主动选择' },
+          ],
+        },
+        {
+          key: 'barriers',
+          prompt: '实际原因',
+          kind: 'multiple',
+          optional: true,
+          visible_when: { field: 'reported_pattern', in: ['unintentional', 'intentional', 'both'] },
+          options: [
+            { code: 'forgot_or_habit_disrupted', label: '忘记' },
+            { code: 'other', label: '其他' },
+            { code: 'execution_or_access', label: '取药不便' },
+          ],
+        },
+        {
+          key: 'main_barrier',
+          prompt: '主要原因',
+          kind: 'selected_choice',
+          optional: true,
+          source: 'barriers',
+          options: [],
+        },
+      ],
+    },
+    {
+      question_id: 'Q5',
+      title: '选填问题',
+      section: 'optional',
+      fields: [
+        { key: 'drug_duration', prompt: '用药时长', kind: 'choice', options: [{ code: '1-3年', label: '1-3年' }] },
+      ],
+    },
+  ],
 }
-function latestProfile(profile: unknown, responseId = 'submitted') {
-  return success({ response_id: responseId, submitted_at: '2026-11-24T00:00:00Z', profile })
+
+function draftResponse(values: Record<string, AnswerValue> = {}): QuestionnaireResponse {
+  const answer = (questionId: string) => ({
+    value: values[questionId] ?? {},
+    answered_by: 'self' as const,
+    updated_at: '2026-01-01T00:00:00Z',
+  })
+  return {
+    response_id: 'response-a',
+    patient_id: 'pa',
+    questionnaire_version: 'initial-cas-review-v1',
+    respondent_account_id: 'account-a',
+    respondent_mode: 'self',
+    status: 'draft',
+    supersedes_response_id: null,
+    submitted_at: null,
+    answers: {
+      Q1: answer('Q1'),
+      Q2: answer('Q2'),
+      Q3: answer('Q3'),
+      Q4: answer('Q4'),
+      Q5: answer('Q5'),
+      Q6: answer('Q6'),
+      Q7: answer('Q7'),
+      Q8: answer('Q8'),
+    },
+    meta: { revision: 1 },
+  }
+}
+
+const profile = {
+  profile_id: 'profile-a',
+  patient_id: 'pa',
+  response_id: 'response-a',
+  questionnaire_version: 'initial-cas-review-v1',
+  status: 'current',
+  cas_observed: { status: 'observed', value: 12, missing_items: [], reasons: [] },
+  cas: { status: 'unavailable', value: null, model_version: null, reason: '未配置 CAS 模型' },
+  cards: [{ question_id: 'Q1', title: '用药知识', answers: ['符合'], level: 'good', note: '继续保持。' }],
+  factors: [],
+  assessment_method_version: 'cas-questionnaire-v2',
+  generated_at: '2026-11-24T00:00:00Z',
+  meta: { revision: 1 },
+}
+
+const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal')
+const closeDialog = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close')
+const answerValueSchema = v.record(v.string(), v.union([v.string(), v.number(), v.array(v.string())]))
+const answerRequestSchema = v.object({
+  expected_revision: v.number(),
+  answers: v.record(v.string(), answerValueSchema),
+})
+
+function answerRequest(body: BodyInit | null | undefined) {
+  return v.parse(answerRequestSchema, JSON.parse(v.parse(v.string(), body)))
 }
 
 beforeEach(() => {
@@ -40,6 +170,10 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  if (showModal) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModal)
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
+  if (closeDialog) Object.defineProperty(HTMLDialogElement.prototype, 'close', closeDialog)
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close')
 })
 
 it('preserves the saved reference when questionnaire restore fails transiently', async () => {
@@ -50,17 +184,7 @@ it('preserves the saved reference when questionnaire restore fails transiently',
     vi.fn((url: string) =>
       url.includes('/questionnaires/initial')
         ? success(definition)
-        : {
-            ok: false,
-            status: 503,
-            json: () =>
-              Promise.resolve({
-                request_id: 'test',
-                status: 'error',
-                data: null,
-                error: { code: 'DEPENDENCY_NOT_READY', message: 'temporary storage failure' },
-              }),
-          },
+        : failure(503, 'DEPENDENCY_NOT_READY', 'temporary storage failure'),
     ),
   )
   render(() => (
@@ -95,21 +219,7 @@ it('does not let an old questionnaire restore change the newly selected patient 
     draft.response = null
     draft.epoch++
   })
-  const answer = { state: 'not_answered', value: null, answered_by: 'self', updated_at: '2026-01-01T00:00:00+00:00' }
-  response.resolve(
-    success({
-      response_id: 'response-a',
-      patient_id: 'pa',
-      questionnaire_version: 'initial-v0.1',
-      respondent_account_id: 'account-a',
-      respondent_mode: 'self',
-      status: 'draft',
-      supersedes_response_id: null,
-      submitted_at: null,
-      answers: { Q1: answer, Q2: answer, Q3: answer, Q4: answer, Q5: answer, Q6: answer, Q7: answer, Q8: answer },
-      meta: { revision: 1 },
-    }),
-  )
+  response.resolve(success(draftResponse()))
   const settled = Promise.withResolvers<undefined>()
   setTimeout(settled.resolve, 0)
   await settled.promise
@@ -119,264 +229,166 @@ it('does not let an old questionnaire restore change the newly selected patient 
   expect(localStorage.getItem(b)).toBe('response-b')
 })
 
-it('restores the wording of a legacy draft after the default changes', async () => {
-  localStorage.setItem('reference:account-a:pa:questionnaire', 'old')
-  const answer = { state: 'not_answered', value: null }
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url: string) => {
-      if (url.endsWith('/initial')) {
-        return success({
-          ...definition,
-          version: 'initial-cas-review-v1-core1',
-          themes: definition.themes.map(t => ({ ...t, prompt: '新版问题' })),
-        })
-      }
-      if (url.endsWith('?version=initial-v0.1')) return success(definition)
-      return success({
-        questionnaire_version: 'initial-v0.1',
-        response_id: 'old',
-        status: 'draft',
-        meta: { revision: 1 },
-        answers: Object.fromEntries(definition.themes.map(t => [t.question_id, answer])),
-      })
+it('creates a response only after privacy consent', async () => {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.setAttribute('open', '')
+    },
+  })
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+    configurable: true,
+    value(this: HTMLDialogElement) {
+      this.removeAttribute('open')
+    },
+  })
+  const fetcher = vi.fn((url: string, options: RequestInit) =>
+    url.endsWith('/questionnaires/initial')
+      ? success(definition)
+      : options.method === 'POST'
+        ? success(draftResponse())
+        : failure(404, 'NOT_FOUND', '没有答卷'),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  render(() => (
+    <>
+      <ConfirmHost />
+      <QuestionnairePage />
+    </>
+  ))
+  fireEvent.click(await screen.findByRole('button', { name: '开始评估' }))
+  fireEvent.click(await screen.findByRole('button', { name: '取消' }))
+  expect(fetcher.mock.calls.filter(([, options]) => options.method === 'POST')).toHaveLength(0)
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '开始评估' }).disabled).toBe(false))
+  fireEvent.click(screen.getByRole('button', { name: '开始评估' }))
+  fireEvent.click(await screen.findByRole('button', { name: '确认' }))
+  await waitFor(() => expect(fetcher.mock.calls.filter(([, options]) => options.method === 'POST')).toHaveLength(1))
+})
+
+it('saves the whole Q1 value and advances after a single choice', async () => {
+  const response = draftResponse()
+  const fetcher = vi.fn((_: string, _options: RequestInit) =>
+    success({
+      ...response,
+      answers: {
+        ...response.answers,
+        Q1: { value: { knowledge: 4 }, answered_by: 'self', updated_at: '2026-01-01T00:00:00Z' },
+      },
+      meta: { revision: 2 },
     }),
   )
-  render(() => <QuestionnairePage />)
-  expect(await screen.findByRole('group', { name: '虚构问题' })).toBeTruthy()
-  expect(screen.queryByText('新版问题')).toBeNull()
+  vi.stubGlobal('fetch', fetcher)
+  render(() => <QuestionWizard definition={definition} response={response} onSubmitted={() => {}} />)
+  fireEvent.click(await screen.findByRole('radio', { name: '符合' }))
+  await waitFor(() => expect(fetcher).toHaveBeenCalled())
+  expect(answerRequest(fetcher.mock.calls[0]?.[1].body)).toEqual({
+    expected_revision: 1,
+    answers: { Q1: { knowledge: 4 } },
+  })
+  expect(await screen.findByRole('radio', { name: '从不漏服' })).toBeTruthy()
 })
 
-it.each([
-  { observed: undefined, expected: '旧版问卷未采集实测 CAS 三题。' },
-  { observed: { status: 'observed', value: 11, reasons: [] }, expected: /11\/15（自报）/ },
-  {
-    observed: { status: 'insufficient', value: null, reasons: ['Q3 坚持用药的难度未取得有效回答'] },
-    expected: /Q3 坚持用药的难度/,
-  },
-])('shows the stored result and independent prediction state', async ({ observed, expected }) => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() =>
-      latestProfile({
-        generated_at: '2026-11-24T00:00:00Z',
-        primary_type: null,
-        cas: { status: 'unavailable', value: null, reason: '模型待验证' },
-        cas_observed: observed,
-        missing_items: [],
-        factors: [],
-      }),
-    ),
-  )
-  render(() => <ProfilePage />)
-  expect(await screen.findByText(expected)).toBeTruthy()
-  expect(screen.getByText(/模型预测 CAS · 未配置/)).toBeTruthy()
-})
-
-it('shows the research estimate with its model version alongside the self-reported score', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() =>
-      latestProfile({
-        generated_at: '2026-11-24T00:00:00Z',
-        primary_type: null,
-        factors: [],
-        missing_items: [],
-        cas_observed: { status: 'observed', value: 9, reasons: [] },
-        cas: { status: 'estimated', value: 10.6713438, reason: null, model_version: 'cas-dl2-retrain-20261124' },
-      }),
-    ),
-  )
-  render(() => <ProfilePage />)
-  expect(await screen.findByText(/模型预测 CAS · 10.67 分（研究估计）/)).toBeTruthy()
-  expect(screen.getByText(/研究重训模型版本 · cas-dl2-retrain-20261124/)).toBeTruthy()
-  expect(screen.getByText(/9\/15（自报）/)).toBeTruthy()
-})
-
-it('generates the latest submitted response even when the browser points to a newer draft', async () => {
-  localStorage.setItem('reference:account-a:pa:questionnaire', 'empty-draft')
-  const result = {
-    generated_at: '2026-11-24T00:00:00Z',
-    primary_type: null,
-    factors: [],
-    missing_items: [],
-    cas_observed: { status: 'observed', value: 15, reasons: [] },
-    cas: { status: 'insufficient', value: null, reason: '未填补充题' },
-  }
-  let generated = false
-  const fetcher = vi.fn((url: string, options: RequestInit) => {
-    if (url.endsWith('/profiles/current?source=latest_submission')) {
-      return latestProfile(generated ? result : null, 'new-submission')
+it('shows only selected Q4 barriers and clears hidden answers when the pattern changes', async () => {
+  let response = draftResponse({ Q1: { knowledge: 4 }, Q2: { adherence_freq: '从不漏服' }, Q3: { difficulty: 1 } })
+  const fetcher = vi.fn((_: string, options: RequestInit) => {
+    const body = answerRequest(options.body)
+    response = {
+      ...response,
+      answers: {
+        ...response.answers,
+        Q4: {
+          value: v.parse(answerValueSchema, body.answers['Q4']),
+          answered_by: 'self',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      },
+      meta: { revision: response.meta.revision + 1 },
     }
-    if (url.endsWith('/profiles') && options.method === 'POST') {
-      generated = true
-      return success(result)
-    }
-    throw new Error('unexpected request')
+    return success(response)
   })
   vi.stubGlobal('fetch', fetcher)
-  render(() => <ProfilePage />)
-  await screen.findByText('最近提交的问卷尚未生成画像。')
-  expect(screen.queryByText('你的回答与关注重点')).toBeNull()
-  fireEvent.click(screen.getByRole('button', { name: '根据已提交问卷生成画像' }))
-  expect(await screen.findByText(/15\/15（自报）/)).toBeTruthy()
-  expect(fetcher).toHaveBeenCalledWith(
-    '/api/v1/patients/pa/profiles',
-    expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ response_id: 'new-submission' }),
+  render(() => <QuestionWizard definition={definition} response={response} onSubmitted={() => {}} />)
+  fireEvent.click(await screen.findByRole('radio', { name: '未发生' }))
+  expect(await screen.findByText('以下题目用于模型评估，可选填写')).toBeTruthy()
+  expect(screen.queryByRole('checkbox', { name: '忘记' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '上一题' }))
+  fireEvent.click(await screen.findByRole('radio', { name: '主动选择' }))
+  fireEvent.click(await screen.findByRole('checkbox', { name: '忘记' }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: '忘记' }).getAttribute('aria-checked')).toBe('true'))
+  fireEvent.click(await screen.findByRole('checkbox', { name: '其他' }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: '其他' }).getAttribute('aria-checked')).toBe('true'))
+  fireEvent.click(screen.getByRole('button', { name: '下一题' }))
+  expect(await screen.findByRole('radio', { name: '忘记' })).toBeTruthy()
+  expect(screen.getByRole('radio', { name: '其他' })).toBeTruthy()
+  expect(screen.queryByRole('radio', { name: '取药不便' })).toBeNull()
+  fireEvent.click(screen.getByRole('radio', { name: '忘记' }))
+  await waitFor(() => expect(screen.getByRole('radio', { name: '忘记' }).getAttribute('aria-checked')).toBe('true'))
+  fireEvent.click(screen.getByRole('button', { name: '下一题' }))
+  await screen.findByText('以下题目用于模型评估，可选填写')
+  fireEvent.click(screen.getByRole('button', { name: '上一题' }))
+  await screen.findByRole('radiogroup', { name: '主要原因' })
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '上一题' }).disabled).toBe(false))
+  fireEvent.click(screen.getByRole('button', { name: '上一题' }))
+  await screen.findByRole('group', { name: '实际原因' })
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '上一题' }).disabled).toBe(false))
+  fireEvent.click(screen.getByRole('button', { name: '上一题' }))
+  fireEvent.click(await screen.findByRole('radio', { name: '未发生' }))
+  await waitFor(() =>
+    expect(answerRequest(fetcher.mock.calls.at(-1)?.[1].body).answers['Q4']).toEqual({
+      reported_pattern: 'none_reported',
     }),
   )
-  expect(localStorage.getItem('reference:account-a:pa:questionnaire')).toBe('empty-draft')
 })
 
-it('generates and opens the submitted self reassessment using the response returned by submit', async () => {
-  const ref = 'reference:account-a:pa:questionnaire'
-  localStorage.setItem(ref, 'self-reassessment')
-  const qs = definition.themes.map((t, i) => ({ ...t, fields: [], prompt: `测试题组${i + 1}` }))
-  const answers = Object.fromEntries(
-    qs.map((t, i) => [t.question_id, { state: i < 3 ? 'unknown' : 'not_answered', value: null }]),
-  )
-  const response = {
-    questionnaire_version: 'initial-cas-review-v1',
-    response_id: 'self-reassessment',
-    status: 'draft',
-    answers,
-    meta: { revision: 1 },
-  }
+it('skips optional questions, generates a profile and shows its result', async () => {
+  localStorage.setItem('reference:account-a:pa:questionnaire', 'response-a')
+  const response = draftResponse({ Q1: { knowledge: 4 }, Q2: { adherence_freq: '从不漏服' }, Q3: { difficulty: 1 } })
   const fetcher = vi.fn((url: string, options: RequestInit) => {
-    if (url.endsWith('/questionnaires/initial')) {
-      return success({ ...definition, version: response.questionnaire_version, themes: qs })
+    if (url.endsWith('/questionnaires/initial')) return success(definition)
+    if (url.endsWith('/latest-submitted')) {
+      return success({ response_id: 'response-a', submitted_at: '2026-11-24T00:00:00Z', profile })
     }
-    if (url.endsWith('/self-reassessment')) return success(response)
-    if (url.endsWith('/answers')) return success({ ...response, meta: { revision: 2 } })
+    if (url.endsWith('/answers')) {
+      return success({
+        ...response,
+        answers: {
+          ...response.answers,
+          Q4: { value: { reported_pattern: 'none_reported' }, answered_by: 'self', updated_at: '2026-01-01T00:00:00Z' },
+        },
+        meta: { revision: 2 },
+      })
+    }
     if (url.endsWith('/submit')) {
-      localStorage.setItem(ref, 'another-tab-draft')
-      return success({ ...response, status: 'submitted', meta: { revision: 3 } })
+      return success({ ...response, status: 'submitted', submitted_at: '2026-11-24T00:00:00Z' })
     }
-    if (url.endsWith('/profiles') && options.method === 'POST') {
-      return success({
-        generated_at: '2026-11-24T00:00:00Z',
-        primary_type: null,
-        factors: [],
-        missing_items: [],
-        cas: { status: 'insufficient', value: null, reason: '输入不足' },
-      })
-    }
-    throw new Error('unexpected request')
+    if (url.endsWith('/profiles') && options.method === 'POST') return success(profile)
+    return success(response)
   })
   vi.stubGlobal('fetch', fetcher)
-  render(() => <QuestionnairePage />)
+  render(() => <AdherencePage />)
+  fireEvent.click(await screen.findByRole('radio', { name: '未发生' }))
+  fireEvent.click(await screen.findByRole('button', { name: '跳过选填部分' }))
   fireEvent.click(await screen.findByLabelText(/我确认提交本次问卷/))
-  fireEvent.click(screen.getByRole('button', { name: '提交问卷并生成画像' }))
+  await waitFor(() => expect(screen.getByRole<HTMLButtonElement>('button', { name: '提交问卷' }).disabled).toBe(false))
+  fireEvent.click(screen.getByRole('button', { name: '提交问卷' }))
   await waitFor(() =>
     expect(fetcher).toHaveBeenCalledWith(
       '/api/v1/patients/pa/profiles',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ response_id: 'self-reassessment' }),
-      }),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ response_id: 'response-a' }) }),
     ),
   )
-  await waitFor(() => expect(state.tab).toBe('assessment'))
+  expect(await screen.findByText('继续保持。')).toBeTruthy()
 })
 
-it('offers only selected Q4 barriers as main and clears hidden answers before saving', async () => {
-  const blank = { state: 'not_answered', value: null }
-  const response = {
-    questionnaire_version: 'initial-cas-review-v1' as const,
-    response_id: 'draft',
-    status: 'draft',
-    meta: { revision: 1 },
-    answers: { Q1: blank, Q2: blank, Q3: blank, Q4: blank, Q5: blank, Q6: blank, Q7: blank, Q8: blank },
-  }
-  const saved = vi.fn<() => void>()
-  const fetcher = vi.fn(() => success(response))
-  vi.stubGlobal('fetch', fetcher)
-  render(() => (
-    <ReviewForm
-      response={response}
-      index={3}
-      onSaved={saved}
-      theme={{
-        question_id: 'Q4',
-        prompt: '发生过什么？',
-        options: [],
-        fields: [
-          {
-            key: 'reported_pattern',
-            prompt: '实际行为',
-            kind: 'choice',
-            options: [
-              { code: 'both', label: '两种都有' },
-              { code: 'none_reported', label: '未发生' },
-            ],
-          },
-          {
-            key: 'barriers',
-            prompt: '实际原因',
-            kind: 'multiple',
-            options: [
-              { code: 'forgot_or_habit_disrupted', label: '忘记' },
-              { code: 'other', label: '其他' },
-            ],
-          },
-          { key: 'main_barrier', prompt: '主要原因', kind: 'selected_choice', options: [] },
-        ],
-      }}
-    />
-  ))
-  expect(screen.queryByLabelText('忘记')).toBeNull()
-  fireEvent.change(screen.getByLabelText('实际行为'), { target: { value: 'both' } })
-  fireEvent.click(await screen.findByLabelText('忘记'))
-  const main = await screen.findByLabelText<HTMLSelectElement>('主要原因')
-  expect(Array.from(main.options, o => o.value)).toEqual(['', 'forgot_or_habit_disrupted'])
-  fireEvent.change(main, { target: { value: 'forgot_or_habit_disrupted' } })
-  fireEvent.click(screen.getByLabelText('其他'))
-  await waitFor(() =>
-    expect(Array.from(screen.getByLabelText<HTMLSelectElement>('主要原因').options, o => o.value)).toContain('other'),
+it('shows result cards without CAS scores or types', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => success({ response_id: 'response-a', submitted_at: '2026-11-24T00:00:00Z', profile })),
   )
-  fireEvent.click(screen.getByLabelText('忘记'))
-  await waitFor(() => expect(screen.getByLabelText<HTMLSelectElement>('主要原因').value).toBe(''))
-  fireEvent.change(screen.getByLabelText('实际行为'), { target: { value: 'none_reported' } })
-  await waitFor(() => expect(screen.queryByLabelText('主要原因')).toBeNull())
-  fireEvent.click(screen.getByRole('button', { name: '保存进度' }))
-  await waitFor(() => expect(saved).toHaveBeenCalled())
-  expect(fetcher).toHaveBeenCalledWith(
-    expect.any(String),
-    expect.objectContaining({
-      body: JSON.stringify({
-        expected_revision: 1,
-        answers: { ...response.answers, Q4: { state: 'answered', value: { reported_pattern: 'none_reported' } } },
-      }),
-    }),
-  )
-})
-
-it('shows both matching barriers when the participant gave no primary cause', async () => {
-  const fetcher = vi.fn(() =>
-    latestProfile({
-      generated_at: '2026-11-24T00:00:00Z',
-      primary_type: null,
-      missing_items: [],
-      factors: [],
-      cas_observed: { status: 'observed', value: 9, reasons: [] },
-      cas: { status: 'unavailable', value: null, reason: '网页预测关闭' },
-      demo_classification: {
-        primary_type: null,
-        reported_matching_types: ['B1', 'C2'],
-        type_labels: { B1: '遗忘与习惯缺失型', C2: '用药顾虑与心理抗拒型' },
-        reason: '保留匹配',
-        entry_codes: ['reminder'],
-      },
-    }),
-  )
-  vi.stubGlobal('fetch', fetcher)
-  render(() => <ProfilePage />)
-  expect(await screen.findByText(/演示主类型 · 暂不分型/)).toBeTruthy()
-  expect(screen.getByText(/符合条件的障碍 · B1 遗忘与习惯缺失型、C2 用药顾虑与心理抗拒型/)).toBeTruthy()
-  expect(fetcher).toHaveBeenCalledTimes(1)
-  fireEvent.click(screen.getByRole('button', { name: '查看提醒设置' }))
-  await waitFor(() => expect(state.tab).toBe('reminders'))
-  expect(fetcher).toHaveBeenCalledTimes(1)
+  const view = render(() => <ProfilePage />)
+  expect(await screen.findByText('用药知识')).toBeTruthy()
+  expect(screen.getByText('良好')).toBeTruthy()
+  expect(screen.getByText('继续保持。')).toBeTruthy()
+  expect(view.container.textContent).not.toContain('CAS')
+  expect(view.container.textContent).not.toContain('类型')
 })

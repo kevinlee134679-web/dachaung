@@ -1,9 +1,10 @@
 from io import BytesIO
 
-import fixtures as support
-from medplatform.medication.file_preview import extract_candidates, medication_preview
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+
+import fixtures as support
+from medplatform.medication.file_preview import extract_candidates, medication_preview
 
 
 def pdf_with_text(*lines):

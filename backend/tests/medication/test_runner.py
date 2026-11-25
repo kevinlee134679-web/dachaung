@@ -7,8 +7,9 @@ import unittest
 from datetime import timedelta
 from unittest.mock import patch
 
-import fixtures as prior
 from fastapi.testclient import TestClient
+
+import fixtures as prior
 from medplatform.core.documents import stamp
 from medplatform.core.errors import AppError
 from medplatform.dialogue import store

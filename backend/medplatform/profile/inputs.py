@@ -1,43 +1,19 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field
 
 from ..web.inputs import ID, Input, Version
 
 
 class ResponseCreate(Input):
-    questionnaire_version: str
     supersedes_response_id: ID | None = None
-
-
-class Answer(Input):
-    state: Literal[
-        "answered",
-        "unknown",
-        "not_applicable",
-        "not_answered",
-        "declined",
-        "prefer_not_to_answer",
-    ]
-    value: dict | None
-
-    @model_validator(mode="after")
-    def correct_null(self):
-        if (self.state == "answered") != (self.value is not None):
-            raise ValueError("state/value mismatch")
-        return self
 
 
 class AnswersPut(Input):
     expected_revision: Version
-    answers: dict[str, Answer]
-
-    @field_validator("answers")
-    @classmethod
-    def eight(cls, value):
-        if set(value) != {f"Q{i}" for i in range(1, 9)}:
-            raise ValueError("exactly eight themes required")
-        return value
+    answers: dict[
+        Literal["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8"], dict[str, Any]
+    ] = Field(min_length=1)
 
 
 class Submit(Input):

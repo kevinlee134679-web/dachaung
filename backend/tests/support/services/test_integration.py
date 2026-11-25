@@ -4,7 +4,6 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from medplatform.medication.runner import Runner
-
 from support.services import test_services as prior
 
 

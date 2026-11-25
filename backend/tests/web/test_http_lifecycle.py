@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 from urllib.request import ProxyHandler, build_opener
 
 import uvicorn
+
 from medplatform.core.config import ROOT, Settings
 from medplatform.core.database import Database
 from medplatform.core.migrations import catalog, migrate

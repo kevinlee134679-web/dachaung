@@ -7,6 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from unittest.mock import patch
 
+from pydantic import TypeAdapter, ValidationError
+
 import fixtures as existing
 from medplatform.core.config import ROOT
 from medplatform.core.documents import stamp
@@ -17,7 +19,6 @@ from medplatform.support.catalog.service import (
     register_catalog,
     seed_catalog,
 )
-from pydantic import TypeAdapter, ValidationError
 
 PA = existing.PA
 CATALOG = "/support-resources"

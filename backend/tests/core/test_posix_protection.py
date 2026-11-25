@@ -151,6 +151,7 @@ else:
 
     def test_unavailable_key_rolls_back_login_without_exposing_paths(self):
         from fastapi.testclient import TestClient
+
         from medplatform.core.config import Settings
         from medplatform.core.database import Database
         from medplatform.core.migrations import migrate

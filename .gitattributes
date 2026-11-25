@@ -27,10 +27,6 @@ backend/.python-version text eol=lf
 # S02 fixture manifests have stable checkout bytes.
 backend/data/demo/*.json text eol=lf
 
-# CAS startup checks SHA-256 of the exact release files, including JSON line endings.
-backend/data/models/cas-dl2-retrain-20261124/*.json -text !eol whitespace=trailing-space,space-before-tab,cr-at-eol
-backend/data/models/cas-dl2-retrain-20261124/*.pt binary
-
 # The POSIX launcher needs an LF shebang in every checkout.
 start.sh text eol=lf
 

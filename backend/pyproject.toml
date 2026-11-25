@@ -17,6 +17,21 @@ dependencies = [
 ]
 
 [dependency-groups]
+cas = [
+    "numpy>=2.5.5",
+    "torch>=2.15.0",
+]
 dev = [
     "ruff>=0.17.6",
 ]
+
+[tool.ruff]
+src = [".", "tests"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

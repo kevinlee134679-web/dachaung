@@ -1,6 +1,5 @@
 {
   "version": "cas-dl2-retrain-20261124",
-  "model_sha256": "31665b76184babb0d36622790bb44f9dad9cddc9aa2f3732cad71655f9931314",
   "feature_order": [
     "age",
     "gender",

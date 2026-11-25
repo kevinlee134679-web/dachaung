@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
+
 from fixtures import BASE, key
 from medplatform.core.config import ROOT, ConfigurationError, Settings, load_settings
 from medplatform.core.database import Database

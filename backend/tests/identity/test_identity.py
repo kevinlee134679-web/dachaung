@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from fixtures import BASE, PA, PB, IdentityFixture, defaults, key, unknown_answers
+
+from fixtures import BASE, PA, PB, IdentityFixture, defaults, key
 from medplatform.core.config import ROOT
 from medplatform.core.documents import all_docs, get, stamp
 from medplatform.identity.service import seed_demo
@@ -236,22 +237,7 @@ class IdentityTests(IdentityFixture):
         self.assertEqual(len(definition["themes"]), 8)
         response = self.response()
         rid = response["response_id"]
-        self.call(
-            self.a,
-            "POST",
-            f"/questionnaire-responses/{rid}/submit",
-            {"expected_revision": 1, "confirmed": True},
-            expected=422,
-        )
-        answers = unknown_answers()
-        answers["Q2"] = {
-            "state": "answered",
-            "value": {
-                "selected": ["none", "busy"],
-                "top_ranked": [],
-                "other_text": None,
-            },
-        }
+        answers = {"Q1": {"knowledge": 0}}
         self.call(
             self.a,
             "PUT",
@@ -259,9 +245,7 @@ class IdentityTests(IdentityFixture):
             {"expected_revision": 1, "answers": answers},
             expected=422,
         )
-        answers["Q2"]["value"]["selected"] = ["busy"]
-        answers["Q2"]["value"]["top_ranked"] = ["busy"]
-        answers["Q6"] = {"state": "answered", "value": {"confidence_level": 0}}
+        answers["Q1"]["knowledge"] = 6
         self.call(
             self.a,
             "PUT",
@@ -269,7 +253,7 @@ class IdentityTests(IdentityFixture):
             {"expected_revision": 1, "answers": answers},
             expected=422,
         )
-        answers["Q6"]["value"]["confidence_level"] = 3
+        answers["Q1"]["knowledge"] = 3
         saved = self.call(
             self.a,
             "PUT",
@@ -303,7 +287,7 @@ class IdentityTests(IdentityFixture):
                 "plan:confirm",
             ]
         )
-        response = self.response(self.f, answers=unknown_answers())
+        response = self.response(self.f, answers={"Q1": {"knowledge": 3}})
         self.assertEqual(response["respondent_mode"], "family_assisted")
         self.assertTrue(
             all(
@@ -334,11 +318,7 @@ class IdentityTests(IdentityFixture):
         )
 
     def test_profile_deferred_methods_reuse_and_history(self):
-        answers = unknown_answers()
-        answers["Q1"] = {
-            "state": "answered",
-            "value": {"primary": "follows_plan", "additional": []},
-        }
+        answers = {"Q1": {"knowledge": 3}}
         submitted = self.submitted(answers)
         body = {"response_id": submitted["response_id"]}
         profile = self.call(
@@ -348,16 +328,14 @@ class IdentityTests(IdentityFixture):
             self.a, "POST", f"/patients/{PA}/profiles", body, expected=201
         )
         self.assertEqual(profile["profile_id"], again["profile_id"])
-        self.assertIsNone(profile["primary_type"])
         self.assertIsNone(profile["cas"]["value"])
-        self.assertEqual(profile["reported_behavior"], "follows_plan")
-        self.assertIsNone(profile["assessment_method_version"])
+        self.assertEqual(profile["cards"][0]["question_id"], "Q1")
+        self.assertEqual(profile["assessment_method_version"], "cas-questionnaire-v2")
         corrected = self.call(
             self.a,
             "POST",
             f"/patients/{PA}/questionnaire-responses",
             {
-                "questionnaire_version": "initial-v0.1",
                 "supersedes_response_id": submitted["response_id"],
             },
             expected=201,
@@ -806,7 +784,7 @@ class IdentityTests(IdentityFixture):
             self.a,
             "POST",
             f"/patients/{PA}/questionnaire-responses",
-            {"questionnaire_version": "initial-v0.1", "respondent_mode": "self"},
+            {"respondent_mode": "self"},
             expected=422,
         )
 

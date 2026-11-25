@@ -7,7 +7,6 @@ from urllib.parse import urlencode
 
 import fixtures as existing
 from medplatform.support.peer.fixtures import seed_peer_groups
-
 from support.services import test_services as formal
 
 PA, PB = existing.PA, existing.PB

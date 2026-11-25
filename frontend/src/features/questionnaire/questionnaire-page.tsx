@@ -1,15 +1,14 @@
 import type { View } from '../../session/session'
-import type { Response, Definition, Question } from './answers'
+import type { Definition, QuestionnaireResponse } from './questionnaire'
 import type { JSX } from '@solidjs/web'
-import { createSignal, flush, onSettled, Show, untrack } from 'solid-js'
-import { ApiError, api } from '../../api/api'
-import { actionError } from '../../notice/notice'
+import { createSignal, onSettled, Show, untrack } from 'solid-js'
+import { ApiError } from '../../api/api'
+import { actionError, notice } from '../../notice/notice'
 import { navigate } from '../../session/navigation'
 import {
   captureView,
   isCurrentView,
   own,
-  patientPath,
   referenceKey,
   requireCurrentView,
   scope,
@@ -19,179 +18,94 @@ import {
 } from '../../session/session'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
-import { definitionSchema, responseSchema } from './answers'
+import { confirm } from '../../ui/confirm'
 import { generateProfile } from './profile'
-import { QuestionForm } from './question-form'
-import { ReviewForm } from './review-form'
+import { QuestionWizard } from './question-wizard'
+import { loadDefinition, loadResponse, startResponse } from './questionnaire'
 
-let lastQuestion: { responseId: string; index: number } | null = null
+const privacyText = `本问卷收集的信息仅用于生成你的用药情况评估，并为你提供用药提醒和支持建议。
+使用 AI 支持对话时，相关的问卷要点会发送给大模型服务（DeepSeek）用于生成回复。
+不想回答的题目可以选择“无法判断”，选填部分可以整段跳过。本平台为演示项目，账号与数据均为虚构。
+点击“确认”即表示你已阅读并同意以上说明。`
 
 export function QuestionnairePage(props: {
-  onSubmitted?: (response: Response, view: View) => Promise<void>
+  onSubmitted?: (view: View, responseId: string) => void
+  supersedes?: string | null
 }): JSX.Element {
   const [definition, setDefinition] = createSignal<Definition | null>(null)
-  const [latestVersion, setLatestVersion] = createSignal('')
-  const [question, setQuestion] = createSignal<Question | null>(null)
-  const allowed = untrack(() => scope('questionnaire:assist'))
+  const [response, setResponse] = createSignal<QuestionnaireResponse | null>(null)
   const view = untrack(captureView)
-  async function generateAndView(response: Response, actionView: View): Promise<void> {
-    await generateProfile(response.response_id, actionView)
-    requireCurrentView(actionView)
-    navigate('profile', 'assessment')
-  }
-  const afterSubmission = props.onSubmitted ?? (own() ? generateAndView : undefined)
-
-  function publish(response: Response, index: number): void {
-    requireCurrentView(view)
-    lastQuestion = { responseId: response.response_id, index }
-    updateSession(draft => {
-      draft.response = response
-    })
-    setQuestion({ response, index })
-    flush()
-  }
-
+  const allowed = untrack(() => scope('questionnaire:assist'))
   onSettled(() => {
     if (!allowed) return
     void (async () => {
       try {
-        const result = await api('/questionnaires/initial', definitionSchema, 'GET', null, view)
+        const result = await loadDefinition(view)
         requireCurrentView(view)
         const key = referenceKey('questionnaire')
         const reference = localStorage.getItem(key)
-        let response = state.response
-        let index = response && lastQuestion?.responseId === response.response_id ? lastQuestion.index : 0
-        if (!response && reference !== null && reference !== '') {
+        let saved = state.response
+        if (!saved && reference !== null && reference !== '') {
           try {
-            response = await api(`/questionnaire-responses/${reference}`, responseSchema, 'GET', null, view)
+            saved = await loadResponse(reference, view)
             requireCurrentView(view)
-            if (response.status === 'draft') {
-              const pending = Object.values<{ state: string }>(response.answers).findIndex(
-                answer => answer.state === 'not_answered',
-              )
-              index = pending < 0 ? 7 : pending
-            }
           } catch (error) {
             requireCurrentView(view)
             if (!(error instanceof ApiError) || error.status !== 404 || error.code !== 'RESOURCE_NOT_FOUND') throw error
             localStorage.removeItem(key)
           }
         }
-        requireCurrentView(view)
-        const savedDefinition =
-          response && response.questionnaire_version !== result.version
-            ? await api(
-                `/questionnaires/initial?version=${encodeURIComponent(response.questionnaire_version)}`,
-                definitionSchema,
-                'GET',
-                null,
-                view,
-              )
-            : result
-        requireCurrentView(view)
-        setLatestVersion(result.version)
-        setDefinition(savedDefinition)
-        if (response) publish(response, index)
+        setDefinition(result)
+        if (saved?.status === 'draft') setResponse(saved)
       } catch (error) {
         if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view)
       }
     })()
   })
-
-  async function start(actionView: View, version: string, previous?: Response): Promise<void> {
-    const response = await api(
-      patientPath('/questionnaire-responses'),
-      responseSchema,
-      'POST',
-      {
-        questionnaire_version: version,
-        ...(previous ? { supersedes_response_id: previous.response_id } : {}),
-      },
-      actionView,
-    )
+  async function submitted(saved: QuestionnaireResponse, actionView: View): Promise<void> {
     requireCurrentView(actionView)
-    if (definition()?.version !== version) {
-      const next = await api(
-        `/questionnaires/initial?version=${encodeURIComponent(version)}`,
-        definitionSchema,
-        'GET',
-        null,
-        actionView,
-      )
-      requireCurrentView(actionView)
-      setDefinition(next)
-    }
-    localStorage.setItem(referenceKey('questionnaire'), response.response_id)
-    publish(response, 0)
+    localStorage.removeItem(referenceKey('questionnaire'))
+    updateSession(draft => {
+      draft.response = null
+    })
+    if (own()) await generateProfile(saved.response_id, actionView)
+    else notice('问卷已提交。')
+    requireCurrentView(actionView)
+    if (props.onSubmitted) props.onSubmitted(actionView, saved.response_id)
+    else navigate('profile', 'adherence')
   }
-
   return (
     <Show when={allowed} fallback={<p>当前未获问卷作答权限。</p>}>
       <Show when={definition()}>
         {loaded => (
           <Show
-            when={question()}
+            when={response()}
             fallback={
               <Card>
                 <div class="space-y-4">
                   <p>{loaded().purpose}</p>
-                  <p>{own() ? '请根据自己的情况作答。' : '你正在协助患者作答。不了解其主观感受时，请选择不清楚。'}</p>
-                  <Button variant="primary" onAction={async view => start(view, loaded().version)}>
-                    开始八题问卷
+                  <Button
+                    variant="primary"
+                    onAction={async actionView => {
+                      if (!(await confirm(privacyText))) return
+                      requireCurrentView(actionView)
+                      const saved = await startResponse(actionView, props.supersedes ?? null)
+                      requireCurrentView(actionView)
+                      localStorage.setItem(referenceKey('questionnaire'), saved.response_id)
+                      updateSession(draft => {
+                        draft.response = saved
+                      })
+                      setResponse(saved)
+                    }}
+                  >
+                    开始评估
                   </Button>
                 </div>
               </Card>
             }
             keyed
           >
-            {current => (
-              <Show
-                when={current.response.status !== 'submitted'}
-                fallback={
-                  <Card>
-                    <p>本次回答已经提交，原回答会保留。</p>
-                    <div class="my-5 flex flex-wrap gap-3">
-                      <Show when={props.onSubmitted}>
-                        {submitted => (
-                          <Button variant="primary" onAction={view => submitted()(current.response, view)}>
-                            继续
-                          </Button>
-                        )}
-                      </Show>
-                      <Show when={!props.onSubmitted}>
-                        <Button variant="primary" onAction={() => navigate('profile', 'assessment')}>
-                          查看画像结果
-                        </Button>
-                      </Show>
-                      <Button onAction={async view => start(view, latestVersion(), current.response)}>
-                        重新填写本次问卷
-                      </Button>
-                    </div>
-                  </Card>
-                }
-              >
-                <Show when={loaded().themes[current.index]} keyed>
-                  {theme =>
-                    current.response.questionnaire_version === 'initial-v0.1' ? (
-                      <QuestionForm
-                        question={{ response: current.response, index: current.index }}
-                        theme={theme}
-                        onSaved={publish}
-                        onSubmitted={afterSubmission}
-                      />
-                    ) : (
-                      <ReviewForm
-                        response={current.response}
-                        index={current.index}
-                        theme={theme}
-                        onSaved={publish}
-                        onSubmitted={afterSubmission}
-                      />
-                    )
-                  }
-                </Show>
-              </Show>
-            )}
+            {saved => <QuestionWizard definition={loaded()} response={saved} onSubmitted={submitted} />}
           </Show>
         )}
       </Show>

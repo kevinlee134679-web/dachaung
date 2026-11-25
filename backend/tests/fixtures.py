@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from httpx2 import Response
+
 from medplatform.core.config import ROOT, Settings
 from medplatform.core.database import Database
 from medplatform.core.documents import stamp
@@ -24,10 +25,6 @@ class Client(SessionClient):
 
 def key():
     return str(uuid.uuid4())
-
-
-def unknown_answers():
-    return {f"Q{i}": {"state": "unknown", "value": None} for i in range(1, 9)}
 
 
 def defaults():
@@ -127,7 +124,7 @@ class IdentityFixture(unittest.TestCase):
             c,
             "POST",
             f"/patients/{patient}/questionnaire-responses",
-            {"questionnaire_version": "initial-v0.1"},
+            {},
             expected=201,
         )
         rid = result["response_id"]
@@ -141,7 +138,7 @@ class IdentityFixture(unittest.TestCase):
         return result
 
     def submitted(self, answers=None):
-        response = self.response(answers=answers or unknown_answers())
+        response = self.response(answers=answers)
         return self.call(
             self.a,
             "POST",

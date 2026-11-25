@@ -61,6 +61,13 @@ ROUTES = [
         profile_inputs.Submit,
     ),
     ("O20", "GET", "/patients/{p}/profiles/current", "current_profile", None),
+    (
+        "O32",
+        "GET",
+        "/patients/{p}/questionnaire-responses/latest-submitted",
+        "latest_submission",
+        None,
+    ),
     ("O21", "GET", "/profiles/{id}", "profile", None),
     (
         "O22",
@@ -155,8 +162,6 @@ def query_input(request, action):
         allowed.update(("cursor", "limit"))
     allowed.update(
         {
-            "definition": {"version"},
-            "current_profile": {"source"},
             "plans": {"plan_id"},
             "slots": {"window_start", "window_end"},
             "drafts": {"status"},
@@ -170,8 +175,6 @@ def query_input(request, action):
         if "limit" in q:
             query_limit(q["limit"])
         if "cursor" in q and not q["cursor"]:
-            raise ValueError()
-        if "source" in q and q["source"] != "latest_submission":
             raise ValueError()
         if action == "slots":
             query_window(q)

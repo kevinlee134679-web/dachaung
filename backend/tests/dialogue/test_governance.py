@@ -1,12 +1,11 @@
 import unittest
 from datetime import timedelta
 
+from dialogue import test_dialogue as prior
 from medplatform.core.documents import stamp
 from medplatform.core.errors import AppError
 from medplatform.dialogue import rules, store
 from medplatform.medication.runner import Runner
-
-from dialogue import test_dialogue as prior
 
 
 class GovernanceTests(unittest.TestCase):

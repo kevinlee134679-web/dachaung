@@ -14,8 +14,7 @@ import { PatientPage } from '../features/patient/patient-page'
 import { PeerSupportPage } from '../features/peer/peer-support-page'
 import { MedicationListForm } from '../features/plan-drafts/medication-list-form'
 import { canManageMedicationList, rememberMedicationPage } from '../features/plan-drafts/navigation'
-import { ProfilePage } from '../features/questionnaire/profile-page'
-import { QuestionnairePage } from '../features/questionnaire/questionnaire-page'
+import { AdherencePage } from '../features/questionnaire/adherence-page'
 import { ReminderPage } from '../features/reminders/reminder-page'
 import { ReportPage } from '../features/report/report-page'
 import { SchedulePage } from '../features/schedule/schedule-page'
@@ -53,7 +52,6 @@ function canOpenCaseFiles(): boolean {
 function activeTab(): string {
   const { page, tab } = state
   if (page === 'medication' && ['files', 'drafts'].includes(tab)) return 'case-files'
-  if (page === 'profile' && ['questionnaire', 'assessment'].includes(tab)) return 'adherence'
   if (page === 'profile' && ['family', 'service-consents', 'formal-services'].includes(tab)) return 'authorizations'
   return tab
 }
@@ -77,21 +75,6 @@ function pageTabs(): [string, string][] {
     ['devices', '设备关联'],
     ...(isDemoAdmin() ? [['demo', '演示控制台'] satisfies [string, string]] : []),
   ]
-}
-
-function AdherencePage(): JSX.Element {
-  return (
-    <div class="space-y-4">
-      <Show when={scope('profile:read')}>
-        <ProfilePage />
-      </Show>
-      <Show when={scope('questionnaire:assist')}>
-        <Disclosure summary="评估问卷" lazy open={state.tab === 'questionnaire' || !scope('profile:read')}>
-          <QuestionnairePage />
-        </Disclosure>
-      </Show>
-    </div>
-  )
 }
 
 function AuthorizationsPage(): JSX.Element {
