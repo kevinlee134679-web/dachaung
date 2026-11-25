@@ -1,62 +1,38 @@
 # CAS 接入与验收
 
-本机研究演示以《八题问卷与CAS分类方案》设计版 `initial-cas-review-v1` 为依据。开发起点为 `origin/develop@968b897`，工作分支为 `codex/cas-review-v1`。当前演示问卷为 `initial-cas-review-v1`。配套原件位于 `backend/medplatform/profile/cas_mapping_v1.json`。过渡版本 `initial-cas-review-v1-core1` 与旧版 `initial-v0.1` 的草稿、提交、旧画像及生成方法按各自版本读取。
+本机研究演示采用单版本八主题问卷 `initial-cas-review-v1`，定义文件位于 `backend/medplatform/profile/cas_questionnaire.json`。
 
-| 输入 | 处理与验收口径 |
+| 项目 | 口径与实现位置 |
 | --- | --- |
-| Q1、Q2、Q3 | 原 CSV 第 39–41 列。Q1 保存知识自评原分，Q2 保存原频率选项，Q3 保存难度原分。仅在计算时反向。本人确认同次经历后按 `Q1 + 频率分 + (6 − Q3)` 计整数 3–15，例为 4 + 3 + 4 = 11。 |
-| 来源与缺项 | O 按会话确定本人或家属。家属协助、未确认同次经历、三项任一未答／拒答／未知／不适用均使实测值为空，并返回原因。已提交响应不可改写，复评建立新响应。新版复评从空白开始，防止跨经历和跨填写人沿用答案。 |
-| Q4 | 记录未发生、无意、主动、两者均有或不能判断。频率与实际行为冲突时保留原答并提示复核。3–9、10–13、14–15 仅作研究演示分组。高分且明确未发生、无冲突可出 A。低分组按实际行为过滤七个原因选项。本人可以在已勾选原因中指定主因。多个合格类型未选主因、或主因选“其他”时，主类型留空，全部合格匹配仍可见。 |
-| Q5–Q8 | 自愿填写原题组。药类、时长、服用种数和次数、特殊要求、复诊、支持、14 项原五级题及背景信息分别保存。允许跳过整组或部分子项。仅明确“其他”对应其他药类，仅明确“以上均无”对应零项特殊要求。 |
-| O20–O22 | 旧问卷与历史结果按原版本读取。新版增加 `cas_observed`、`research_group` 和分类原因。`cas_predicted` 与 `cas` 返回同一预测结果。本人主动生成，按响应和有效版本复用。O21 可按 ID 读取历史。沿用原 JSON 文档存储与鉴权。 |
-| 版本 | 输入映射 `cas-questionnaire-mapping-review-20261123-v1`，规则 `cas-eda-plus-reported-barrier-demo-v1`。预测关闭时使用 `observed-and-reported-barrier-demo-v1`，模型和预处理版本为空。本机重训预测使用下述独立方法版本。 |
+| 问卷定义与校验 | `backend/medplatform/profile/cas_questionnaire.py`。`definition()` 返回去掉 `result_notes` 的单版本定义；`validate_answers()` 校验字段归属、单选/量表/多选合法性、`visible_when` 条件可见性、`exclusive` 互斥（如 `req_none`）及 `main_barrier` 必须属于已选 `barriers`。「无法判断」作为 `code="unknown"` 选项保存在各题作答值中，无独立作答状态字段。 |
+| `cas_observed` 自报计分 | `observed_result()`。仅当患者本人作答、提交时确认 `same_episode=true` 且 Q1 `knowledge`、Q2 `adherence_freq`、Q3 `difficulty` 均已填写且不为 `unknown` 时，按 `Q1 + 频率分 + (6 - Q3)` 计算整数 3–15；否则状态为 `insufficient`，返回 `missing_items` 与 `reasons`。 |
+| `cas` 模型预测 | `backend/medplatform/profile/cas_model.py` 的 `CasModel`。未配置 `CAS_RETRAINED_BUNDLE` 时 `cas_questionnaire.unavailable_cas()` 返回 `status="unavailable"`、`value=null`、`model_version=null`。配置后，需本人填写完整 Q5–Q8 且 Q8 `stable_experience != "否"` 才返回 `status="estimated"`、`value` 与 `model_version`；缺项、家属代答或 `stable_experience == "否"` 返回 `status="insufficient"` 及原因。 |
+| `cards` 解读卡片与 `factors` | `cards()` 按 Q1、Q2、Q3、Q4、Q6、Q7 顺序生成卡片，跳过无有效作答或仅选 `unknown` 的主题；每张卡片含 `question_id`、`title`、`answers`、`level`（`good`/`neutral`/`attention`）与 `note`（Q4 若选了 `main_barrier`，则将该障碍说明置于 `note` 首行）。`factors()` 从 Q4 提取要点供 B 模块对话上下文使用。 |
+| 接口行为（O15–O22、O32） | `backend/medplatform/identity/service.py` 与 `api.py`。`O15` `GET /api/v1/questionnaires/initial` 不接受版本参数；`O16` 新建替代答卷以空白初始化；`O17` 按主题整段替换保存；`O22` 使用方法版本 `cas-questionnaire-v2`，同一答卷在方法版本与当前模型版本不变时复用已有画像；`O32` `GET /api/v1/patients/{p}/questionnaire-responses/latest-submitted` 仅限本人读取最近已提交答卷及对应画像（未生成时为 `null`）；`O20` 读取当前画像（不带 `source` 参数），`O21` 读取历史画像。 |
 
-## 本机验收
+## 模型包与依赖
 
-- 在“我的 → 八题问卷”填写 Q1 选“符合”、Q2 选“偶尔漏服（每周1-2次）”、Q3 选“不符合”、Q4 选“无意未按安排用药”。确认同次经历并提交，在“我的 → 画像结果”生成或查看画像。首次引导可在问卷提交时生成画像，随后可跳过用药清单。浏览器实测显示 11/15（自报）、中间组、模型未配置、暂不分型。
-- 离线脚本按作答 ID 一对一配对，仅输出汇总。1,455/1,455 个实测值一致。三组各 272、953、230 人。按原研究口径独立重建复杂度、未旋转 PCA 变换及 21 维列序，按原件冻结常数复算的最大绝对误差约 3.40 × 10⁻¹⁴。用历史全样本标准化口径转为 float32 后，1,455 行全部一致。深度模型历史脚本在测试划分前拟合标准化器，这次核验的是特征复算。
-- 两份历史 Q5 同时勾选具体特殊要求和“以上均无”。离线复算遵循原研究的具体要求计数，单列冲突数。新版网页和接口要求此类输入修正后保存。
-- 回归覆盖 125 种三题有效组合、缺项、越界、账号隔离、家属协助及授权读取、版本复用与旧画像读取。在保留过渡版测试的基础上，`tests/identity/test_cas_mapping.py` 逐例使用原件的 17 组 `fictional_boundary_fixtures`。用符合预设总分的三题答案调用 O16/O17/O19/O22，逐例核对主类型、其他匹配和冲突复核标志。
+模型发布包位于 `backend/data/models/cas-dl2-retrain-20261124/`，包含权重 `ensemble.pt`、预处理参数 `preprocessing.json` 与四组虚构对照样例 `reference_cases.json`。`CasModel.load` 直接读取 `preprocessing.json` 与 `ensemble.pt` 加载五成员 `MultiHeadAttentionMLP` 集成模型，特征映射由 `MODEL_INPUTS` 负责；`numpy` 与 CPU 版 `torch` 由 `backend/pyproject.toml` 的 `cas` 依赖组锁定。
 
-主要改动集中在 `backend/medplatform/profile/` 的计分、题组定义和输入校验，`backend/medplatform/identity/` 的版本路由、保存与复用，`backend/medplatform/web/app.py` 的能力视图，以及 `frontend/src/features/questionnaire/` 的新版表单、旧草稿恢复和画像展示。对应回归位于 `backend/tests/identity/test_cas_review.py` 和 `frontend/test/features/questionnaire/questionnaire.test.tsx`。
+安装、环境变量与本地启动步骤见[本地网站配置](本地网站配置.md)。管理员可通过 `GET /api/v1/config/status` 查看 `cas` 能力是否就绪。
 
-仓库根目录运行前端检查。后端测试在 `backend` 下运行。
+## 前端流程与界面展示
+
+前端实现位于 `frontend/src/features/questionnaire/`（`adherence-page.tsx`、`questionnaire-page.tsx`、`question-wizard.tsx`、`profile-page.tsx`、`questionnaire.ts`、`profile.ts`），入口位于「我的 → 依从性类型」，首次引导也在 `frontend/src/features/onboarding/questionnaire-step.tsx` 复用该页面。
+
+- **开始评估与隐私确认**：无草稿时点击「开始评估」，先弹出隐私说明确认框，用户确认后才创建答卷。
+- **卡片式向导**：按当前可见字段一屏一题展示；单选与量表题保存后自动进入下一题，多选题与选填字段提供「下一题」按钮，隐藏字段在保存前由 `clearHidden` 清理。在第一个选填主题（Q5）前插入说明屏，提供「继续填写」与「跳过选填部分」。
+- **提交与结果展示**：本人提交后自动调用 `O22` 生成结果并切到结果视图；家属协助作答仅提交问卷，不生成画像。结果页按主题展示 `cards` 的标题、等级标签、作答摘要与建议文案，不展示 CAS 数值或分型标签。
+
+## 验收与检查
+
+- **后端测试**：`backend/tests/identity/test_cas_questionnaire.py`（覆盖计分、`observed_result` 缺项/代答/非同次经历分支、卡片等级与主因文案排序、答案校验、`unknown` 支持、提交与画像复用、家属代答限制、`latest-submitted`、空白替代答卷，以及 `CasModelTests` 对照 `reference_cases.json` 的预测与不足条件校验）与 `backend/tests/identity/test_identity.py`。安装 `cas` 依赖组后 `CasModelTests` 实际执行预测校验；未安装 `torch` 时该测试类跳过。
+- **前端测试**：`frontend/test/features/questionnaire/questionnaire.test.tsx`（覆盖草稿恢复隔离、隐私确认取消/确认、单选自动保存、Q4 条件显隐与隐藏清理、跳过选填提交及结果卡片渲染）。
+
+运行检查命令（后端在 `backend/`，前端在仓库根目录）：
 
 ```sh
-pnpm test
-pnpm typecheck
-pnpm lint
-pnpm build
-uv run python -B -X utf8 -m unittest discover -s tests
+uv run --locked python -B -X utf8 -m unittest discover -s tests
+uv run --locked ruff check && uv run --locked ruff format --check
+pnpm test && pnpm typecheck && pnpm lint && pnpm format:check && pnpm knip
 ```
-
-在装有 NumPy 的研究用 Python 环境下，于 `backend` 下执行以下命令，三个参数替换为原文件路径。该脚本只读本机档案。网页预测使用 NumPy、PyTorch CPU 和发布包内的冻结参数。
-
-```sh
-python -X utf8 -m scripts.verify_cas_archive <clean_data.csv> <features_with_factors.csv> <feature_engineering.py>
-```
-
-
-## 正式映射与演示结果
-
-- Q4 存储 `reported_pattern`、`barriers` 和可选的 `main_barrier`。Q5 的特殊要求字段为 `special_requirements`，Q8 的筛选为 `stable_experience`，Q6/Q7 按正式五级锚点显示。为保留受访者原意，类别字段保存原选项，离线模型输入才按字典转换。新版拒答保存为 `prefer_not_to_answer`。
-- 结果写入 O 画像的 `demo_classification`，含 `primary_type`、`reported_matching_types`、规则版本、原因、复核标志及自主查看入口。原件标明 `enabled_in_product=false`，其他业务模块所读取的正式分类字段保持空值。本人点击入口才进入既有页面。
-- 示例 7 与 8 可用 Q1=3、Q2=偶尔漏服、Q3=3 得到 9 分。Q4 选“两种情况都发生过”并同时勾选遗忘、用药顾虑。留空主要原因时，页面保留 B1、C2；选遗忘为主因后显示主 B1、次 C2。示例 17 选择遗忘与其他并以其他为主因，只保留 B1 匹配。
-- 2026-11-24 在本机演示库用虚构患者乙走通示例 8 的首次问卷流程。本人选择遗忘为主因后提交，在“我的 → 画像结果”实际看到 `9/15（自报）`、低分组、演示主类型 B1、次要匹配 C2，以及两项原始原因。前端回归 70 项通过，后端回归 232 项通过、14 项按运行环境跳过。前端 lint、构建和后端 Ruff 检查通过。
-- 原方案中的历史 2.0 预测配置为关闭。已核对重训包的编码、21 列次序、14 项投影和标准化数值。两份预处理的最大常数绝对差约 1.0 × 10⁻¹⁴。网站所需的重训权重、冻结预处理和虚构预测样例位于 `backend/data/models/cas-dl2-retrain-20261124/`。
-
-## 本机启用重训预测
-
-2026-11-24 经项目方确认，本机研究演示可使用重训五成员模型。历史 2.0 原权重和该次训练的逐例输出仍缺失。新评估方法为 `observed-barrier-demo-and-retrained-cas-v1`，模型为 `cas-dl2-retrain-20261124`，冻结预处理为 `cas-dl2-preprocessing-20261124-9a34dc48`。预测读取本人在新版问卷中自愿提交的 Q5–Q8，要求 Q8 符合稳定用药经历筛选。Q1–Q4、用药记录均不进入预测。分型仍只读取自报分和实际障碍。
-
-安装、启动、端口和模型开关见[本地网站配置](本地网站配置.md)。每次启用均核对权重、预处理和四个参考样例的 SHA-256，并重放四例的特征和预测。启动校验失败会返回 `CAS_BUNDLE_INVALID`。管理员可在 `/api/v1/config/status` 核对 `cas` 能力及两项版本。
-
-在“我的 → 八题问卷”新填问卷或点击“重新填写本次问卷”。在 Q4 后选择“继续填写自愿补充题”，填完 Q5–Q8 后，本人点击“提交问卷并生成画像”，页面使用这次提交的问卷生成结果并打开画像。首次引导生成后继续进入用药清单。家属协助作答只提交问卷。
-
-本人进入“我的 → 画像结果”时，O20 的 `?source=latest_submission` 视图返回最近已提交问卷的编号、提交时间和这份问卷对应的画像；新草稿不参与选择。尚未生成时，页面显示待生成提示，可点击“根据已提交问卷生成画像”。此按钮在点击时重新向服务端取得最近提交编号，用 O22 主动生成。重复生成同一份问卷及同一方法时复用快照，历史画像仍可由 O21 按 ID 读取。家属按授权使用原 O20 读取已生成画像。
-
-模型估计保留原精度，页面显示两位小数与模型版本。缺项、拒答、家属代答、超出稳定经历筛选时，预测为 `insufficient/null` 并说明原因。预测开关或有效版本变化时由本人重新生成。运行时计算失败的快照可再次生成。
-
-本次浏览器验收用演示患者乙新填一份问卷，前三题自报为 9 分，Q4 沿用分型用例 8，Q5–Q8 使用重训参考样例 1。画像显示自报 9/15、模型研究估计 10.67 分、主 B1 和次 C2。存储预测值 10.671343803405762 与训练输出相差约 0.000000954 分。四个模型样例也均通过问卷提交、画像生成和读取接口，容差为 0.00001 分。
-
-在本机从 `backend` 运行后端回归时，设置 `$env:CAS_TEST_BUNDLE` 为上述模型包目录可同时重放四例。复评修复后，后端测试 236 项通过、14 项按环境跳过，前端 73 项通过，构建与静态检查通过。
