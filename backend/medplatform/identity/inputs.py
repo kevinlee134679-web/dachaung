@@ -66,8 +66,6 @@ SCOPES = {
     "drafts:read",
     "drafts:write",
     "drafts:submit",
-    "measurements:read",
-    "measurements:write",
     "records:correct",
     "devices:manage",
     "statistics:read",
@@ -92,8 +90,6 @@ SCOPES = {
     "service-feedback:write",
     "peer:read",
     "peer:participate",
-    "points:read",
-    "rewards:redeem",
 }
 
 

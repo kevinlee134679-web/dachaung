@@ -212,48 +212,6 @@ def generate(path, *, add_late_report=False):
                         "reason": "固定虚构场景明确核对单药时段，不按附近时间猜测",
                     },
                 )
-            for suffix, payload in [
-                (
-                    "zero",
-                    {
-                        "metric_code": "step_count",
-                        "value": 0,
-                        "unit": "count",
-                        "method_code": "manual_entry",
-                        "missing_reason": None,
-                    },
-                ),
-                (
-                    "missing",
-                    {
-                        "metric_code": "sleep_duration",
-                        "value": None,
-                        "unit": "h",
-                        "method_code": None,
-                        "missing_reason": "虚构场景未采集",
-                    },
-                ),
-                (
-                    "unknown-unit",
-                    {
-                        "metric_code": "heart_rate",
-                        "value": 70,
-                        "unit": "demo_unknown",
-                        "method_code": None,
-                        "missing_reason": None,
-                    },
-                ),
-            ]:
-                call(
-                    a,
-                    "POST",
-                    f"/patients/{PATIENT}/measurements",
-                    {
-                        "source_event_id": SCENARIO + "-" + suffix,
-                        "occurred_at": slots[-1]["scheduled_at"],
-                        "payload": payload,
-                    },
-                )
             manifest = {
                 "scenario": SCENARIO,
                 "is_simulated": True,

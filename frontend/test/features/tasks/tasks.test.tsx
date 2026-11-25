@@ -1,33 +1,13 @@
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { TaskPage } from '../../../src/features/tasks/task-page'
 import { updateSession } from '../../../src/session/session'
-
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'request-a', status: 'success', data, error: null }),
-  }
-}
+import { choose, success } from '../../support'
 
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
-  const patient = {
-    patient: { patient_id: 'pa', display_name: 'pa', timezone: 'Asia/Shanghai' },
-    relationship: 'self',
-    effective_scopes: ['tasks:read', 'reminder:write'],
-  }
+  choose({ scopes: ['tasks:read', 'reminder:write'] })
   updateSession(draft => {
-    draft.context = {
-      account: { account_id: 'account-a', display_name: 'account-a', is_simulated: true },
-      current_patient_id: 'pa',
-      patients: [patient],
-      csrf_token: 'csrf-account-a',
-    }
-    draft.patient = patient
     draft.epoch++
   })
 })

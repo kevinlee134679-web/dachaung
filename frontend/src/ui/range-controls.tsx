@@ -4,7 +4,7 @@ import { inputDateTime, localDateTime, today } from '../date/date'
 import { dataEnvironment } from '../session/session'
 import { Field, Input } from './form'
 
-export interface RangeValue {
+interface RangeValue {
   window_start: string
   window_end: string
   data_environment: 'real' | 'demo'

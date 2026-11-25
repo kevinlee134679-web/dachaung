@@ -18,12 +18,10 @@ import { ProfilePage } from '../features/questionnaire/profile-page'
 import { QuestionnairePage } from '../features/questionnaire/questionnaire-page'
 import { ReminderPage } from '../features/reminders/reminder-page'
 import { ReportPage } from '../features/report/report-page'
-import { PointsPage } from '../features/rewards/points-page'
 import { SchedulePage } from '../features/schedule/schedule-page'
 import { ServiceConsentPage } from '../features/services/consent-page'
 import { rememberServicePage } from '../features/services/navigation'
 import { ServiceRecordsPage } from '../features/services/records-page'
-import { SocialSupportPage } from '../features/support/social-support-page'
 import { SupportPage } from '../features/support/support-page'
 import { TaskPage } from '../features/tasks/task-page'
 import { changeTab, navigate } from '../session/navigation'
@@ -37,7 +35,6 @@ const titles: Record<Page, string> = {
   medication: '用药管理',
   knowledge: '药学知识',
   support: '支持服务',
-  rewards: '积分权益',
   profile: '我的',
 }
 const medicationTabs: [string, string][] = [
@@ -46,7 +43,6 @@ const medicationTabs: [string, string][] = [
   ['records', '服药记录'],
   ['case-files', '病例资料'],
   ['reminders', '提醒设置'],
-  ['measurements', '指标记录'],
   ['executions', '提醒与执行'],
 ]
 
@@ -120,9 +116,8 @@ function AuthorizationsPage(): JSX.Element {
 
 function tabContent(): JSX.Element {
   if (state.page === 'support') {
-    return state.tab === 'social' ? <SocialSupportPage /> : state.tab === 'peer' ? <PeerSupportPage /> : <SupportPage />
+    return state.tab === 'peer' ? <PeerSupportPage /> : <SupportPage />
   }
-  if (state.page === 'rewards') return <PointsPage />
   if (!state.patient) {
     return state.page === 'profile' && isDemoAdmin() ? (
       <SupportConsolePage />
@@ -144,7 +139,6 @@ function tabContent(): JSX.Element {
       case 'reminders':
         return <ReminderPage />
       case 'records':
-      case 'measurements':
         return <EventListPage />
       case 'executions':
         return <TaskPage />
@@ -183,10 +177,9 @@ export function PageContent(): JSX.Element {
           aria-label="支持服务功能"
           items={[
             ['overview', '支持对话'],
-            ...(scope('support:read') ? [['social', '社会支持'] satisfies [string, string]] : []),
             ...(scope('peer:read') ? [['peer', '匿名同辈'] satisfies [string, string]] : []),
           ]}
-          current={['social', 'peer'].includes(state.tab) ? state.tab : 'overview'}
+          current={state.tab === 'peer' ? 'peer' : 'overview'}
           onSelect={key => navigate('support', key === 'overview' ? undefined : key)}
         />
       </Show>

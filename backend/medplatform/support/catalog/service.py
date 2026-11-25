@@ -1,4 +1,4 @@
-"""The local C directory and a read-only projection of approved support sources."""
+"""The local directory of approved support sources."""
 
 import json
 from typing import Literal
@@ -14,13 +14,6 @@ from ...web.inputs import ID, Input, Short, Text
 from ..common import next_cursor, page_after, read_guarded
 
 FIXTURE_FILE = "data/demo/support_resources.json"
-NEED_BY_KIND = {
-    "community_assistance": "practical",
-    "emotional_companionship": "emotional",
-    "pharmacist_consultation": "professional",
-}
-# Only existing O labels and the corresponding C5 applicability from Prompt v1.1.
-PROFILE_TYPES = frozenset({"A", "B1", "B2", "C1", "C2", "C3", "D1"})
 COMMUNITY_TYPES = frozenset({"B2", "D1"})
 SharedCategory = Literal[
     "support_question", "medication_plan", "medication_records", "profile_summary"
@@ -51,7 +44,7 @@ class DemoResource(Input):
     description: Text
     provider: DemoProvider
     availability: Literal["available", "unavailable", "unknown"]
-    access_mode: Literal["support_free", "reward_only"]
+    access_mode: Literal["support_free"]
     is_essential: bool
     required_shared_categories: list[SharedCategory]
     optional_shared_categories: list[SharedCategory]
@@ -61,10 +54,6 @@ class DemoResource(Input):
     @model_validator(mode="after")
     def validate_fixture(self):
         pharmacist = self.service_kind == "pharmacist_consultation"
-        if self.access_mode == "reward_only" and (
-            self.is_essential or pharmacist or self.peer_group_id is not None
-        ):
-            raise ValueError("necessary and peer services cannot require demo points")
         if (self.peer_group_id is not None) != (self.service_kind == "peer_support"):
             raise ValueError("Demo peer resources require a precise group")
         if (self.provider.provider_type == "pharmacist") != pharmacist:
@@ -85,14 +74,7 @@ class ResourceFixture(Input):
     profile_types: list[ID]
 
     @model_validator(mode="after")
-    def validate_applicability(self):
-        labels = set(self.profile_types)
-        if labels and (
-            self.resource.service_kind != "community_assistance"
-            or not labels <= COMMUNITY_TYPES
-            or len(labels) != len(self.profile_types)
-        ):
-            raise ValueError("Unsupported demo applicability condition")
+    def validate_version(self):
         if self.previous_version == self.resource.resource_version:
             raise ValueError("A resource version cannot follow itself")
         return self
@@ -175,41 +157,9 @@ def catalog_registered(conn):
     )
 
 
-def issue(code, message, field=None):
-    return {"code": code, "message": message, "field": field}
-
-
-def source(module, kind, identifier, version, at):
-    return {
-        "module": module,
-        "record_kind": kind,
-        "record_id": identifier,
-        "version": version,
-        "recorded_at": at,
-    }
-
-
-def eligible_action(doc, own, requires_profile):
-    reason = "与本人本次选择的需求相符。" if own else "与本次查询的需求相符。"
-    if requires_profile:
-        reason += "获准读取的 O 画像中有符合适用条件的既有类型。"
-    return {
-        "resource_id": doc["resource_id"],
-        "provider_type": doc["provider"]["provider_type"],
-        "action_type": "companionship"
-        if doc["service_kind"] == "emotional_companionship"
-        else doc["service_kind"],
-        "reason": reason,
-        "title": doc["name"],
-        "page_entry": "support/social",
-        "requires_confirmation": True,
-    }
-
-
 class Catalog:
-    def __init__(self, db, o_service, clock):
-        self.db, self.o, self.clock = db, o_service, clock
-        self.auth = o_service.auth
+    def __init__(self, db, auth):
+        self.db, self.auth = db, auth
 
     def patient(self, conn, principal, path):
         patient = (
@@ -229,16 +179,10 @@ class Catalog:
         def verify(patient, current):
             if current != patient:
                 raise AppError(403, "SCOPE_REQUIRED", "当前照护对象已变更，请重新读取")
-            if action == "recommendations" and read_profile:
-                self.auth.require_patient(principal, patient, "profile:read", conn)
 
         with self.db.connection(readonly=True) as conn:
             with read_guarded(conn, guard, verify) as patient:
-                if action == "recommendations":
-                    data, read_profile = self.recommendations(
-                        conn, principal, patient, query.get("need")
-                    )
-                elif action == "resources":
+                if action == "resources":
                     data = self.resources(conn, principal, patient, query)
                 else:
                     data = self.resource(conn, path["id"])
@@ -247,29 +191,21 @@ class Catalog:
     def resources(self, conn, principal, patient, query):
         if not catalog_registered(conn):
             raise AppError(503, "SUPPORT_RESOURCE_UNAVAILABLE", "模拟资源目录尚未登记")
-        channel = query.get("channel", "support")
-        context = [principal.account_id, "C02", patient, channel]
+        context = [principal.account_id, "C02", patient, "support"]
         after = page_after(self.auth, query, context, [""])[0]
         limit = query.get("limit", 20)
         rows = conn.execute(
             CURRENT
             + """ WHERE v.resource_id > ? AND json_extract(v.resource_json, '$.availability') = 'available'
-                          AND json_extract(v.resource_json, '$.access_mode') = ?
+                          AND json_extract(v.resource_json, '$.access_mode') = 'support_free'
                           ORDER BY v.resource_id LIMIT ?""",
-            (
-                after,
-                "support_free" if channel == "support" else "reward_only",
-                limit + 1,
-            ),
+            (after, limit + 1),
         ).fetchall()
         items = [json.loads(r["resource_json"]) for r in rows[:limit]]
         cursor = next_cursor(
             rows, limit, self.auth, context, lambda row: [row["resource_id"]]
         )
-        return {
-            "items": items,
-            "next_cursor": cursor,
-        }
+        return {"items": items, "next_cursor": cursor}
 
     def resource(self, conn, identifier):
         row = conn.execute(
@@ -281,199 +217,3 @@ class Catalog:
         if row is None:
             raise AppError(404, "RESOURCE_NOT_FOUND", "资源不可访问或不存在")
         return json.loads(row["resource_json"])
-
-    def profile(self, conn, principal, patient):
-        path = {"p": patient}
-        try:
-            self.o.authorize(conn, "current_profile", principal, path, {})
-            profile = self.o.read(conn, "current_profile", principal, path, {})
-        except AppError as error:
-            if error.code == "SCOPE_REQUIRED":
-                return (
-                    None,
-                    issue("profile_restricted", "当前授权不含画像读取。", "profile_id"),
-                    False,
-                )
-            if error.code == "PROFILE_NOT_AVAILABLE":
-                return (
-                    None,
-                    issue(
-                        "profile_not_available", "O 尚未登记当前画像。", "profile_id"
-                    ),
-                    True,
-                )
-            raise
-        if profile["meta"]["is_simulated"] is not True:
-            return (
-                None,
-                issue("profile_restricted", "当前演示只能使用虚构画像。", "profile_id"),
-                True,
-            )
-        return profile, None, True
-
-    def recommendations(self, conn, principal, patient, need):
-        data = {
-            "patient_id": patient,
-            "profile_id": None,
-            "primary_profile_type": None,
-            "additional_profile_types": [],
-            "need_status": "none" if need == "none" else "insufficient",
-            "main_need": need or "unknown",
-            "primary_action": None,
-            "secondary_actions": [],
-            "source_refs": [],
-            "missing_items": [],
-            "generated_at": stamp(self.clock()),
-            "is_simulated": True,
-        }
-        if need == "none":
-            return data, False
-
-        problems = data["missing_items"]
-        refs = data["source_refs"]
-        profile, profile_issue, read_profile = self.profile(conn, principal, patient)
-        confirmed_types = set()
-        known_types = False
-        if profile_issue:
-            problems.append(profile_issue)
-        if profile is not None:
-            profile_id = profile["profile_id"]
-            refs.append(
-                source(
-                    "O",
-                    "profile",
-                    profile_id,
-                    str(profile["meta"]["revision"]),
-                    profile["meta"]["updated_at"],
-                )
-            )
-            primary = profile.get("primary_type")
-            additional = profile.get("additional_types")
-            primary = (
-                primary
-                if isinstance(primary, str) and primary in PROFILE_TYPES
-                else None
-            )
-            additional_types = (
-                [x for x in additional if isinstance(x, str) and x in PROFILE_TYPES]
-                if isinstance(additional, list)
-                else []
-            )
-            data.update(
-                profile_id=profile_id,
-                primary_profile_type=primary,
-                additional_profile_types=additional_types,
-            )
-            confirmed_types.update(additional_types)
-            if primary is not None:
-                confirmed_types.add(primary)
-            additional_known = (
-                isinstance(additional, list) and additional_types == additional
-            )
-            known_types = primary is not None and additional_known
-            for field, known in (
-                ("primary_type", primary is not None),
-                ("additional_types", additional_known),
-            ):
-                if field not in profile:
-                    problems.append(
-                        issue("profile_field_missing", "O 画像缺少此字段。", field)
-                    )
-                elif not known:
-                    problems.append(
-                        issue(
-                            "profile_type_unknown",
-                            "O 尚无可用于该条件的既有类型。",
-                            field,
-                        )
-                    )
-        if need is None:
-            problems.append(
-                issue(
-                    "support_need_unknown",
-                    "当前没有明确的支持需求，请先选择本次需求。",
-                    "need",
-                )
-            )
-            return data, read_profile
-        if not catalog_registered(conn):
-            raise AppError(503, "SUPPORT_CONTEXT_UNAVAILABLE", "模拟资源目录尚未登记")
-
-        own = self.auth.is_self(principal, patient, conn)
-        actions, unresolved = [], False
-        for row in conn.execute(CURRENT + " ORDER BY v.resource_id"):
-            doc = json.loads(row["resource_json"])
-            if (
-                doc["access_mode"] != "support_free"
-                or NEED_BY_KIND.get(doc["service_kind"]) != need
-            ):
-                continue
-            label = f"{doc['name']}（{doc['resource_version']}）"
-            if doc["availability"] == "unavailable":
-                problems.append(
-                    issue("resource_unavailable", f"{label}当前停用。", "availability")
-                )
-                continue
-            if doc["availability"] == "unknown":
-                problems.append(
-                    issue(
-                        "resource_availability_unknown",
-                        f"{label}的可用性尚不明确。",
-                        "availability",
-                    )
-                )
-                unresolved = True
-                continue
-            required = set(json.loads(row["profile_types_json"]))
-            if required and not required.intersection(confirmed_types):
-                if known_types:
-                    problems.append(
-                        issue(
-                            "profile_condition_not_met",
-                            f"{label}的画像适用条件未满足。",
-                            "profile_id",
-                        )
-                    )
-                else:
-                    problems.append(
-                        issue(
-                            "profile_condition_unresolved",
-                            f"{label}的画像适用条件无法核实。",
-                            "profile_id",
-                        )
-                    )
-                    unresolved = True
-                continue
-            refs.append(
-                source(
-                    "C",
-                    "support_resource",
-                    doc["resource_id"],
-                    doc["resource_version"],
-                    row["recorded_at"],
-                )
-            )
-            actions.append(eligible_action(doc, own, bool(required)))
-
-        if actions:
-            data["need_status"] = "needed"
-            if len(actions) == 1:
-                data["primary_action"] = actions[0]
-            elif len(actions) == 2:
-                data["secondary_actions"] = actions
-            else:
-                problems.append(
-                    issue(
-                        "candidate_details_available",
-                        "全部同级候选按资源编号展示，可分别打开详情。",
-                    )
-                )
-        elif not unresolved:
-            data["need_status"] = "needed"
-            problems.append(
-                issue(
-                    "no_matching_resource",
-                    "当前目录没有符合本次需求及适用条件的可用资源。",
-                )
-            )
-        return data, read_profile

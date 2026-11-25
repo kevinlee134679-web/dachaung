@@ -1,4 +1,3 @@
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import * as v from 'valibot'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,41 +6,9 @@ import { notice } from '../../src/notice/notice'
 import { Notice } from '../../src/notice/notice-view'
 import { state, updateSession, ViewChanged } from '../../src/session/session'
 import { Button } from '../../src/ui/button'
-
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-function failure(code: string) {
-  return {
-    ok: false,
-    status: 409,
-    json: () =>
-      Promise.resolve({ request_id: 'test', status: 'error', data: null, error: { code, message: 'expired receipt' } }),
-  }
-}
-function choose(patient = 'pa', account = 'account-a') {
-  const access = {
-    patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' },
-    relationship: 'self',
-    effective_scopes: [],
-  }
-  updateSession(draft => {
-    draft.context = {
-      account: { account_id: account, display_name: account, is_simulated: true },
-      csrf_token: `csrf-${account}`,
-      current_patient_id: patient,
-      patients: [access],
-    }
-    draft.patient = access
-  })
-}
+import { choose, failure, success } from '../support'
 
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
   choose()
   notice('')
@@ -58,7 +25,7 @@ it('does not send after a view changes during fingerprinting', async () => {
   const fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
   const request = api('/patients/pa/medications', v.unknown(), 'POST', { name: 'fictional A' })
-  choose('pb', 'account-b')
+  choose({ patient: 'pb', account: 'account-b' })
   updateSession(draft => {
     draft.epoch++
   })
@@ -80,7 +47,7 @@ it('does not send a file after its view changes during preparation', async () =>
   const fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
   const request = api('/patients/pa/files', v.unknown(), 'POST', body)
-  choose('pb')
+  choose({ patient: 'pb' })
   updateSession(draft => {
     draft.epoch++
   })
@@ -128,7 +95,7 @@ describe.each(['IDEMPOTENCY_EXPIRED', 'SENSITIVE_RECEIPT_EXPIRED'])('%s recovery
         expect(key).not.toBeNull()
         if (key === null) throw new Error('Missing idempotency key')
         keys.push(key)
-        return Promise.resolve(keys.length < 3 ? failure(code) : success({}))
+        return Promise.resolve(keys.length < 3 ? failure(409, code, 'expired receipt') : success({}))
       }),
     )
     render(() => (
@@ -161,7 +128,7 @@ describe.each(['IDEMPOTENCY_EXPIRED', 'SENSITIVE_RECEIPT_EXPIRED'])('%s recovery
 it.each(['view', 'operation'])('recovery cannot clear a changed %s', async change => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() => failure('IDEMPOTENCY_EXPIRED')),
+    vi.fn(() => failure(409, 'IDEMPOTENCY_EXPIRED', 'expired receipt')),
   )
   render(() => (
     <>
@@ -175,7 +142,7 @@ it.each(['view', 'operation'])('recovery cannot clear a changed %s', async chang
   expect(key).not.toBeNull()
   if (key == null) return
   if (change === 'view') {
-    choose('pb')
+    choose({ patient: 'pb' })
     updateSession(draft => {
       draft.epoch++
     })

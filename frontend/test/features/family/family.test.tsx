@@ -1,9 +1,9 @@
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import * as v from 'valibot'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { FamilyPage } from '../../../src/features/family/family-page'
 import { updateSession } from '../../../src/session/session'
+import { success } from '../../support'
 
 const patient = {
   patient: { patient_id: 'pa', display_name: '患者', timezone: 'Asia/Shanghai' },
@@ -16,16 +16,7 @@ const context = {
   current_patient_id: 'pa',
   patients: [patient],
 }
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
   updateSession(draft => {
     draft.context = context

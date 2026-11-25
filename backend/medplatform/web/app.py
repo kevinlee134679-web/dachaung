@@ -62,10 +62,6 @@ def create_app(
     from ..support.feedback.service import Feedback
     from ..support.peer import api as peer_routes
     from ..support.peer.service import Peer
-    from ..support.points import api as points_routes
-    from ..support.points.service import Points
-    from ..support.rewards import api as rewards_routes
-    from ..support.rewards.service import Rewards
     from ..support.services import api as service_routes
     from ..support.services.dispatch import MockServiceDispatch
     from ..support.services.service import Services
@@ -85,15 +81,11 @@ def create_app(
     support = DialogueService(
         db, service.auth, service.receipts, clock or now, settings, analytics, execution
     )
-    catalog = Catalog(db, service, clock or now)
+    catalog = Catalog(db, service.auth)
     drafts = Drafts(db, service, clock or now)
     services = Services(db, drafts, execution, settings, clock or now)
     feedback = Feedback(db, services, clock or now)
     peer = Peer(db, services, clock or now)
-    points = Points(db, service.auth, service.receipts, analytics, peer, clock or now)
-    rewards = Rewards(db, points, services, settings, clock or now)
-    services.rewards = rewards
-    execution.reward_fulfillment = rewards.fulfillment
     services.peer = peer
     execution.service_dispatch = MockServiceDispatch(db, services, clock or now)
     support.formal_services = drafts.formal_services = services
@@ -122,8 +114,6 @@ def create_app(
     app.state.services = services
     app.state.feedback = feedback
     app.state.peer = peer
-    app.state.points = points
-    app.state.rewards = rewards
 
     def error_response(request, error):
         return JSONResponse(
@@ -151,15 +141,6 @@ def create_app(
                 ):
                     request.state.integration_principal = (
                         services.authenticate_provider(
-                            request.headers.get("Authorization")
-                        )
-                    )
-                elif (
-                    request.url.path == rewards_routes.RECEIPT_PATH
-                    and request.method == "POST"
-                ):
-                    request.state.integration_principal = (
-                        rewards.fulfillment.authenticate(
                             request.headers.get("Authorization")
                         )
                     )
@@ -366,7 +347,7 @@ def create_app(
                     {
                         "code": "support_catalog",
                         "available": directory_ready,
-                        "reason": "本地虚构资源目录与候选"
+                        "reason": "本地虚构资源目录"
                         if directory_ready
                         else "模拟资源目录尚未显式登记",
                     },
@@ -419,8 +400,6 @@ def create_app(
                 (service_routes, services),
                 (feedback_routes, feedback),
                 (peer_routes, peer),
-                (points_routes, points),
-                (rewards_routes, rewards),
             ],
             envelope,
         ),

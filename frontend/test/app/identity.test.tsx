@@ -1,9 +1,10 @@
-import { webcrypto } from 'node:crypto'
+import type { SuccessResponse } from '../support'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { App } from '../../src/app/App'
 import { navigate } from '../../src/session/navigation'
 import { state, updateSession } from '../../src/session/session'
+import { pageOf, success } from '../support'
 
 function patient(id: string, relationship = 'self') {
   return {
@@ -20,15 +21,7 @@ function context(account = 'demo-patient-a') {
     patients: [patient('pa'), patient('pb', 'family')],
   }
 }
-function success(data: unknown): { ok: boolean; status: number; json: () => Promise<unknown> } {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
   updateSession(draft => {
     draft.context = null
@@ -47,15 +40,14 @@ afterEach(() => {
 
 it.each(['demo-patient-a', 'demo-family', 'demo-admin'])('logout survives navigation for %s', async account => {
   const sent = Promise.withResolvers<undefined>()
-  const reply = Promise.withResolvers<ReturnType<typeof success>>()
+  const reply = Promise.withResolvers<SuccessResponse>()
   const requests: [string, string | undefined, string | undefined][] = []
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, options: RequestInit) => {
       if (url.endsWith('/health')) return Promise.resolve(success({}))
       if (url.endsWith('/auth/me')) return Promise.resolve(success(context(account)))
-      // rewards page reads are irrelevant; only writes must follow the session
-      if (options.method === 'GET') return Promise.resolve(success({ items: [], next_cursor: null }))
+      if (options.method === 'GET') return Promise.resolve(success(pageOf([])))
       requests.push([url, options.method, new Headers(options.headers).get('X-CSRF-Token') ?? undefined])
       sent.resolve(undefined)
       return reply.promise
@@ -63,10 +55,10 @@ it.each(['demo-patient-a', 'demo-family', 'demo-admin'])('logout survives naviga
   )
   render(() => <App />)
   const logout = await screen.findByText('退出')
-  navigate('rewards')
+  navigate('profile')
   fireEvent.click(logout)
   await sent.promise
-  navigate('rewards')
+  navigate('profile')
   reply.resolve(success({ outcome: 'logged_out' }))
   await screen.findByText('管理自己的用药')
   expect(requests).toEqual([['/api/v1/auth/logout', 'POST', `csrf-${account}`]])
@@ -97,7 +89,7 @@ it('retained logout cannot affect a replacement session', async () => {
 
 it('prevents navigation while switching patients', async () => {
   const sent = Promise.withResolvers<undefined>()
-  const reply = Promise.withResolvers<ReturnType<typeof success>>()
+  const reply = Promise.withResolvers<SuccessResponse>()
   let switched = false
   vi.stubGlobal(
     'fetch',

@@ -56,7 +56,6 @@ class Execution:
         self.db, self.auth, self.receipts, self.clock = db, auth, receipts, clock
         self.support_state = None
         self.service_dispatch = None
-        self.reward_fulfillment = None
         self.instance_id = uid()
         # This local adapter performs no external effect. Tests may inject a
         # registered deterministic failure; there is no public adapter selector.
@@ -136,12 +135,7 @@ class Execution:
         else:
             self.auth.require_patient(principal, patient, "tasks:read", c)
             if task and task["owner_module"] == "C":
-                scope = (
-                    "points:read"
-                    if task["kind"] == "fulfill_reward"
-                    else "services:read"
-                )
-                self.auth.require_patient(principal, patient, scope, c)
+                self.auth.require_patient(principal, patient, "services:read", c)
 
     def _authorize(self, c, action, principal, params, body):
         if action == "delivery_receipt":
@@ -252,13 +246,7 @@ class Execution:
                 docs = [
                     d
                     for d in docs
-                    if d["owner_module"] != "C"
-                    or (
-                        "points:read"
-                        if d["kind"] == "fulfill_reward"
-                        else "services:read"
-                    )
-                    in scopes
+                    if d["owner_module"] != "C" or "services:read" in scopes
                 ]
             if q.get("status"):
                 docs = [d for d in docs if d["status"] == q["status"]]
@@ -294,7 +282,6 @@ class Execution:
     def _c_handler(self, kind):
         return {
             "dispatch_service": self.service_dispatch,
-            "fulfill_reward": self.reward_fulfillment,
         }.get(kind)
 
     def create_in_transaction(
@@ -714,9 +701,6 @@ class Execution:
                 next_attempt_at=next_time if retry else None,
                 failure_reason=execution["error_message"],
             )
-            if unknown and task["kind"] == "fulfill_reward":
-                assert self.reward_fulfillment is not None
-                self.reward_fulfillment.observe_unknown(c, task, execution, at)
         else:
             # Local handlers have no external effect: a failure rolls back and maintenance recovers the running attempt
             if (
@@ -731,11 +715,6 @@ class Execution:
                     result_ref=identifier,
                     delivery_status="submitted",
                     submitted_at=at,
-                )
-            elif task["kind"] == "fulfill_reward":
-                assert self.reward_fulfillment is not None
-                execution["result_ref"] = self.reward_fulfillment.persist(
-                    c, task, execution, at
                 )
             elif task["kind"] == "deliver_reminder":
                 identifier = uid()

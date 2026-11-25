@@ -1,0 +1,14 @@
+PRAGMA defer_foreign_keys = ON;
+DROP TABLE c_redemption_feedback;
+DROP TABLE c_fulfillment_receipts;
+DROP TABLE c_redemption_history;
+DROP TABLE c_reward_fulfillments;
+DROP TABLE c_points_date_allocations;
+DROP TABLE c_points_award_sources;
+DROP TABLE c_points_ledger;
+DROP TABLE c_redemptions;
+DROP TABLE c_points_reconciliations;
+DROP TABLE c_management_reviews;
+DROP TABLE c_points_accounts;
+DROP TABLE c_rewards;
+DROP TABLE c_reward_versions;

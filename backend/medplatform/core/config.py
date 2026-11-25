@@ -30,10 +30,6 @@ class Settings(BaseSettings):
     DEMO_SERVICE_RECEIPT_TOKEN: SecretStr = Field(
         default_factory=lambda: SecretStr(""), repr=False
     )
-    DEMO_FULFILLMENT_RECEIPT_SUBJECT: str = Field(default="", repr=False)
-    DEMO_FULFILLMENT_RECEIPT_TOKEN: SecretStr = Field(
-        default_factory=lambda: SecretStr(""), repr=False
-    )
     LLM_TIMEOUT_SECONDS: int = Field(default=60, ge=1, le=60)
     DIALOGUE_HISTORY_LIMIT: int = Field(default=20, ge=1, le=100)
     RUNNER_POLL_SECONDS: int = Field(default=5, ge=1, le=60)

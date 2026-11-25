@@ -187,32 +187,10 @@ class AnalyticsAuditTests(unittest.TestCase):
         self.plan()
         self.move("2026-11-16T13:00:00+00:00")
         self.report(self.slots()[0])
-        self.case.call(
-            self.case.a,
-            "POST",
-            f"/patients/{support.PA}/measurements",
-            {
-                "source_event_id": support.key(),
-                "occurred_at": stamp(self.case.clock()),
-                "payload": {
-                    "metric_code": "sleep_duration",
-                    "value": 7,
-                    "unit": "h",
-                    "method_code": None,
-                    "missing_reason": None,
-                },
-            },
-            expected=201,
-        )
-        binding, _ = self.case.bind(
-            ["summary:read", "statistics:read", "measurements:read"]
-        )
+        binding, _ = self.case.bind(["summary:read", "statistics:read"])
         cutoff = stamp(self.case.clock())
         shared = self.summary(cutoff, self.case.f)
         self.assertEqual(shared["record_overview"]["patient_confirmed_count"], 1)
-        self.assertTrue(
-            any(item["latest_value"] == 7 for item in shared["measurement_overview"])
-        )
         self.case.call(
             self.case.a,
             "PUT",
@@ -226,7 +204,6 @@ class AnalyticsAuditTests(unittest.TestCase):
         )
         limited = self.summary(cutoff, self.case.f)
         self.assertIsNone(limited["record_overview"])
-        self.assertEqual(limited["measurement_overview"], [])
         self.assertTrue(
             any(item["code"] == "restricted" for item in limited["missing_items"])
         )

@@ -12,7 +12,6 @@ import { confirm } from '../../ui/confirm'
 import { Field, Input, Select, Textarea } from '../../ui/form'
 import { Text } from '../../ui/typography'
 import { PeerModerationControls } from '../peer/moderation'
-import { PointsConsole, RewardDemoControls } from '../rewards/reward-controls'
 import { ServiceDemoControls } from '../services/demo-controls'
 
 interface Case {
@@ -177,8 +176,6 @@ export function SupportConsolePage(): JSX.Element {
           </Card>
           <ServiceDemoControls />
           <PeerModerationControls />
-          <PointsConsole />
-          <RewardDemoControls />
         </>
       )}
     </Show>

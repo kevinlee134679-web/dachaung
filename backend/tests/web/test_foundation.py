@@ -187,30 +187,6 @@ class MigrationTests(Sandbox):
             )
             self.assertEqual(rows[1]["replaces_revision"], 1)
 
-    def test_null_zero_and_revisions_survive_upgrade(self):
-        migrate(self.db, initialize=True, target=1)
-        with self.db.transaction() as c:
-            event(
-                c,
-                "missing",
-                kind="measurement",
-                payload={"value": None, "missing_reason": "not_collected"},
-            )
-            event(
-                c,
-                "zero",
-                kind="measurement",
-                payload={"value": 0, "missing_reason": None},
-            )
-        migrate(self.db)
-        with self.db.connection(readonly=True) as c:
-            values = {
-                r["event_id"]: json.loads(r["payload_json"])["value"]
-                for r in c.execute("SELECT * FROM event_revisions")
-            }
-            self.assertIsNone(values["missing"])
-            self.assertEqual(values["zero"], 0)
-
     def test_null_cannot_bypass_medication_evidence_constraints(self):
         migrate(self.db, initialize=True)
         with self.db.transaction() as c:

@@ -1,31 +1,10 @@
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ReportPage } from '../../../src/features/report/report-page'
 import { notice } from '../../../src/notice/notice'
 import { Notice } from '../../../src/notice/notice-view'
 import { updateSession } from '../../../src/session/session'
-
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-function failure(message: string) {
-  return {
-    ok: false,
-    status: 409,
-    json: () =>
-      Promise.resolve({
-        request_id: 'test',
-        status: 'error',
-        data: null,
-        error: { code: 'SCHEDULE_WINDOW_NOT_READY', message },
-      }),
-  }
-}
+import { choose, failure, pageOf, success } from '../../support'
 
 function statistic() {
   return {
@@ -47,7 +26,6 @@ function statistic() {
 function summary() {
   return {
     record_overview: statistic(),
-    measurement_overview: [],
     feedback_overview: {
       sources: [
         { source_module: 'B', availability: 'available', reason: null, records: [] },
@@ -76,21 +54,9 @@ function summary() {
 }
 
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
-  const patient = {
-    patient: { patient_id: 'pa', display_name: 'pa', timezone: 'Asia/Shanghai' },
-    relationship: 'self',
-    effective_scopes: ['statistics:read', 'summary:read', 'measurements:read', 'records:read'],
-  }
+  choose({ scopes: ['statistics:read', 'summary:read', 'records:read'] })
   updateSession(draft => {
-    draft.context = {
-      account: { account_id: 'account-a', display_name: 'account-a', is_simulated: true },
-      current_patient_id: 'pa',
-      patients: [patient],
-      csrf_token: 'csrf-account-a',
-    }
-    draft.patient = patient
     draft.page = 'profile'
     draft.tab = 'report'
     draft.epoch++
@@ -120,13 +86,13 @@ function setupReport(errorMessage: string, failures = 1) {
       if (url.includes('/summary?')) {
         if (failures > 0) {
           failures--
-          return Promise.resolve(failure(errorMessage))
+          return Promise.resolve(failure(409, 'SCHEDULE_WINDOW_NOT_READY', errorMessage))
         }
         return Promise.resolve(success(summary()))
       }
       if (url.includes('/medication-trends'))
         return Promise.resolve(success({ items: [statistic()], aggregate: statistic() }))
-      if (url.includes('/dose-matches')) return Promise.resolve(success({ items: [], next_cursor: null }))
+      if (url.includes('/dose-matches')) return Promise.resolve(success(pageOf([])))
       return Promise.resolve(success(statistic()))
     }),
   )
@@ -177,34 +143,4 @@ it('render initial 409 leaves no detached old error after a successful report re
   expect(document.body.textContent).not.toContain('DETACHED_INITIAL_ERROR')
   expect(document.body.textContent).not.toContain('时段窗口尚未维护')
   expect(document.body.textContent).toContain('25.0%')
-})
-
-it('received unusable measurements display unavailable with their actual quality reason', async () => {
-  const result = {
-    ...summary(),
-    measurement_overview: [
-      {
-        metric_code: 'sleep_duration',
-        availability: 'unavailable',
-        latest_value: null,
-        unit: null,
-        sampled_at: null,
-        missing_items: ['已有记录，但原单位未知，当前不能形成可用指标'],
-      },
-    ],
-  }
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url: string) => {
-      if (url.includes('/summary?')) return success(result)
-      if (url.includes('/medication-trends')) return success({ items: [] })
-      if (url.includes('/dose-matches')) return success({ items: [], next_cursor: null })
-      return success(statistic())
-    }),
-  )
-  render(() => <ReportPage />)
-  await screen.findByText(/已有记录，但原单位未知/)
-  expect(document.body.textContent).toContain('睡眠时长：不可用')
-  expect(document.body.textContent).not.toContain('未采集')
-  expect(document.body.textContent).not.toContain('未采样')
 })

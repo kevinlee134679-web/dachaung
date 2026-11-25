@@ -5,7 +5,6 @@ import { createSignal, flush, For, onSettled, Show } from 'solid-js'
 import * as v from 'valibot'
 import { all, api, ApiError, sha } from '../../api/api'
 import { actionError, notice } from '../../notice/notice'
-import { navigate } from '../../session/navigation'
 import { readGate } from '../../session/read-gate'
 import {
   captureView,
@@ -398,24 +397,6 @@ export function PeerSupportPage(): JSX.Element {
                     </Show>
                     <div class="my-4 flex flex-wrap gap-3">
                       <Button onAction={() => load(current().group.group_id)}>刷新小组状态</Button>
-                      <Show
-                        when={
-                          !current().membership &&
-                          current().group.availability === 'available' &&
-                          scope('services:prepare') &&
-                          scope('support:read')
-                        }
-                      >
-                        <Button
-                          variant="primary"
-                          onAction={() => {
-                            sessionStorage.setItem(referenceKey('peer-prepare-resource'), current().group.resource_id)
-                            navigate('support', 'social')
-                          }}
-                        >
-                          准备本组申请
-                        </Button>
-                      </Show>
                       <Show when={current().membership}>
                         {member => (
                           <Button variant="danger" onAction={() => leave(current(), member())}>

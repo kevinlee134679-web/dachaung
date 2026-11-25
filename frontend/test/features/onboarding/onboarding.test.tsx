@@ -1,64 +1,32 @@
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { resolveOnboarding } from '../../../src/features/onboarding/onboarding'
 import { MedicationListForm } from '../../../src/features/plan-drafts/medication-list-form'
 import { state, updateSession } from '../../../src/session/session'
+import { choose, failure, success } from '../../support'
 
-function choose(relationship = 'self'): void {
-  const patient = {
-    patient: { patient_id: 'pa', display_name: '甲', timezone: 'Asia/Shanghai' },
-    relationship,
-    effective_scopes: [
-      'profile:read',
-      'plan:read',
-      'medication:read',
-      'medication:edit',
-      'drafts:read',
-      'drafts:write',
-      'drafts:submit',
-    ],
-  }
-  updateSession(draft => {
-    draft.epoch++
-    draft.context = {
-      account: { account_id: 'account-a', display_name: '甲', is_simulated: true },
-      csrf_token: 'csrf',
-      current_patient_id: 'pa',
-      patients: [patient],
-    }
-    draft.patient = patient
-    draft.onboarding = null
-  })
-}
-
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
+const scopes = [
+  'profile:read',
+  'plan:read',
+  'medication:read',
+  'medication:edit',
+  'drafts:read',
+  'drafts:write',
+  'drafts:submit',
+]
 
 function missingProfile() {
-  return {
-    ok: false,
-    status: 404,
-    json: () =>
-      Promise.resolve({
-        request_id: 'test',
-        status: 'error',
-        data: null,
-        error: { code: 'PROFILE_NOT_AVAILABLE', message: '没有画像' },
-      }),
-  }
+  return failure(404, 'PROFILE_NOT_AVAILABLE', '没有画像')
 }
 
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   sessionStorage.clear()
   localStorage.clear()
-  choose()
+  choose({ scopes })
+  updateSession(draft => {
+    draft.epoch++
+    draft.onboarding = null
+  })
 })
 
 afterEach(() => {
@@ -85,7 +53,11 @@ it('chooses the first incomplete onboarding step only for the patient', async ()
   planExists = true
   await resolveOnboarding()
   expect(state.onboarding).toBeNull()
-  choose('family')
+  choose({ relationship: 'family', scopes })
+  updateSession(draft => {
+    draft.epoch++
+    draft.onboarding = null
+  })
   fetch.mockClear()
   await resolveOnboarding()
   expect(state.onboarding).toBeNull()

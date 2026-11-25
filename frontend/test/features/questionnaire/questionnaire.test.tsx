@@ -1,3 +1,4 @@
+import type { SuccessResponse } from '../../support'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ProfilePage } from '../../../src/features/questionnaire/profile-page'
@@ -6,12 +7,7 @@ import { ReviewForm } from '../../../src/features/questionnaire/review-form'
 import { currentNotice, notice } from '../../../src/notice/notice'
 import { Notice } from '../../../src/notice/notice-view'
 import { state, updateSession } from '../../../src/session/session'
-
-interface SuccessResponse {
-  ok: true
-  status: 200
-  json: () => Promise<{ request_id: string; status: string; data: unknown; error: null }>
-}
+import { choose, success } from '../../support'
 
 const definition = {
   questionnaire_id: 'initial',
@@ -26,41 +22,18 @@ const definition = {
     allows_not_applicable: true,
   })),
 }
-function success(data: unknown): SuccessResponse {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-
 function latestProfile(profile: unknown, responseId = 'submitted') {
   return success({ response_id: responseId, submitted_at: '2026-11-24T00:00:00Z', profile })
-}
-
-function choose(id: string): void {
-  const access = {
-    patient: { patient_id: id, display_name: id, timezone: 'Asia/Shanghai' },
-    relationship: 'self',
-    effective_scopes: ['questionnaire:assist', 'profile:read'],
-  }
-  updateSession(draft => {
-    draft.context = {
-      account: { account_id: 'account-a', display_name: 'account-a', is_simulated: true },
-      csrf_token: 'csrf-a',
-      current_patient_id: id,
-      patients: [access],
-    }
-    draft.patient = access
-    draft.response = null
-    draft.epoch++
-  })
 }
 
 beforeEach(() => {
   localStorage.clear()
   notice('')
-  choose('pa')
+  choose({ patient: 'pa', scopes: ['questionnaire:assist', 'profile:read'] })
+  updateSession(draft => {
+    draft.response = null
+    draft.epoch++
+  })
 })
 
 afterEach(() => {
@@ -117,7 +90,11 @@ it('does not let an old questionnaire restore change the newly selected patient 
   )
   render(() => <QuestionnairePage />)
   await requested.promise
-  choose('pb')
+  choose({ patient: 'pb', scopes: ['questionnaire:assist', 'profile:read'] })
+  updateSession(draft => {
+    draft.response = null
+    draft.epoch++
+  })
   const answer = { state: 'not_answered', value: null, answered_by: 'self', updated_at: '2026-01-01T00:00:00+00:00' }
   response.resolve(
     success({

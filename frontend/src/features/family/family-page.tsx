@@ -52,8 +52,6 @@ const grantOptions: [string, string][] = [
   ['records:read', '服药证据查看'],
   ['records:report', '报告服药情况'],
   ['records:correct', '更正自己的报告'],
-  ['measurements:read', '指标记录查看'],
-  ['measurements:write', '指标记录填写'],
   ['devices:manage', '设备关联查看与撤销'],
   ['statistics:read', '五类用药统计'],
   ['summary:read', '近期状态摘要'],
@@ -63,7 +61,6 @@ const grantOptions: [string, string][] = [
   ['services:prepare', '协助准备服务草稿'],
   ['services:read', '查看正式服务状态'],
   ['peer:read', '查看同辈小组介绍'],
-  ['points:read', '查看积分余额和流水'],
   ['tasks:read', '提醒与执行状态'],
 ]
 

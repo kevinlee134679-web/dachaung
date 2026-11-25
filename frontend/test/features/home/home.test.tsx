@@ -1,43 +1,11 @@
-import type { PatientAccess } from '../../../src/session/session'
-import { webcrypto } from 'node:crypto'
+import type { SuccessResponse } from '../../support'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { Show } from 'solid-js'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { HomePage } from '../../../src/features/home/home-page'
 import { state, updateSession } from '../../../src/session/session'
+import { choose, pageOf as page, success } from '../../support'
 
-const patient: PatientAccess = {
-  patient: { patient_id: 'pa', display_name: '甲', timezone: 'Asia/Shanghai' },
-  relationship: 'self',
-  effective_scopes: [],
-}
-function choose(scopes: string[]) {
-  updateSession(draft => {
-    draft.epoch++
-    draft.patient = { ...patient, effective_scopes: scopes }
-    draft.context = {
-      account: { account_id: 'account-a', display_name: '甲', is_simulated: true },
-      csrf_token: 'csrf',
-      current_patient_id: 'pa',
-      patients: [],
-    }
-    draft.page = 'home'
-    draft.switchingPatient = false
-  })
-}
-interface TestResponse {
-  ok: boolean
-  status: number
-  json: () => Promise<{ request_id: string; status: string; data: unknown; error: null }>
-}
-function success(data: unknown): TestResponse {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-const page = (items: unknown[]) => ({ items, next_cursor: null })
 const session = {
   session_id: 'session-a',
   status: 'active',
@@ -47,10 +15,14 @@ const session = {
   meta: { revision: 1 },
 }
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
   sessionStorage.clear()
-  choose([])
+  choose()
+  updateSession(draft => {
+    draft.epoch++
+    draft.page = 'home'
+    draft.switchingPatient = false
+  })
 })
 afterEach(() => {
   cleanup()
@@ -68,7 +40,10 @@ it('home requests nothing without read scopes', async () => {
 })
 
 it('home loads dose slots and plans only with plan access and displays slot text safely', async () => {
-  choose(['plan:read'])
+  choose({ scopes: ['plan:read'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
   const markup = '<img src=x onerror=evil()>'
   const fetch = vi.fn((url: string) => {
     if (url.includes('/dose-slots?')) {
@@ -114,7 +89,10 @@ it('home loads dose slots and plans only with plan access and displays slot text
 })
 
 it('home offers the medication list when today has no slots', async () => {
-  choose(['plan:read', 'medication:read', 'drafts:read', 'drafts:write', 'drafts:submit'])
+  choose({ scopes: ['plan:read', 'medication:read', 'drafts:read', 'drafts:write', 'drafts:submit'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
   vi.stubGlobal(
     'fetch',
     vi.fn(() => success(page([]))),
@@ -126,7 +104,10 @@ it('home offers the medication list when today has no slots', async () => {
 })
 
 it('home displays pending invitations with intervention access', async () => {
-  choose(['interventions:read'])
+  choose({ scopes: ['interventions:read'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
   const fetch = vi.fn(() =>
     success({
       items: [
@@ -149,7 +130,10 @@ it('home displays pending invitations with intervention access', async () => {
 })
 
 it('home loads dialogue with its scope and starts a conversation inline', async () => {
-  choose(['dialogue:read'])
+  choose({ scopes: ['dialogue:read'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
   let opened = false
   const markup = '<img src=x onerror=evil()>'
   const fetch = vi.fn((url: string, options: RequestInit) => {
@@ -188,7 +172,10 @@ it('home loads dialogue with its scope and starts a conversation inline', async 
 })
 
 it('home opens the saved conversation before a newer active session', async () => {
-  choose(['dialogue:read'])
+  choose({ scopes: ['dialogue:read'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
   sessionStorage.setItem('reference:account-a:pa:support-session', session.session_id)
   const fetch = vi.fn((url: string) => {
     if (url === '/api/v1/sessions?patient_id=pa&limit=100') {
@@ -221,8 +208,11 @@ it('home opens the saved conversation before a newer active session', async () =
 })
 
 it('home discards delayed dose content after switching patient', async () => {
-  choose(['plan:read'])
-  const reply = Promise.withResolvers<TestResponse>()
+  choose({ scopes: ['plan:read'] })
+  updateSession(draft => {
+    draft.epoch++
+  })
+  const reply = Promise.withResolvers<SuccessResponse>()
   const fetch = vi.fn(() => reply.promise)
   vi.stubGlobal('fetch', fetch)
   const { container } = render(() => (
@@ -231,9 +221,9 @@ it('home discards delayed dose content after switching patient', async () => {
     </Show>
   ))
   await waitFor(() => expect(fetch).toHaveBeenCalled())
+  choose({ patient: 'pb' })
   updateSession(draft => {
     draft.epoch++
-    draft.patient = { ...patient, patient: { ...patient.patient, patient_id: 'pb' }, effective_scopes: [] }
   })
   reply.resolve(success(page([{ dose_slot_id: 'PRIVATE_OLD_PATIENT' }])))
   const settled = Promise.withResolvers<undefined>()

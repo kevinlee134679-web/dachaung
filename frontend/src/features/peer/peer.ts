@@ -26,15 +26,6 @@ export interface PeerPage<T> {
   next_cursor: string | null
 }
 
-export interface PeerJoinDraft {
-  service_draft_id: string
-  draft_revision: number
-  confirmation_ref_id: string
-  sharing_scope_ref_id: string
-  peer_group_id: string
-  request_text: string
-}
-
 export const peerMembershipSchema: v.GenericSchema<unknown, PeerMembership> = v.looseObject({
   group_id: v.string(),
   membership_id: v.string(),
@@ -61,7 +52,7 @@ export function peerPath(group: string): string {
   return `/peer-groups/${encodeURIComponent(group)}`
 }
 
-export function openPeer(group: string): void {
+function openPeer(group: string): void {
   sessionStorage.setItem(referenceKey('peer-group'), group)
   navigate('support', 'peer')
 }

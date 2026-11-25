@@ -9,6 +9,7 @@ const config: UserConfig = mergeConfig(
     test: {
       environment: 'jsdom',
       globals: true,
+      setupFiles: ['./test/setup.ts'],
     },
   }),
 )

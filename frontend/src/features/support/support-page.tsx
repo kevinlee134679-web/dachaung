@@ -136,9 +136,6 @@ export function SupportPage(): JSX.Element {
                   </Disclosure>
                 </Card>
               </Show>
-              <Show when={scope('support:read')}>
-                <Button onAction={() => navigate('support', 'social')}>查看社会支持</Button>
-              </Show>
               <Show when={own() && scope('feedback:read') && scope('services:read')}>
                 <SupportFeedbackPanel />
               </Show>

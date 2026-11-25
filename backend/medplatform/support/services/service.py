@@ -36,7 +36,6 @@ class Services:
             settings,
         )
         self.peer = None
-        self.rewards = None
 
     def authenticate_provider(self, header):
         return authenticate_provider(
@@ -189,8 +188,7 @@ class Services:
         ):
             raise confirmation_required()
         resource = current_resource(conn, doc)
-        expected_access = "reward_only" if doc.get("redemption_id") else "support_free"
-        if resource is None or resource["access_mode"] != expected_access:
+        if resource is None or resource["access_mode"] != "support_free":
             raise confirmation_required("资源已停用或版本有变化，请重新核对")
         provider, purpose = resource["provider"], resource["service_kind"]
         if (consent["provider_id"], consent["service_kind"]) != (
@@ -217,7 +215,7 @@ class Services:
         deadline = min(consent["valid_until"], scope["valid_until"])
         return resource, scope, deadline
 
-    def prepared(self, conn, principal, patient, body, at, *, redemption_id=None):
+    def prepared(self, conn, principal, patient, body, at):
         self.auth.require_patient(
             principal, patient, "services:apply", conn, self_only=True
         )
@@ -241,9 +239,7 @@ class Services:
         ).fetchone()
         if link is None:
             raise confirmation_required()
-        resource, _, deadline = self.consent(
-            conn, dict(draft) | body | {"redemption_id": redemption_id}, at
-        )
+        resource, _, deadline = self.consent(conn, dict(draft) | body, at)
         return draft, resource, deadline
 
     def submit(
@@ -256,16 +252,13 @@ class Services:
         referral_id=None,
         suggestion_id=None,
         resource_id=None,
-        redemption_id=None,
         prepared=None,
     ):
         at = stamp(self.clock())
         draft, resource, deadline = (
             prepared
             if prepared is not None
-            else self.prepared(
-                conn, principal, patient, body, at, redemption_id=redemption_id
-            )
+            else self.prepared(conn, principal, patient, body, at)
         )
         if resource_id is not None and resource_id != draft["resource_id"]:
             raise confirmation_required("转介资源与已确认草稿不一致")
@@ -275,12 +268,10 @@ class Services:
                 old["draft_revision"],
                 old["confirmation_ref_id"],
                 old["sharing_scope_ref_id"],
-                old["redemption_id"],
             ) != (
                 body["draft_revision"],
                 body["confirmation_ref_id"],
                 body["sharing_scope_ref_id"],
-                redemption_id,
             ):
                 raise confirmation_required("草稿已有正式服务，请核对原申请")
             return old
@@ -314,7 +305,6 @@ class Services:
             cancellation_reason=None,
             source_suggestion_id=suggestion_id,
             source_referral_id=referral_id,
-            redemption_id=redemption_id,
             dispatch_task_id=task_id,
             result_summary=None,
             provider_response=None,
@@ -495,8 +485,6 @@ class Services:
             self.peer.accept(conn, result, actor, occurred, at)
         if target in {"cancelled", "failed"}:
             self.stop_dispatch(conn, doc["dispatch_task_id"], at)
-        if result["redemption_id"] and self.rewards is not None:
-            self.rewards.fulfillment.observe_service(conn, result, origin, occurred, at)
         return result
 
     def provider_receipt(self, subject, body, key):

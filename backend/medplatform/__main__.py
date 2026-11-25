@@ -17,16 +17,12 @@ def seed(db):
     from .identity.sharing import seed_support_recipients
     from .support.catalog.service import seed_catalog
     from .support.peer.fixtures import seed_peer_groups
-    from .support.points.service import seed_points
-    from .support.rewards.catalog import seed_rewards
 
     return {
         "demo": seed_demo(db),
         "catalog": seed_catalog(db),
         "recipients": seed_support_recipients(db),
         "peer_groups": seed_peer_groups(db),
-        "points": seed_points(db),
-        "rewards": seed_rewards(db),
     }
 
 

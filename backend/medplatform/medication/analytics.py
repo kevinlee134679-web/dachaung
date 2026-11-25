@@ -8,7 +8,6 @@ from ..core.documents import get, stamp
 from ..core.errors import AppError
 from ..core.idempotency import Result
 from ..web.inputs import query_fields, query_window, utc
-from .records import METRICS
 from .schedule import require_coverage
 
 COUNT_VERSION = "flow-v0.1-count-v1"
@@ -29,7 +28,6 @@ def valid_plan_slot(slot, plan):
 ROUTES = [
     ("A28", "GET", "/patients/{p}/medication-statistics", "analytics_statistics", None),
     ("A29", "GET", "/patients/{p}/medication-trends", "analytics_trend", None),
-    ("A30", "GET", "/patients/{p}/measurement-trends", "analytics_measurement", None),
     ("A31", "GET", "/patients/{p}/summary", "analytics_summary", None),
     ("A41", "GET", "/patients/{p}/feedback-overview", "analytics_feedback", None),
 ]
@@ -42,8 +40,6 @@ def query_input(action, pairs):
     allowed = {"window_start", "window_end", "as_of", "data_environment"}
     if action == "analytics_trend":
         allowed.add("period")
-    if action == "analytics_measurement":
-        allowed.update(("metric_code", "unit", "method_code"))
     try:
         q = query_fields(pairs, allowed)
         query_window(q)
@@ -56,18 +52,6 @@ def query_input(action, pairs):
             raise ValueError()
         if action == "analytics_trend" and q.get("period", "day") != "day":
             raise ValueError()
-        if action == "analytics_measurement":
-            if (
-                q["metric_code"] not in METRICS
-                or q["unit"] != METRICS[q["metric_code"]]
-            ):
-                raise AppError(
-                    422,
-                    "INCOMPARABLE_MEASUREMENT_QUERY",
-                    "请指定已登记指标的标准单位和同一方法",
-                )
-            if "method_code" in q and not 1 <= len(q["method_code"]) <= 200:
-                raise ValueError()
     except KeyError, ValueError, TypeError, OverflowError:
         raise AppError(
             422, "VALIDATION_ERROR", "查询窗口、时区、环境或字段不合法"
@@ -103,16 +87,13 @@ class Analytics:
         scope = {
             "analytics_statistics": "statistics:read",
             "analytics_trend": "statistics:read",
-            "analytics_measurement": "measurements:read",
             "analytics_feedback": "feedback:read",
         }.get(action, "summary:read")
         with self.db.connection(readonly=True) as c:
             c.execute("BEGIN")
             self.authorize(c, principal, patient, scope)
             window = self.window(q)
-            if action == "analytics_measurement":
-                data = self.measurement_trend(c, patient, window)
-            elif action == "analytics_feedback":
+            if action == "analytics_feedback":
                 data = self.feedback(c, patient, window, principal)
             elif action == "analytics_summary":
                 data = self.summary(c, principal, patient, window)
@@ -362,89 +343,6 @@ class Analytics:
                     "message": "当前授权不包含用药统计",
                 }
             )
-        measurements = []
-        if "measurements:read" in scopes:
-            for metric, unit in METRICS.items():
-                samples = [
-                    x["event"]
-                    for x in inputs[1]
-                    if x["event"]["event_kind"] == "measurement"
-                    and x["event"]["payload"]["metric_code"] == metric
-                    and window["window_start"]
-                    <= x["event"]["occurred_at"]
-                    < window["window_end"]
-                ]
-                groups = {e["payload"]["method_code"] for e in samples} or {None}
-                for method in sorted(groups, key=lambda m: m or ""):
-                    relevant = [
-                        e for e in samples if e["payload"]["method_code"] == method
-                    ]
-                    valid = [
-                        e
-                        for e in relevant
-                        if e["quality"]["status"] == "valid"
-                        and e["quality"]["normalized_measurement"]
-                        and e["quality"]["normalized_measurement"]["value"] is not None
-                    ]
-                    last = (
-                        max(valid, key=lambda e: (e["occurred_at"], e["event_id"]))
-                        if valid
-                        else None
-                    )
-                    blocked = [e for e in relevant if e["quality"]["status"] != "valid"]
-                    reasons = [
-                        issue["message"]
-                        for e in blocked
-                        for issue in e["quality"]["issues"]
-                    ]
-                    reasons.extend(
-                        e["payload"]["missing_reason"]
-                        for e in relevant
-                        if e["payload"]["missing_reason"]
-                    )
-                    if len(valid) < 2:
-                        reasons.append("可比有效样本不足，不能判断变化趋势")
-                    measurements.append(
-                        {
-                            "metric_code": metric,
-                            "latest_event_id": last["event_id"] if last else None,
-                            "latest_value": last["quality"]["normalized_measurement"][
-                                "value"
-                            ]
-                            if last
-                            else None,
-                            "unit": unit if last else None,
-                            "sampled_at": last["occurred_at"] if last else None,
-                            "method_code": method,
-                            "availability": "available"
-                            if last
-                            else "unavailable"
-                            if blocked
-                            else "not_collected",
-                            "missing_items": reasons,
-                        }
-                    )
-                    if not last:
-                        missing.append(
-                            {
-                                "source": "measurement",
-                                "code": "unavailable" if blocked else "not_collected",
-                                "message": metric
-                                + (
-                                    "已接收，但质量或单位待复核，暂不可用于数值汇总"
-                                    if blocked
-                                    else "尚无有效采样值；保留未采集原因，不补零"
-                                ),
-                            }
-                        )
-        else:
-            missing.append(
-                {
-                    "source": "measurement",
-                    "code": "restricted",
-                    "message": "当前授权不包含指标资料",
-                }
-            )
         feedback = self.feedback(c, patient, window, principal)
         missing.extend(
             {
@@ -464,75 +362,8 @@ class Analytics:
             "updated_at": at,
             "plan_refs": record["plan_refs"] if record else [],
             "record_overview": record,
-            "measurement_overview": measurements,
             "feedback_overview": feedback,
             "missing_items": missing,
             "is_simulated": True,
         }
         return summary
-
-    def measurement_trend(self, c, patient, window):
-        metric, unit, method = (
-            window["metric_code"],
-            window["unit"],
-            window.get("method_code"),
-        )
-        points, issues = [], []
-        for event in self.records.effective_events(
-            c, patient, window["data_environment"], window["as_of"]
-        ):
-            if (
-                event["event_kind"] != "measurement"
-                or not window["window_start"]
-                <= event["occurred_at"]
-                < window["window_end"]
-            ):
-                continue
-            payload = event["payload"]
-            quality = event["quality"]
-            if payload["metric_code"] != metric or payload["method_code"] != method:
-                continue
-            normalized = quality["normalized_measurement"]
-            if payload["unit"] not in (unit, None) and (
-                not normalized or normalized["unit"] != unit
-            ):
-                issues.append(
-                    {
-                        "code": "unknown_unit",
-                        "message": "原始单位未能标准化，未进入数值线",
-                        "field": "unit",
-                    }
-                )
-                continue
-            value = (
-                normalized["value"]
-                if normalized and quality["status"] == "valid"
-                else None
-            )
-            reason = (normalized or {}).get("missing_reason") or payload.get(
-                "missing_reason"
-            )
-            if value is None and not reason:
-                reason = "该样本质量尚未通过，不能当作正常值"
-            points.append(
-                {
-                    "event_id": event["event_id"],
-                    "event_revision": event["meta"]["revision"],
-                    "occurred_at": event["occurred_at"],
-                    "value": value,
-                    "missing_reason": reason,
-                    "quality_status": quality["status"],
-                    "is_simulated": True,
-                }
-            )
-        points.sort(key=lambda e: (e["occurred_at"], e["event_id"]))
-        return {
-            "patient_id": patient,
-            "metric_code": metric,
-            "unit": unit,
-            "method_code": method,
-            "window_start": window["window_start"],
-            "window_end": window["window_end"],
-            "points": points,
-            "issues": issues,
-        }

@@ -7,7 +7,7 @@ import { all } from '../../api/api'
 import { rangeQuery } from '../../api/query'
 import { actionError } from '../../notice/notice'
 import { readGate } from '../../session/read-gate'
-import { captureView, isCurrentView, patientPath, scope, state, ViewChanged } from '../../session/session'
+import { captureView, isCurrentView, patientPath, scope, ViewChanged } from '../../session/session'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { Field, Select } from '../../ui/form'
@@ -16,7 +16,6 @@ import { RangeControls } from '../../ui/range-controls'
 import { Subheading, Text } from '../../ui/typography'
 import { EventCard } from './event-card'
 import { recordEventSchema } from './events'
-import { MeasurementForm } from './measurement-form'
 import { MedicationReportForm } from './report-form'
 
 export function EventListPage(): JSX.Element {
@@ -25,18 +24,12 @@ export function EventListPage(): JSX.Element {
   const [events, setEvents] = createSignal<RecordEvent[] | null>(null)
   const [loading, setLoading] = createSignal(false)
   const beginRead = readGate()
-  const measurement = () => state.tab === 'measurements'
-  const canRead = () => scope(measurement() ? 'measurements:read' : 'records:read')
-  const canWrite = () => scope(measurement() ? 'measurements:write' : 'records:report')
+  const canRead = () => scope('records:read')
   async function load(view: View): Promise<void> {
     const ensure = beginRead()
     const query = rangeQuery({ ...range.read(), state: filter.value })
     setLoading(true)
-    const items = await all(
-      `${patientPath(measurement() ? '/measurements' : '/medication-events')}?${query}`,
-      recordEventSchema,
-      view,
-    )
+    const items = await all(`${patientPath('/medication-events')}?${query}`, recordEventSchema, view)
     ensure()
     setEvents(items)
     setLoading(false)
@@ -52,10 +45,10 @@ export function EventListPage(): JSX.Element {
   })
   return (
     <section class="space-y-6">
-      <Subheading>{measurement() ? '指标与缺失记录' : '服药报告与其他证据'}</Subheading>
-      {canWrite() && (
+      <Subheading>服药报告与其他证据</Subheading>
+      {scope('records:report') && (
         <Card>
-          {measurement() ? <MeasurementForm /> : <MedicationReportForm onSaved={canRead() ? load : undefined} />}
+          <MedicationReportForm onSaved={canRead() ? load : undefined} />
         </Card>
       )}
       {!canRead() ? (

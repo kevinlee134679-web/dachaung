@@ -1,4 +1,4 @@
-export const statusLabels: Record<string, string> = {
+const statusLabels: Record<string, string> = {
   editing: '编辑中',
   pending_confirmation: '等待本人核对',
   confirmed: '已取得正式计划引用',
@@ -86,9 +86,3 @@ export function statusTone(value: string | null | undefined): 'zinc' | 'teal' | 
   }
   return 'zinc'
 }
-
-export const metricOptions: [string, string][] = [
-  ['sleep_duration', '睡眠时长'],
-  ['step_count', '步数'],
-  ['heart_rate', '心率'],
-]

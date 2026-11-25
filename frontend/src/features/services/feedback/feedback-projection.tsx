@@ -2,13 +2,13 @@ import type { FeedbackProjection } from './feedback'
 import type { JSX } from '@solidjs/web'
 import { For, Show } from 'solid-js'
 import { dateText } from '../../../date/date'
-import { scope } from '../../../session/session'
+import { navigate } from '../../../session/navigation'
+import { referenceKey, scope } from '../../../session/session'
 import { Badge, StatusBadge } from '../../../ui/badge'
 import { Button } from '../../../ui/button'
 import { statusTone } from '../../../ui/labels'
 import { Text } from '../../../ui/typography'
 import { formalServiceStates } from '../dispatch'
-import { openServiceRecord } from '../navigation'
 import { feedbackDimensions } from './feedback'
 
 export function CFeedbackProjection(props: { source: FeedbackProjection }): JSX.Element {
@@ -41,7 +41,14 @@ export function CFeedbackProjection(props: { source: FeedbackProjection }): JSX.
               )}
             </For>
             <Show when={scope('services:read')}>
-              <Button onAction={() => openServiceRecord(record.record_id)}>查看该服务及反馈历史</Button>
+              <Button
+                onAction={() => {
+                  sessionStorage.setItem(referenceKey('formal-service'), record.record_id)
+                  navigate('profile', 'formal-services')
+                }}
+              >
+                查看该服务及反馈历史
+              </Button>
             </Show>
           </div>
         )}

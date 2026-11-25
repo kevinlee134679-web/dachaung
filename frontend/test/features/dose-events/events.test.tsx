@@ -1,4 +1,4 @@
-import { webcrypto } from 'node:crypto'
+import type { SuccessResponse } from '../../support'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import * as v from 'valibot'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -6,6 +6,7 @@ import { EventListPage } from '../../../src/features/dose-events/event-list-page
 import { MedicationReportForm } from '../../../src/features/dose-events/report-form'
 import { currentNotice, notice } from '../../../src/notice/notice'
 import { updateSession } from '../../../src/session/session'
+import { choose, pageOf, success } from '../../support'
 
 const slot = {
   dose_slot_id: 'slot-a',
@@ -15,18 +16,6 @@ const slot = {
   plan_entry_id: 'entry-a',
   scheduled_at: '2026-11-16T00:00:00Z',
   status: 'active',
-}
-interface SuccessResponse {
-  ok: boolean
-  status: number
-  json: () => Promise<{ request_id: string; status: string; data: unknown; error: null }>
-}
-function success(data: unknown): SuccessResponse {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'request-a', status: 'success', data, error: null }),
-  }
 }
 function event(payload: Record<string, unknown> = {}) {
   return {
@@ -69,37 +58,21 @@ function event(payload: Record<string, unknown> = {}) {
     },
   }
 }
-const page = (items: unknown[]) => success({ items, next_cursor: null })
-
 function requestBody(options: RequestInit): unknown {
   if (typeof options.body !== 'string') throw new TypeError('Expected JSON request body')
   return JSON.parse(options.body)
 }
 
-function choose(patient = 'pa', account = 'account-a', relationship = 'self', tab = 'records'): void {
-  const access = {
-    patient: { patient_id: patient, display_name: patient, timezone: 'Asia/Shanghai' },
-    relationship,
-    effective_scopes: ['records:read', 'records:report', 'records:correct', 'measurements:read', 'measurements:write'],
-  }
-  updateSession(draft => {
-    draft.context = {
-      account: { account_id: account, display_name: account, is_simulated: true },
-      current_patient_id: patient,
-      patients: [access],
-      csrf_token: `csrf-${account}`,
-    }
-    draft.patient = access
-    draft.page = 'medication'
-    draft.tab = tab
-    draft.epoch++
-  })
-}
+const scopes = ['records:read', 'records:report', 'records:correct']
 
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
-  choose()
+  choose({ scopes })
+  updateSession(draft => {
+    draft.page = 'medication'
+    draft.tab = 'records'
+    draft.epoch++
+  })
   notice('')
 })
 afterEach(() => {
@@ -139,11 +112,17 @@ it('slot report retries an unknown result with the same source and idempotency k
 it('family report controls keep the family boundary and cannot act after patient switch', () => {
   const fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
-  choose('pa', 'family-a', 'family')
+  choose({ patient: 'pa', account: 'family-a', relationship: 'family', scopes })
+  updateSession(draft => {
+    draft.epoch++
+  })
   render(() => <MedicationReportForm slot={slot} />)
   expect(screen.getByText(/不计入本人确认已服/)).toBeTruthy()
   const save = screen.getByRole('button', { name: '明确保存服药报告' })
-  choose('pb', 'family-a', 'family')
+  choose({ patient: 'pb', account: 'family-a', relationship: 'family', scopes })
+  updateSession(draft => {
+    draft.epoch++
+  })
   fireEvent.click(save)
   expect(fetchMock).not.toHaveBeenCalled()
 })
@@ -179,7 +158,10 @@ it('patient switch during source-fingerprint preparation sends no old slot repor
   vi.stubGlobal('fetch', fetchMock)
   render(() => <MedicationReportForm slot={slot} />)
   fireEvent.click(screen.getByRole('button', { name: '明确保存服药报告' }))
-  choose('pb')
+  choose({ patient: 'pb', scopes })
+  updateSession(draft => {
+    draft.epoch++
+  })
   digest.resolve(new Uint8Array(32).buffer)
   await waitFor(() =>
     expect(screen.getByRole('button', { name: '明确保存服药报告' }).hasAttribute('disabled')).toBe(false),
@@ -188,74 +170,12 @@ it('patient switch during source-fingerprint preparation sends no old slot repor
   expect(localStorage.length).toBe(0)
 })
 
-it('measurement forms preserve zero, explicit missing, and an unknown raw unit', async () => {
-  const writes: { payload: { value: number | null; unit: string; missing_reason: string | null } }[] = []
-  choose('pa', 'account-a', 'self', 'measurements')
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((_url: string, options: RequestInit) => {
-      if (options.method === 'GET') return page([])
-      writes.push(
-        v.parse(
-          v.looseObject({
-            payload: v.looseObject({
-              value: v.nullable(v.number()),
-              unit: v.string(),
-              missing_reason: v.nullable(v.string()),
-            }),
-          }),
-          requestBody(options),
-        ),
-      )
-      return success({
-        ...event(),
-        event_kind: 'measurement',
-        evidence_type: 'measurement',
-        payload: {
-          metric_code: 'sleep_duration',
-          value: 0,
-          unit: 'unknown-unit',
-          method_code: null,
-          missing_reason: null,
-        },
-        quality: {
-          event_id: 'event-a',
-          event_revision: 1,
-          status: 'needs_review',
-          issues: [{ code: 'unknown_unit', message: '原单位未确认，不猜测或换算数值', field: 'unit' }],
-          normalized_measurement: null,
-          processing_version: 'quality-v1',
-          processed_at: '2026-11-16T01:00:00Z',
-        },
-        link_status: 'not_applicable',
-      })
-    }),
-  )
-  render(() => <EventListPage />)
-  fireEvent.input(screen.getByLabelText('实际数值（缺失时不填）'), { target: { value: '0' } })
-  fireEvent.input(screen.getByLabelText('原单位（睡眠h、步数count、心率beats/min）'), {
-    target: { value: 'unknown-unit' },
-  })
-  const save = screen.getByRole('button', { name: '保存指标记录' })
-  fireEvent.click(save)
-  await screen.findByText(/已保存；/)
-  await waitFor(() => expect(save.hasAttribute('disabled')).toBe(false))
-  expect(writes[0]?.payload.value).toBe(0)
-  expect(writes[0]?.payload.unit).toBe('unknown-unit')
-  fireEvent.click(screen.getByLabelText('本次未采集或数值缺失'))
-  fireEvent.input(screen.getByLabelText('缺失原因'), { target: { value: 'sensor unavailable' } })
-  fireEvent.click(save)
-  await waitFor(() => expect(writes).toHaveLength(2))
-  expect(writes[1]?.payload.value).toBeNull()
-  expect(writes[1]?.payload.missing_reason).toBe('sensor unavailable')
-})
-
 it('unchanged correction time retains exact precision and the current expected revision', async () => {
   const writes: Record<string, unknown>[] = []
   vi.stubGlobal(
     'fetch',
     vi.fn((_url: string, options: RequestInit) => {
-      if (options.method === 'GET') return page([event()])
+      if (options.method === 'GET') return success(pageOf([event()]))
       writes.push(v.parse(v.record(v.string(), v.unknown()), requestBody(options)))
       return success(event())
     }),
@@ -278,7 +198,10 @@ it('a delayed old record list cannot pollute a new patient page', async () => {
   vi.stubGlobal('fetch', fetchMock)
   render(() => <EventListPage />)
   await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-  choose('pb')
+  choose({ patient: 'pb', scopes })
+  updateSession(draft => {
+    draft.epoch++
+  })
   response.resolve({
     ok: true,
     status: 200,
@@ -307,7 +230,7 @@ it('a completed old correction cannot put its success notice onto a new patient 
     'fetch',
     vi.fn((_url: string, options: RequestInit) => {
       if (options.method !== 'GET') return Promise.resolve(success(event()))
-      return ++reads === 1 ? Promise.resolve(page([event()])) : response.promise
+      return ++reads === 1 ? Promise.resolve(success(pageOf([event()]))) : response.promise
     }),
   )
   render(() => <EventListPage />)
@@ -315,7 +238,10 @@ it('a completed old correction cannot put its success notice onto a new patient 
   fireEvent.input(screen.getByLabelText('更正或撤销原因（必填）'), { target: { value: 'correct original report' } })
   fireEvent.click(screen.getByRole('button', { name: '保存追加更正' }))
   await waitFor(() => expect(reads).toBe(2))
-  choose('pb')
+  choose({ patient: 'pb', scopes })
+  updateSession(draft => {
+    draft.epoch++
+  })
   response.resolve({
     ok: true,
     status: 200,

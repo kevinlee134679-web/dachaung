@@ -1,7 +1,7 @@
 import type { View } from '../../session/session'
 import * as v from 'valibot'
 import { api, ApiError, sha } from '../../api/api'
-import { captureView, patientPath, referenceKey, requireCurrentView } from '../../session/session'
+import { captureView, referenceKey, requireCurrentView } from '../../session/session'
 
 type SharedCategory = 'support_question' | 'medication_plan' | 'medication_records' | 'profile_summary'
 
@@ -18,86 +18,7 @@ export const servicePurposes: Record<string, string> = {
   peer_support: '模拟同辈入组',
 }
 
-export interface SupportResource {
-  resource_id: string
-  resource_version: string
-  name: string
-  description: string
-  service_kind: string
-  peer_group_id: string | null
-  provider: { display_name: string; qualification_status: string }
-  required_shared_categories: string[]
-  optional_shared_categories: SharedCategory[]
-}
-
-export interface ServiceDraft {
-  service_draft_id: string
-  patient_id: string
-  resource_id: string
-  resource_version: string
-  request_text: string
-  draft_revision: number
-  status: string
-  confirmation_ref_id: string | null
-  sharing_scope_ref_id: string | null
-  service_id: string | null
-  peer_group_id: string | null
-  meta: { revision: number }
-}
-
-export interface ServiceConsent {
-  confirmation_ref_id: string
-  status: string
-  resource_version: string
-  confirmed_at: string
-  valid_until: string
-  sharing_scope: { sharing_scope_ref_id: string; recipient_id: string; purpose_code: string; data_categories: string[] }
-}
-
-export const supportResourceSchema: v.GenericSchema<unknown, SupportResource> = v.looseObject({
-  resource_id: v.string(),
-  resource_version: v.string(),
-  name: v.string(),
-  description: v.string(),
-  service_kind: v.string(),
-  peer_group_id: v.nullable(v.string()),
-  provider: v.looseObject({ display_name: v.string(), qualification_status: v.string() }),
-  required_shared_categories: v.array(v.string()),
-  optional_shared_categories: v.array(
-    v.picklist(['support_question', 'medication_plan', 'medication_records', 'profile_summary']),
-  ),
-})
-
-export const serviceDraftSchema: v.GenericSchema<unknown, ServiceDraft> = v.looseObject({
-  service_draft_id: v.string(),
-  patient_id: v.string(),
-  resource_id: v.string(),
-  resource_version: v.string(),
-  request_text: v.string(),
-  draft_revision: v.number(),
-  status: v.string(),
-  confirmation_ref_id: v.nullable(v.string()),
-  sharing_scope_ref_id: v.nullable(v.string()),
-  service_id: v.nullable(v.string()),
-  peer_group_id: v.nullable(v.string()),
-  meta: v.looseObject({ revision: v.number() }),
-})
-
-export const serviceConsentSchema: v.GenericSchema<unknown, ServiceConsent> = v.looseObject({
-  confirmation_ref_id: v.string(),
-  status: v.string(),
-  resource_version: v.string(),
-  confirmed_at: v.string(),
-  valid_until: v.string(),
-  sharing_scope: v.looseObject({
-    sharing_scope_ref_id: v.string(),
-    recipient_id: v.string(),
-    purpose_code: v.string(),
-    data_categories: v.array(v.string()),
-  }),
-})
-
-export interface ServiceWriteReceipt {
+interface ServiceWriteReceipt {
   hash: string
   contentHash: string | null
   selectionHash: string | null
@@ -110,7 +31,7 @@ export function serviceWriteKey(path: string, method: string): string {
   return `reference:${accountId}:${patientId ?? 'console'}:service-write:${method}:${path}`
 }
 
-export function pendingServiceWrite(path: string, method: string): ServiceWriteReceipt | null {
+function pendingServiceWrite(path: string, method: string): ServiceWriteReceipt | null {
   return v.parse(
     v.nullable(
       v.looseObject({
@@ -171,11 +92,4 @@ export function rememberServiceConsent(identifier: string): void {
   const key = referenceKey('service-consent-history')
   const refs = (localStorage.getItem(key) ?? '').split(',').filter(Boolean)
   if (!refs.includes(identifier)) localStorage.setItem(key, [identifier, ...refs].join(','))
-}
-
-export function clearSubmission(draft: ServiceDraft): void {
-  const path = patientPath('/services')
-  const pending = pendingServiceWrite(path, 'POST')
-  if (pending?.draftId === draft.service_draft_id && pending.revision === draft.draft_revision)
-    localStorage.removeItem(serviceWriteKey(path, 'POST'))
 }

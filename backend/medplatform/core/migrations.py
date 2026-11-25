@@ -156,33 +156,6 @@ def status(db: Database, directory: Path = DIRECTORY) -> int:
             <= tables
         ):
             raise SchemaError("S05匿名同辈表缺失")
-        if (
-            current >= 13
-            and not {
-                "c_points_accounts",
-                "c_management_reviews",
-                "c_points_reconciliations",
-                "c_points_ledger",
-                "c_points_award_sources",
-                "c_points_date_allocations",
-            }
-            <= tables
-        ):
-            raise SchemaError("S05积分账本或来源表缺失")
-        if (
-            current >= 14
-            and not {
-                "c_reward_versions",
-                "c_rewards",
-                "c_redemptions",
-                "c_reward_fulfillments",
-                "c_redemption_history",
-                "c_fulfillment_receipts",
-                "c_redemption_feedback",
-            }
-            <= tables
-        ):
-            raise SchemaError("S05兑换目录、订单或履约表缺失")
         if current >= 19 and "b_support_rule" not in tables:
             raise SchemaError("S06规则选择表缺失")
         return current

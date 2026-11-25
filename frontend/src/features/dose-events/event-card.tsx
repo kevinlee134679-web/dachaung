@@ -1,5 +1,5 @@
 import type { View } from '../../session/session'
-import type { RecordEvent, EventPayload, Revision } from './events'
+import type { RecordEvent, Revision } from './events'
 import type { JSX } from '@solidjs/web'
 import { createSignal, For } from 'solid-js'
 import * as v from 'valibot'
@@ -13,10 +13,8 @@ import { Button } from '../../ui/button'
 import { IssueList } from '../../ui/data-display'
 import { Disclosure } from '../../ui/disclosure'
 import { Field, Input } from '../../ui/form'
-import { metricOptions } from '../../ui/labels'
 import { Subheading, Text } from '../../ui/typography'
 import { revisionSchema } from './events'
-import { MeasurementEditor } from './measurement-editor'
 import { ReportSelect } from './report-select'
 
 export const evidenceLabels: Record<string, string> = {
@@ -31,17 +29,15 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
   let reason!: HTMLInputElement
   let status!: HTMLSelectElement
   let notes!: HTMLInputElement
-  let readPayload!: () => EventPayload
   let timeEdited = false
   const [revisions, setRevisions] = createSignal<Revision[]>([])
   const beginRead = readGate()
-  const measurement = () => props.event.event_kind === 'measurement'
   const canWrite = () =>
     props.event.source === 'manual' &&
     props.event.reporter_account_id === state.context?.account.account_id &&
     props.event.state === 'effective' &&
     (own() || scope('records:correct')) &&
-    scope(measurement() ? 'measurements:write' : 'records:report')
+    scope('records:report')
   async function loadRevisions(view: View): Promise<void> {
     const ensure = beginRead()
     const history = await all(`/events/${encodeURIComponent(props.event.event_id)}/revisions`, revisionSchema, view)
@@ -56,9 +52,7 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
           expected_revision: props.event.meta.revision,
           reason: reason.value,
           occurred_at: timeEdited ? inputDateTime(time.value) : props.event.occurred_at,
-          payload: measurement()
-            ? readPayload()
-            : { ...props.event.payload, reported_status: status.value, raw_text: notes.value || null },
+          payload: { ...props.event.payload, reported_status: status.value, raw_text: notes.value || null },
         }
     await api(
       `/events/${encodeURIComponent(props.event.event_id)}/${withdrawal ? 'withdrawals' : 'corrections'}`,
@@ -85,20 +79,8 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
   return (
     <article class="space-y-4">
       <Subheading level={3}>
-        {measurement() ? (
-          `${metricOptions.find(option => option[0] === props.event.payload.metric_code)?.[1] ?? props.event.payload.metric_code}：${props.event.payload.value === null ? '缺失' : props.event.payload.value} ${props.event.payload.unit != null && props.event.payload.unit !== '' ? props.event.payload.unit : '单位未提供'}`
-        ) : (
-          <>
-            {evidenceLabels[props.event.evidence_type ?? ''] ?? props.event.evidence_type ?? ''} ·{' '}
-            <StatusBadge
-              status={
-                props.event.payload.reported_status != null && props.event.payload.reported_status !== ''
-                  ? props.event.payload.reported_status
-                  : props.event.payload.observation
-              }
-            />
-          </>
-        )}
+        {evidenceLabels[props.event.evidence_type ?? ''] ?? props.event.evidence_type ?? ''} ·{' '}
+        <StatusBadge status={props.event.payload.reported_status ?? props.event.payload.observation} />
       </Subheading>
       <Text>
         发生/采样：{dateText(props.event.occurred_at)}；首次收到：{dateText(props.event.received_at)}
@@ -110,9 +92,6 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
       </p>
       <Text>{props.event.meta.is_simulated ? '演示记录' : '实际来源记录'}</Text>
       <IssueList issues={props.event.quality.issues} />
-      {props.event.payload.missing_reason != null && props.event.payload.missing_reason !== '' && (
-        <p class="text-sm/6">缺失原因：{props.event.payload.missing_reason}</p>
-      )}
       {props.event.payload.raw_text != null && props.event.payload.raw_text !== '' && (
         <p class="text-sm/6">原话：{props.event.payload.raw_text}</p>
       )}
@@ -121,7 +100,7 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
           技术复核引用：{props.event.event_id}；修订 {props.event.meta.revision}
         </p>
       )}
-      {!measurement() && props.event.payload.dose_slot_id != null && props.event.payload.dose_slot_id !== '' && (
+      {props.event.payload.dose_slot_id != null && props.event.payload.dose_slot_id !== '' && (
         <p class="text-sm/6">关联时段：{props.event.payload.dose_slot_id}</p>
       )}
       <Button onAction={loadRevisions}>查看原始与更正历史</Button>
@@ -154,27 +133,16 @@ export function EventCard(props: { event: RecordEvent; reload: (view: View) => P
           <Field label="更正或撤销原因（必填）">
             <Input ref={reason} />
           </Field>
-          {measurement() ? (
-            <MeasurementEditor
-              payload={props.event.payload}
-              ref={read => {
-                readPayload = read
-              }}
-            />
-          ) : (
-            <>
-              <ReportSelect
-                label="更正报告"
-                value={props.event.payload.reported_status}
-                ref={element => {
-                  status = element
-                }}
-              />
-              <Field label="更正原话">
-                <Input ref={notes} value={props.event.payload.raw_text ?? ''} />
-              </Field>
-            </>
-          )}
+          <ReportSelect
+            label="更正报告"
+            value={props.event.payload.reported_status}
+            ref={element => {
+              status = element
+            }}
+          />
+          <Field label="更正原话">
+            <Input ref={notes} value={props.event.payload.raw_text ?? ''} />
+          </Field>
           <Text>原始证据与来源会保留；页面旧修订不能覆盖新修改。撤销不删除历史。</Text>
           <div class="flex flex-wrap gap-3">
             <Button onAction={correct}>保存追加更正</Button>

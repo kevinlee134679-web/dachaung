@@ -67,20 +67,12 @@ class ServiceDispatchTaskPayload(Input):
     sharing_scope_ref_id: ID
 
 
-class RewardFulfillmentTaskPayload(Input):
-    redemption_id: ID
-    fulfillment_id: ID
-    reward_id: ID
-    reward_version: Short
-
-
 PAYLOADS = {
     "deliver_reminder": ReminderTaskPayload,
     "check_in_node": CheckinTaskPayload,
     "deliver_intervention": InterventionTaskPayload,
     "expire_b_state": BExpiryTaskPayload,
     "dispatch_service": ServiceDispatchTaskPayload,
-    "fulfill_reward": RewardFulfillmentTaskPayload,
 }
 
 
@@ -92,7 +84,6 @@ class TaskCreateInput(Input):
         "deliver_intervention",
         "expire_b_state",
         "dispatch_service",
-        "fulfill_reward",
     ]
     owner_module: Literal["O", "A", "B", "C"]
     owner_operation_key: Short
@@ -112,7 +103,6 @@ class TaskCreateInput(Input):
             "deliver_intervention": "B",
             "expire_b_state": "B",
             "dispatch_service": "C",
-            "fulfill_reward": "C",
         }
         if self.owner_module != owners[self.kind]:
             raise ValueError("owner does not own this capability")

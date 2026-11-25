@@ -1,5 +1,4 @@
 import type { SupportSession } from '../../../src/features/support/conversation'
-import { webcrypto } from 'node:crypto'
 import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import { Show } from 'solid-js'
 import * as v from 'valibot'
@@ -10,21 +9,8 @@ import { SupportMessage } from '../../../src/features/support/support-message'
 import { SupportPage } from '../../../src/features/support/support-page'
 import { Notice } from '../../../src/notice/notice-view'
 import { state, updateSession } from '../../../src/session/session'
+import { failure, success } from '../../support'
 
-function success(data: unknown) {
-  return {
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({ request_id: 'test', status: 'success', data, error: null }),
-  }
-}
-function failure(status: number, code: string) {
-  return {
-    ok: false,
-    status,
-    json: () => Promise.resolve({ request_id: 'test', status: 'error', data: null, error: { code, message: code } }),
-  }
-}
 const generationOutput = {
   business_output: {
     assistant_reply: '我在听。',
@@ -116,7 +102,6 @@ function session() {
   })
 }
 beforeEach(() => {
-  vi.stubGlobal('crypto', webcrypto)
   localStorage.clear()
   sessionStorage.clear()
   const patient = {
@@ -230,7 +215,7 @@ it('rejected support turn with absent original refreshes the session and waits f
   const env = await openComposer((url, options, current) => {
     if (options.method === 'GET') {
       expect(url).toBe(`/api/v1/sessions/support-s/messages?client_message_id=${posts[0]?.body.client_message_id}`)
-      return Promise.resolve(failure(404, 'RESOURCE_NOT_FOUND'))
+      return Promise.resolve(failure(404, 'RESOURCE_NOT_FOUND', 'RESOURCE_NOT_FOUND'))
     }
     const key = new Headers(options.headers).get('Idempotency-Key')
     expect(key).toBeDefined()
@@ -245,7 +230,7 @@ it('rejected support turn with absent original refreshes the session and waits f
     })
     if (posts.length === 1) {
       current.turn_count = 3
-      return Promise.resolve(failure(409, 'SESSION_REVISION_CONFLICT'))
+      return Promise.resolve(failure(409, 'SESSION_REVISION_CONFLICT', 'SESSION_REVISION_CONFLICT'))
     }
     expect(posts.at(-1)?.body.expected_turn_count).toBe(current.turn_count)
     current.turn_count++
@@ -280,7 +265,7 @@ it('lookup of an in-flight support submission preserves its ID and never starts 
       const body = v.parse(v.looseObject({ client_message_id: v.string() }), JSON.parse(options.body))
       posted = body.client_message_id
       current.turn_count = 3
-      return Promise.resolve(failure(409, 'OPERATION_IN_PROGRESS'))
+      return Promise.resolve(failure(409, 'OPERATION_IN_PROGRESS', 'OPERATION_IN_PROGRESS'))
     }
     expect(url).toBe(`/api/v1/sessions/support-s/messages?client_message_id=${posted}`)
     return Promise.resolve(
@@ -333,7 +318,7 @@ it('support timeout and absent lookup retain the original turn and both idempote
       if (original == null) throw new Error('Missing original post')
       const pending = v.parse(v.looseObject({ client_message_id: v.string() }), JSON.parse(original.body))
       expect(url).toBe(`/api/v1/sessions/support-s/messages?client_message_id=${pending.client_message_id}`)
-      return Promise.resolve(failure(404, 'RESOURCE_NOT_FOUND'))
+      return Promise.resolve(failure(404, 'RESOURCE_NOT_FOUND', 'RESOURCE_NOT_FOUND'))
     }
     const key = new Headers(options.headers).get('Idempotency-Key')
     expect(key).toBeDefined()

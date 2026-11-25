@@ -24,7 +24,6 @@ import { generateProfile } from './profile'
 const entryPages = {
   reminder: ['提醒设置', 'medication', 'reminders'],
   organize_plan: ['用药清单', 'medication', 'medication-list'],
-  social_support: ['社会支持', 'support', 'social'],
   knowledge: ['药学知识', 'knowledge', 'overview'],
   ai_support: ['AI 对话', 'support', 'overview'],
 } as const satisfies Record<string, readonly [string, Page, string]>
@@ -214,7 +213,7 @@ export function ProfilePage(): JSX.Element {
                           <Text>{result().reason}</Text>
                           <Show when={own()}>
                             <div class="flex flex-wrap gap-2">
-                              <For each={result().entry_codes}>
+                              <For each={result().entry_codes.filter(code => code !== 'social_support')}>
                                 {code => (
                                   <Button onAction={() => navigate(entryPages[code][1], entryPages[code][2])}>
                                     查看{entryPages[code][0]}

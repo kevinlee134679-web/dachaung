@@ -16,7 +16,6 @@ from . import record_inputs as inputs
 
 RULE = "flow-v0.1-explicit-slot-v1"
 QUALITY_RULE = "A-v0.4-quality-v1"
-METRICS = {"sleep_duration": "h", "step_count": "count", "heart_rate": "beats/min"}
 
 ROUTES = [
     (
@@ -28,15 +27,6 @@ ROUTES = [
     ),
     ("A11", "GET", "/patients/{p}/medication-events", "records_medications", None),
     ("A12", "GET", "/medication-events/{id}", "records_medication", None),
-    (
-        "A13",
-        "POST",
-        "/patients/{p}/measurements",
-        "records_measurement_create",
-        inputs.MeasurementInput,
-    ),
-    ("A14", "GET", "/patients/{p}/measurements", "records_measurements", None),
-    ("A15", "GET", "/measurements/{id}", "records_measurement", None),
     (
         "A16",
         "POST",
@@ -99,7 +89,7 @@ ROUTES = [
     ),
 ]
 READS = {action for _, method, _, action, _ in ROUTES if method == "GET"}
-WINDOWS = {"records_medications", "records_measurements", "records_matches"}
+WINDOWS = {"records_medications", "records_matches"}
 LISTS = WINDOWS | {"records_revisions", "records_device_bindings"}
 
 
@@ -107,10 +97,8 @@ def query_input(action, pairs):
     allowed = {"cursor", "limit"} if action in LISTS else set()
     if action in WINDOWS:
         allowed |= {"window_start", "window_end", "as_of", "data_environment"}
-    if action in {"records_medications", "records_measurements"}:
+    if action == "records_medications":
         allowed.add("state")
-    if action == "records_measurements":
-        allowed.add("metric_code")
     if action == "records_matches":
         allowed.add("plan_id")
     try:
@@ -130,11 +118,8 @@ def query_input(action, pairs):
             raise ValueError()
         if q.get("state", "effective") not in {"effective", "withdrawn", "all"}:
             raise ValueError()
-        for field in ("metric_code", "plan_id"):
-            if field in q and not 1 <= len(q[field]) <= (
-                200 if field == "metric_code" else 128
-            ):
-                raise ValueError()
+        if "plan_id" in q and not 1 <= len(q["plan_id"]) <= 128:
+            raise ValueError()
     except KeyError, ValueError, TypeError:
         raise AppError(
             422, "VALIDATION_ERROR", "查询字段、重复参数、时间或范围不合法"
@@ -144,7 +129,8 @@ def query_input(action, pairs):
 
 def source_row(conn, event_id):
     row = conn.execute(
-        "SELECT * FROM source_events WHERE event_id=?", (event_id,)
+        "SELECT * FROM source_events WHERE event_id=? AND event_kind='medication'",
+        (event_id,),
     ).fetchone()
     if not row:
         raise AppError(404, "RESOURCE_NOT_FOUND", "资源不可访问")
@@ -180,7 +166,6 @@ def quality_view(conn, event_id, event_revision, as_of=None):
             "event_revision": event_revision,
             "status": "pending_validation",
             "issues": [],
-            "normalized_measurement": None,
             "processing_version": None,
             "processed_at": None,
         }
@@ -223,11 +208,7 @@ def event_detail(conn, event_id, as_of=None):
         else "effective",
         "payload": json.loads(revision["payload_json"]),
         "quality": quality_view(conn, event_id, revision["revision"], as_of),
-        "link_status": match["link_status"]
-        if match
-        else "not_applicable"
-        if row["event_kind"] == "measurement"
-        else "unmatched",
+        "link_status": match["link_status"] if match else "unmatched",
         "meta": {
             "created_at": row["received_at"],
             "updated_at": revision["created_at"],
@@ -245,7 +226,7 @@ def event_view(conn, event_id, as_of=None):
 
 def effective_event_details(conn, patient, environment, as_of):
     rows = conn.execute(
-        "SELECT event_id FROM source_events WHERE patient_id=? AND data_environment=? AND received_at<=? ORDER BY received_at,event_id",
+        "SELECT event_id FROM source_events WHERE patient_id=? AND data_environment=? AND received_at<=? AND event_kind='medication' ORDER BY received_at,event_id",
         (patient, environment, as_of),
     ).fetchall()
     return [
@@ -304,7 +285,6 @@ class Records:
         event = None
         if action in {
             "records_medication",
-            "records_measurement",
             "records_correction",
             "records_withdrawal",
             "records_revisions",
@@ -313,13 +293,6 @@ class Records:
         }:
             event = event_view(c, params["id"])
             patient = event["patient_id"]
-            if (
-                action == "records_medication"
-                and event["event_kind"] != "medication"
-                or action == "records_measurement"
-                and event["event_kind"] != "measurement"
-            ):
-                raise AppError(404, "RESOURCE_NOT_FOUND", "资源不可访问")
         elif action == "records_device_revoke":
             patient = self._binding(c, params["id"])["patient_id"]
         elif action == "records_match_review":
@@ -335,10 +308,6 @@ class Records:
             "records_demo_device",
         }:
             self._admin(c, principal, patient)
-            if action == "records_match_review":
-                assert event is not None
-                if event["event_kind"] != "medication":
-                    raise AppError(422, "INVALID_EVENT_KIND", "只能复核服药证据的关联")
             if action == "records_demo_device":
                 device = c.execute(
                     "SELECT * FROM s03_devices WHERE device_id=?", (b["device_id"],)
@@ -368,9 +337,6 @@ class Records:
             "records_medication_create": "records:report",
             "records_medications": "records:read",
             "records_medication": "records:read",
-            "records_measurement_create": "measurements:write",
-            "records_measurements": "measurements:read",
-            "records_measurement": "measurements:read",
             "records_device_bindings": "devices:manage",
             "records_device_revoke": "devices:manage",
             "records_matches": "statistics:read",
@@ -382,19 +348,12 @@ class Records:
         elif action == "records_device_bind":
             self.auth.require_patient(principal, patient, "", c, self_only=True)
         elif event:
-            read = (
-                "records:read"
-                if event["event_kind"] == "medication"
-                else "measurements:read"
-            )
-            self.auth.require_patient(principal, patient, read, c)
+            self.auth.require_patient(principal, patient, "records:read", c)
             if action in {"records_correction", "records_withdrawal"}:
                 self.auth.require_patient(
                     principal,
                     patient,
-                    "records:report"
-                    if event["event_kind"] == "medication"
-                    else "measurements:write",
+                    "records:report",
                     c,
                 )
                 if event["source"] != "manual":
@@ -497,7 +456,7 @@ class Records:
 
     def read(self, c, action, principal, params, q):
         p = params.get("p")
-        if action in {"records_medication", "records_measurement"}:
+        if action == "records_medication":
             return event_view(c, params["id"])
         if action == "records_quality":
             return event_view(c, params["id"])["quality"]
@@ -547,16 +506,11 @@ class Records:
         if action in WINDOWS:
             items = []
             for row in c.execute(
-                "SELECT event_id FROM source_events WHERE patient_id=? AND data_environment=? AND received_at<=?",
+                "SELECT event_id FROM source_events WHERE patient_id=? AND data_environment=? AND received_at<=? AND event_kind='medication'",
                 (p, q["data_environment"], q["as_of"]),
             ):
                 event = event_view(c, row["event_id"], q["as_of"])
                 if not q["window_start"] <= event["occurred_at"] < q["window_end"]:
-                    continue
-                kind = (
-                    "measurement" if action == "records_measurements" else "medication"
-                )
-                if event["event_kind"] != kind:
                     continue
                 if action == "records_matches":
                     match = match_view(
@@ -583,12 +537,8 @@ class Records:
                     ):
                         continue
                     items.append(match)
-                elif (
-                    q.get("state", "effective") == "all"
-                    or event["state"] == q.get("state", "effective")
-                ) and (
-                    not q.get("metric_code")
-                    or event["payload"]["metric_code"] == q["metric_code"]
+                elif q.get("state", "effective") == "all" or event["state"] == q.get(
+                    "state", "effective"
                 ):
                     items.append(event)
             order = (
@@ -688,7 +638,7 @@ class Records:
         slot_id = payload.get("dose_slot_id")
         status = (
             "not_applicable"
-            if event["event_kind"] == "measurement" or event["state"] == "withdrawn"
+            if event["state"] == "withdrawn"
             else "matched"
             if slot_id
             else "unmatched"
@@ -728,44 +678,11 @@ class Records:
 
     def _assess_quality(self, event, at):
         """Pure registered rules: no IO, authorization, or mutable source facts."""
-        issues = []
-        normalized = None
-        if event["event_kind"] == "measurement":
-            payload = event["payload"]
-            unit = METRICS.get(payload["metric_code"])
-            if unit is None:
-                issues.append(
-                    {
-                        "code": "unknown_metric",
-                        "message": "指标代码尚无已登记的标准单位",
-                        "field": "metric_code",
-                    }
-                )
-            elif (
-                payload["unit"] not in (unit, None)
-                or payload["value"] is not None
-                and payload["unit"] is None
-            ):
-                issues.append(
-                    {
-                        "code": "unknown_unit",
-                        "message": "原单位未确认，不猜测或换算数值",
-                        "field": "unit",
-                    }
-                )
-            normalized = copy.deepcopy(payload)
-            if issues:
-                normalized.update(
-                    value=None,
-                    unit=None,
-                    missing_reason="指标或原单位尚未确认，原值保留待复核",
-                )
         return {
             "event_id": event["event_id"],
             "event_revision": event["meta"]["revision"],
-            "status": "needs_review" if issues else "valid",
-            "issues": issues,
-            "normalized_measurement": normalized,
+            "status": "valid",
+            "issues": [],
             "processing_version": QUALITY_RULE,
             "processed_at": at,
         }
@@ -809,7 +726,6 @@ class Records:
                         "field": None,
                     }
                 ],
-                "normalized_measurement": None,
                 "processing_version": QUALITY_RULE,
                 "processed_at": at,
             }
@@ -853,7 +769,6 @@ class Records:
         source,
         subject,
         source_id,
-        kind,
         evidence,
         occurred,
         payload,
@@ -861,15 +776,14 @@ class Records:
         reporter=None,
         device=None,
     ):
-        if kind == "medication":
-            self._references(c, patient, payload)
+        self._references(c, patient, payload)
         old = c.execute(
             "SELECT * FROM source_events WHERE patient_id=? AND data_environment=? AND source=? AND source_subject_id=? AND source_event_id=?",
             (patient, "demo", source, subject, source_id),
         ).fetchone()
         if old:
             if (
-                old["event_kind"] != kind
+                old["event_kind"] != "medication"
                 or old["occurred_at"] != occurred
                 or old["original_payload_json"] != encode(payload)
                 or old["evidence_type"] != evidence
@@ -883,7 +797,7 @@ class Records:
                 identifier,
                 patient,
                 "demo",
-                kind,
+                "medication",
                 source,
                 subject,
                 source_id,
@@ -918,36 +832,29 @@ class Records:
     def write(self, c, action, principal, params, q, b):
         at = stamp(self.clock())
         patient = params.get("p")
-        if action in {"records_medication_create", "records_measurement_create"}:
-            medication = action == "records_medication_create"
-            if medication:
-                payload = {
-                    k: b.get(k)
-                    for k in (
-                        "reported_status",
-                        "medication_id",
-                        "dose_slot_id",
-                        "plan_ref",
-                        "raw_text",
-                    )
-                }
-                payload["observation"] = None
-            else:
-                payload = b["payload"]
+        if action == "records_medication_create":
+            payload = {
+                k: b.get(k)
+                for k in (
+                    "reported_status",
+                    "medication_id",
+                    "dose_slot_id",
+                    "plan_ref",
+                    "raw_text",
+                )
+            }
+            payload["observation"] = None
             event = self._ingest(
                 c,
                 patient,
                 "manual",
                 principal.account_id,
                 b["source_event_id"],
-                "medication" if medication else "measurement",
                 (
                     "self_report"
                     if self.auth.is_self(principal, patient, c)
                     else "family_report"
-                )
-                if medication
-                else None,
+                ),
                 b["occurred_at"],
                 payload,
                 at,
@@ -1012,41 +919,35 @@ class Records:
             correction = action == "records_correction"
             payload = b["payload"] if correction else event["payload"]
             if correction:
-                is_medication = "reported_status" in payload
-                if is_medication != (event["event_kind"] == "medication"):
-                    raise AppError(
-                        422, "INVALID_EVENT_KIND", "更正不能改变原始事件种类"
+                if (
+                    event["source"] == "manual"
+                    and (
+                        payload["reported_status"] is None
+                        or payload["observation"] is not None
                     )
-                if is_medication:
-                    if (
-                        event["source"] == "manual"
-                        and (
-                            payload["reported_status"] is None
-                            or payload["observation"] is not None
-                        )
-                        or event["source"] != "manual"
-                        and (
-                            payload["reported_status"] is not None
-                            or payload["observation"] is None
-                        )
-                    ):
-                        raise AppError(
-                            422,
-                            "INVALID_EVIDENCE_SOURCE",
-                            "更正不能改变本人、家人或设备报告来源",
-                        )
-                    if (
-                        event["evidence_type"] == "box_opening"
-                        and payload["observation"] != "box_opened"
-                        or event["evidence_type"] == "device_inference"
-                        and payload["observation"] != "inferred_intake"
-                    ):
-                        raise AppError(
-                            422,
-                            "INVALID_EVIDENCE_SOURCE",
-                            "开盒与设备推断来源不能互相改写",
-                        )
-                    self._references(c, patient, payload)
+                    or event["source"] != "manual"
+                    and (
+                        payload["reported_status"] is not None
+                        or payload["observation"] is None
+                    )
+                ):
+                    raise AppError(
+                        422,
+                        "INVALID_EVIDENCE_SOURCE",
+                        "更正不能改变本人、家人或设备报告来源",
+                    )
+                if (
+                    event["evidence_type"] == "box_opening"
+                    and payload["observation"] != "box_opened"
+                    or event["evidence_type"] == "device_inference"
+                    and payload["observation"] != "inferred_intake"
+                ):
+                    raise AppError(
+                        422,
+                        "INVALID_EVIDENCE_SOURCE",
+                        "开盒与设备推断来源不能互相改写",
+                    )
+                self._references(c, patient, payload)
             c.execute(
                 "INSERT INTO event_revisions VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
@@ -1141,42 +1042,23 @@ class Records:
                 raise AppError(
                     403, "DEVICE_NOT_AUTHORIZED", "模拟设备尚未有效关联至此患者"
                 )
-            measurement = b["scenario"] in {"measurement_missing", "unknown_unit"}
-            if (
-                measurement
-                and device["kind"] != "wearable"
-                or not measurement
-                and device["kind"] != "box"
-            ):
+            if device["kind"] != "box":
                 raise AppError(
                     422, "DEVICE_SCENARIO_MISMATCH", "设备种类与固定场景不一致"
                 )
-            if measurement:
-                payload = {
-                    "metric_code": "sleep_duration",
-                    "value": None if b["scenario"] == "measurement_missing" else 7,
-                    "unit": "h"
-                    if b["scenario"] == "measurement_missing"
-                    else "unregistered_demo_unit",
-                    "method_code": None,
-                    "missing_reason": "演示缺失采集"
-                    if b["scenario"] == "measurement_missing"
-                    else None,
-                }
-            else:
-                payload = {
-                    "reported_status": None,
-                    "observation": "box_opened",
-                    "medication_id": None,
-                    "dose_slot_id": None,
-                    "plan_ref": None,
-                    "raw_text": None,
-                }
+            payload = {
+                "reported_status": None,
+                "observation": "box_opened",
+                "medication_id": None,
+                "dose_slot_id": None,
+                "plan_ref": None,
+                "raw_text": None,
+            }
             source_id = "demo:" + fingerprint(
                 [
                     b["device_id"],
                     b["scenario_run_id"],
-                    "measurement" if measurement else "box",
+                    "box",
                 ]
             )
             event = self._ingest(
@@ -1185,8 +1067,7 @@ class Records:
                 device["kind"],
                 b["device_id"],
                 source_id,
-                "measurement" if measurement else "medication",
-                None if measurement else "box_opening",
+                "box_opening",
                 b["occurred_at"],
                 payload,
                 at,

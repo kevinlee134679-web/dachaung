@@ -55,8 +55,6 @@ export function DemoPage(): JSX.Element {
                 <option value="normal_box">正常开盒</option>
                 <option value="duplicate">重复上传</option>
                 <option value="late_upload">迟到上传</option>
-                <option value="measurement_missing">缺失指标</option>
-                <option value="unknown_unit">未知单位</option>
                 <option value="unbound">未绑定设备（预期拒绝）</option>
               </Select>
             </Field>

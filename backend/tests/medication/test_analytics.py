@@ -274,53 +274,6 @@ class AnalyticsTests(unittest.TestCase):
             self.assertTrue(source["reason"])
         self.assertTrue(summary["missing_items"])
 
-    def test_measurement_zero_missing_unit_and_method_groups(self):
-        for value, unit, reason, method in [
-            (0, "count", None, "manual_entry"),
-            (None, "count", "未采集", "manual_entry"),
-            (8, "mystery", None, "manual_entry"),
-            (44, "count", None, "other_method"),
-        ]:
-            self.api(
-                "POST",
-                f"/patients/{support.PA}/measurements",
-                {
-                    "source_event_id": support.key(),
-                    "occurred_at": stamp(self.s.clock()),
-                    "payload": {
-                        "metric_code": "step_count",
-                        "value": value,
-                        "unit": unit,
-                        "method_code": method,
-                        "missing_reason": reason,
-                    },
-                },
-                expected=201,
-            )
-        window = {
-            **self.window,
-            "window_end": "2026-11-17T00:00:00+08:00",
-            "metric_code": "step_count",
-            "unit": "count",
-            "method_code": "manual_entry",
-        }
-        trend = self.api(
-            "GET", f"/patients/{support.PA}/measurement-trends?" + urlencode(window)
-        )
-        self.assertEqual(
-            sorted([p["value"] for p in trend["points"]], key=lambda x: x is None),
-            [0, None],
-        )
-        self.assertIn("unknown_unit", [x["code"] for x in trend["issues"]])
-        summary = self.summary(window_end="2026-11-17T00:00:00+08:00")
-        overview = next(
-            m
-            for m in summary["measurement_overview"]
-            if m["metric_code"] == "step_count" and m["method_code"] == "manual_entry"
-        )
-        self.assertEqual(overview["latest_value"], 0)
-        self.assertTrue(overview["missing_items"])
-
 
 if __name__ == "__main__":
     unittest.main()

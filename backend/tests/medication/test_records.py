@@ -79,23 +79,6 @@ class RecordTests(unittest.TestCase):
             "records_medication_create", body, {"p": support.PA}, client=client
         )
 
-    def measurement(self, value=7, unit="h", reason=None, method=None):
-        return self.call(
-            "records_measurement_create",
-            {
-                "source_event_id": support.key(),
-                "occurred_at": stamp(self.case.clock()),
-                "payload": {
-                    "metric_code": "sleep_duration",
-                    "value": value,
-                    "unit": unit,
-                    "method_code": method,
-                    "missing_reason": reason,
-                },
-            },
-            {"p": support.PA},
-        )
-
     def test_original_source_is_single_and_same_source_content_conflicts(self):
         source = support.key()
         one = self.medication(source=source, text="  本人原话  ")
@@ -224,18 +207,6 @@ class RecordTests(unittest.TestCase):
                 {"id": original["event_id"]},
             )
         self.assertEqual(caught.exception.code, "EVENT_ALREADY_WITHDRAWN")
-
-    def test_pending_unknown_unit_missing_and_zero_are_distinct(self):
-        valid = self.measurement(0)
-        missing = self.measurement(None, None, "未采集")
-        unknown = self.measurement(7, "unknown")
-        self.assertEqual(valid["quality"]["normalized_measurement"]["value"], 0)
-        self.assertEqual(missing["quality"]["status"], "valid")
-        self.assertIsNone(missing["quality"]["normalized_measurement"]["value"])
-        self.assertEqual(unknown["quality"]["status"], "needs_review")
-        self.assertEqual(unknown["payload"]["value"], 7)
-        self.assertIsNone(unknown["quality"]["normalized_measurement"]["value"])
-        self.assertEqual(unknown["link_status"], "not_applicable")
 
     def test_no_automatic_near_time_matching_and_review_history_respects_as_of(self):
         event = self.medication(slot=False)
@@ -425,25 +396,8 @@ class RecordTests(unittest.TestCase):
             with self.assertRaises(AppError):
                 query_input("records_medications", pairs)
 
-    def test_correcting_other_kind_or_source_cannot_change_identity(self):
+    def test_correcting_source_cannot_change_identity(self):
         event = self.medication()
-        with self.assertRaises(AppError):
-            self.call(
-                "records_correction",
-                {
-                    "expected_revision": 1,
-                    "reason": "不得改种类",
-                    "occurred_at": event["occurred_at"],
-                    "payload": {
-                        "metric_code": "sleep_duration",
-                        "value": 7,
-                        "unit": "h",
-                        "method_code": None,
-                        "missing_reason": None,
-                    },
-                },
-                {"id": event["event_id"]},
-            )
         payload = copy.deepcopy(event["payload"])
         payload.update(reported_status=None, observation="box_opened")
         with self.assertRaises(AppError):
