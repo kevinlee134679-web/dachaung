@@ -53,7 +53,11 @@ export function EventListPage(): JSX.Element {
   return (
     <section class="space-y-6">
       <Subheading>{measurement() ? '指标与缺失记录' : '服药报告与其他证据'}</Subheading>
-      {canWrite() && <Card>{measurement() ? <MeasurementForm /> : <MedicationReportForm />}</Card>}
+      {canWrite() && (
+        <Card>
+          {measurement() ? <MeasurementForm /> : <MedicationReportForm onSaved={canRead() ? load : undefined} />}
+        </Card>
+      )}
       {!canRead() ? (
         <Text>当前未获此类记录查看权限。保存权限与查看权限分别核验。</Text>
       ) : (

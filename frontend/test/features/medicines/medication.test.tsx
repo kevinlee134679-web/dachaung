@@ -69,8 +69,9 @@ it('subpage change invalidates a delayed old medication list', async () => {
   })
   render(() => <App />)
   await screen.findByText('退出')
-  navigate('medication', 'meds')
+  navigate('profile', 'meds')
   await sent.promise
+  fireEvent.click(screen.getByRole('button', { name: '用药管理' }))
   fireEvent.click(screen.getByRole('button', { name: '药学知识' }))
   await waitFor(() => expect(knowledgeRequests).toEqual(['/api/v1/knowledge?kind=medical&limit=100']))
   expect(await screen.findByText('目前没有适用的审核药学资料。用药问题请向实际医生或药师核实。')).toBeTruthy()

@@ -19,6 +19,7 @@ import {
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
 import { Text } from '../../ui/typography'
+import { canManageMedicationList } from '../plan-drafts/navigation'
 import { DoseSlotList } from '../schedule/schedule-page'
 import { supportSessionSchema } from '../support/conversation'
 import { HomeSupportInvitations, openSupportSession } from '../support/invitations'
@@ -54,7 +55,9 @@ export function HomePage(): JSX.Element {
               empty={
                 <div class="space-y-3">
                   <Text>今天没有服药安排。</Text>
-                  <Button onAction={() => navigate('profile', 'medication-list')}>填写用药清单</Button>
+                  <Show when={canManageMedicationList()}>
+                    <Button onAction={() => navigate('medication', 'medication-list')}>填写用药清单</Button>
+                  </Show>
                 </div>
               }
             />

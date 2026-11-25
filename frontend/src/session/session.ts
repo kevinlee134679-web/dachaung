@@ -32,7 +32,7 @@ const sessionContextSchema: v.GenericSchema<unknown, SessionContext> = v.looseOb
   patients: v.array(patientAccessSchema),
 })
 
-export type Page = 'home' | 'medication' | 'support' | 'rewards' | 'profile'
+export type Page = 'home' | 'medication' | 'knowledge' | 'support' | 'rewards' | 'profile'
 export interface View {
   readonly epoch: number
   readonly accountId: string | null

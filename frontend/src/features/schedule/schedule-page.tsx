@@ -1,11 +1,19 @@
 import type { DoseSlot } from '../dose-events/events'
 import type { JSX } from '@solidjs/web'
-import { createSignal, For, onSettled, Show } from 'solid-js'
+import { createSignal, For, onSettled, Show, untrack } from 'solid-js'
 import * as v from 'valibot'
 import { all } from '../../api/api'
 import { dateText, today } from '../../date/date'
 import { actionError } from '../../notice/notice'
-import { captureView, isCurrentView, patientPath, requireCurrentView, scope, ViewChanged } from '../../session/session'
+import {
+  captureView,
+  isCurrentView,
+  patientPath,
+  referenceKey,
+  requireCurrentView,
+  scope,
+  ViewChanged,
+} from '../../session/session'
 import { Badge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { Card } from '../../ui/card'
@@ -33,6 +41,7 @@ type Plan = v.InferOutput<typeof planSchema>
 export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.Element {
   const [slots, setSlots] = createSignal<DoseSlot[] | null>(null)
   const [plans, setPlans] = createSignal<Plan[]>([])
+  const [failure, setFailure] = createSignal('')
   onSettled(() => {
     const view = captureView()
     void (async () => {
@@ -48,11 +57,14 @@ export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.E
       setPlans(result)
       setSlots(items)
     })().catch((error: unknown) => {
-      if (!(error instanceof ViewChanged) && isCurrentView(view)) actionError(error, view)
+      if (!(error instanceof ViewChanged) && isCurrentView(view)) {
+        setFailure(error instanceof Error ? error.message : '请重新读取当日安排。')
+        actionError(error, view)
+      }
     })
   })
   return (
-    <Show when={slots()} fallback={<p>正在读取安排…</p>}>
+    <Show when={slots()} fallback={<Text>{failure() ? `安排读取失败 · ${failure()}` : '正在读取安排…'}</Text>}>
       {items => (
         <>
           <Show when={!items().length}>
@@ -97,13 +109,17 @@ export function DoseSlotList(props: { day: string; empty?: JSX.Element }): JSX.E
 
 export function SchedulePage(): JSX.Element {
   let day!: HTMLInputElement
-  const [selection, setSelection] = createSignal({ day: today() })
+  const key = untrack(() => referenceKey('schedule-day'))
+  const requested = sessionStorage.getItem(key)
+  sessionStorage.removeItem(key)
+  const initialDay = requested !== null && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : today()
+  const [selection, setSelection] = createSignal({ day: initialDay })
   return (
     <Show when={scope('plan:read')} fallback={<p>当前未获正式安排查看权限。</p>}>
       <Card title="已确认的安排">
         <div class="space-y-4">
           <Field label="安排日期（北京时间）">
-            <Input ref={day} type="date" value={today()} />
+            <Input ref={day} type="date" value={initialDay} />
           </Field>
           <Button
             onAction={() => {

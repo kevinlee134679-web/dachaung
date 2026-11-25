@@ -16,6 +16,8 @@ export function rememberServicePage(): void {
     sessionStorage.setItem(key, 'consents')
   else if (state.page === 'profile' && state.tab === 'formal-services' && scope('services:read'))
     sessionStorage.setItem(key, 'formal-services')
+  else if (state.page === 'profile' && ['authorizations', 'family'].includes(state.tab))
+    sessionStorage.setItem(key, 'authorizations')
   else if (state.page === 'rewards') sessionStorage.setItem(key, 'rewards')
   else sessionStorage.removeItem(key)
 }
@@ -35,6 +37,8 @@ export function restoreServicePage(): Promise<boolean> {
       navigate('profile', 'service-consents')
     } else if (page === 'formal-services' && scope('services:read')) {
       navigate('profile', 'formal-services')
+    } else if (page === 'authorizations') {
+      navigate('profile', 'authorizations')
     } else if (page === 'rewards') {
       navigate('rewards')
     } else {

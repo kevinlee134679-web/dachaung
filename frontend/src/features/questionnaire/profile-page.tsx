@@ -23,9 +23,9 @@ import { generateProfile } from './profile'
 
 const entryPages = {
   reminder: ['提醒设置', 'medication', 'reminders'],
-  organize_plan: ['用药清单', 'profile', 'medication-list'],
+  organize_plan: ['用药清单', 'medication', 'medication-list'],
   social_support: ['社会支持', 'support', 'social'],
-  knowledge: ['药学知识', 'medication', 'knowledge'],
+  knowledge: ['药学知识', 'knowledge', 'overview'],
   ai_support: ['AI 对话', 'support', 'overview'],
 } as const satisfies Record<string, readonly [string, Page, string]>
 
@@ -123,7 +123,7 @@ export function ProfilePage(): JSX.Element {
   return (
     <Show when={scope('profile:read')} fallback={<p>当前未获画像查看权限。</p>}>
       <Show when={loaded()}>
-        <Card>
+        <Card title="评估结果">
           <div class="space-y-4">
             <Show when={message()}>
               <Text>{message()}</Text>
@@ -147,7 +147,7 @@ export function ProfilePage(): JSX.Element {
               when={profile()}
               fallback={
                 <Show when={submittedAt() === null && scope('questionnaire:assist')}>
-                  <Button onAction={() => navigate('profile', 'questionnaire')}>前往八题问卷</Button>
+                  <Button onAction={() => navigate('profile', 'questionnaire')}>填写评估问卷</Button>
                 </Show>
               }
             >

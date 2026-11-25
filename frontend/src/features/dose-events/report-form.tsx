@@ -5,7 +5,8 @@ import { createSignal, Show } from 'solid-js'
 import { submitSource } from '../../api/source'
 import { inputDateTime, localDateTime } from '../../date/date'
 import { notice } from '../../notice/notice'
-import { captureView, own } from '../../session/session'
+import { navigate } from '../../session/navigation'
+import { captureView, own, scope } from '../../session/session'
 import { StatusBadge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { Disclosure } from '../../ui/disclosure'
@@ -15,7 +16,10 @@ import { evidenceLabels } from './event-card'
 import { recordEventSchema } from './events'
 import { ReportSelect } from './report-select'
 
-export function MedicationReportForm(props: { slot?: DoseSlot | null }): JSX.Element {
+export function MedicationReportForm(props: {
+  slot?: DoseSlot | null
+  onSaved?: ((view: View) => Promise<void>) | undefined
+}): JSX.Element {
   let time!: HTMLInputElement
   let status!: HTMLSelectElement
   let notes!: HTMLInputElement
@@ -39,6 +43,7 @@ export function MedicationReportForm(props: { slot?: DoseSlot | null }): JSX.Ele
     )
     setResult(saved)
     notice('报告已保存。统计与摘要如已过期，请在用药报告中明确刷新。')
+    if (props.onSaved) await props.onSaved(view)
   }
   return (
     <Disclosure summary={own() ? '记录本人的服药情况' : '记录家人报告'}>
@@ -72,11 +77,16 @@ export function MedicationReportForm(props: { slot?: DoseSlot | null }): JSX.Ele
       <div aria-live="polite">
         <Show when={result()}>
           {saved => (
-            <p class="text-sm/6">
-              已保存：{evidenceLabels[saved().evidence_type ?? '']}；
-              <StatusBadge status={saved().quality.status} />；
-              <StatusBadge status={saved().link_status} />。
-            </p>
+            <div class="space-y-2">
+              <p class="text-sm/6">
+                已保存：{evidenceLabels[saved().evidence_type ?? '']}；
+                <StatusBadge status={saved().quality.status} />；
+                <StatusBadge status={saved().link_status} />。
+              </p>
+              <Show when={props.slot && scope('records:read')}>
+                <Button onAction={() => navigate('medication', 'records')}>查看服药记录</Button>
+              </Show>
+            </div>
           )}
         </Show>
       </div>

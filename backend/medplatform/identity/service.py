@@ -26,6 +26,7 @@ from ..core.documents import (
 from ..core.errors import AppError
 from ..core.idempotency import Receipts, Result
 from ..core.protection import protect
+from ..medication.file_preview import medication_preview
 from ..medication.schedule import SHANGHAI, insert_slot, occurrences, require_coverage
 from ..profile import cas_review, mapped_review, retrained
 from ..profile.questionnaire import (
@@ -50,6 +51,7 @@ RESOURCE_KINDS = {
     "medication_patch": "Medication",
     "file": "File",
     "file_content": "File",
+    "file_medication_preview": "File",
     "draft": "Draft",
     "draft_put": "Draft",
     "draft_submit": "Draft",
@@ -75,6 +77,7 @@ GUARDS = {
     "files": ("files:read", False),
     "file": ("files:read", False),
     "file_content": ("files:read", False),
+    "file_medication_preview": ("files:read", True),
     "draft_create": ("drafts:write", False),
     "draft_put": ("drafts:write", False),
     "draft_submit": ("drafts:submit", False),
@@ -246,6 +249,16 @@ class IdentityService:
 
     def handle(self, action, principal, params, query, body, key, content, is_read):
         body = body or {}
+        if action == "file_medication_preview":
+            with self.db.connection(readonly=True) as c:
+                self.authorize(c, action, principal, params, body)
+                source = self.read(c, "file_content", principal, params, query)
+            preview = medication_preview(
+                source["media_type"], base64.b64decode(source["content_base64"])
+            )
+            with self.db.connection(readonly=True) as c:
+                self.authorize(c, action, principal, params, body)
+            return Result(preview)
         with self.db.connection(readonly=True) as c:
             self.authorize(c, action, principal, params, body)
             doc = self.resource(c, action, params)

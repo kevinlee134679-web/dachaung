@@ -10,6 +10,7 @@ import { Card } from '../../ui/card'
 import { Field, Input, Textarea } from '../../ui/form'
 import { EmptyState, List } from '../../ui/list'
 import { Text } from '../../ui/typography'
+import { canManageMedicationList, openMedicationList } from '../plan-drafts/navigation'
 
 const medicationSchema = v.looseObject({
   medication_id: v.string(),
@@ -101,9 +102,14 @@ export function MedicationPage(): JSX.Element {
                             {medication.notes === null || medication.notes === '' ? '没有备注' : medication.notes}
                           </Text>
                         </div>
-                        <Button disabled={!scope('medication:edit')} onAction={() => edit(medication)}>
-                          编辑资料
-                        </Button>
+                        <div class="flex flex-wrap gap-2">
+                          <Button disabled={!scope('medication:edit')} onAction={() => edit(medication)}>
+                            编辑资料
+                          </Button>
+                          <Show when={canManageMedicationList()}>
+                            <Button onAction={() => openMedicationList(medication.medication_id)}>加入用药清单</Button>
+                          </Show>
+                        </div>
                       </li>
                     )}
                   </For>

@@ -1,5 +1,5 @@
 import type { View } from '../../session/session'
-import type { DraftData, Editor, Draft, Medication } from './drafts'
+import type { DraftData, Editor, Draft, Medication, SourceFile } from './drafts'
 import type { JSX } from '@solidjs/web'
 import { createSignal, flush, For, onSettled, Show } from 'solid-js'
 import * as v from 'valibot'
@@ -28,10 +28,14 @@ import { Confirmation } from './confirmation'
 import { DraftEditor } from './draft-editor'
 import { draftSchema, medicationSchema, sourceFileSchema, planSchema, newEntry } from './drafts'
 
-export function DraftPage(): JSX.Element {
+export function DraftPage(props: { uploadedFiles: SourceFile[] }): JSX.Element {
   const [data, setData] = createSignal<DraftData | null>(null)
   const [editor, setEditor] = createSignal<Editor | null>(null)
   const nextRead = readGate()
+  function availableFiles(files: SourceFile[]): SourceFile[] {
+    const ids = new Set(files.map(file => file.file_id))
+    return [...files, ...props.uploadedFiles.filter(file => !ids.has(file.file_id))]
+  }
   async function load(view: View): Promise<DraftData> {
     const check = nextRead()
     const drafts = await all(patientPath('/drafts'), draftSchema, view)
@@ -94,7 +98,7 @@ export function DraftPage(): JSX.Element {
               <Show
                 when={current().meds.length > 0}
                 fallback={
-                  <Button variant="primary" onAction={() => navigate('medication', 'meds')}>
+                  <Button variant="primary" onAction={() => navigate('profile', 'meds')}>
                     先添加药品资料
                   </Button>
                 }
@@ -105,7 +109,14 @@ export function DraftPage(): JSX.Element {
                   </Show>
                 </Show>
                 <Show when={editor()} keyed>
-                  {value => <DraftEditor editor={value} meds={current().meds} files={current().files} saved={saved} />}
+                  {value => (
+                    <DraftEditor
+                      editor={value}
+                      meds={current().meds}
+                      files={availableFiles(current().files)}
+                      saved={saved}
+                    />
+                  )}
                 </Show>
                 <Subheading>草稿与核对进度</Subheading>
                 <Show when={current().drafts.length > 0} fallback={<EmptyState>还没有资料草稿。</EmptyState>}>

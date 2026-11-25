@@ -113,6 +113,13 @@ ROUTES = [
     ("A03", "GET", "/files/{id}", "file", None),
     ("A04", "GET", "/files/{id}/content", "file_content", None),
     (
+        "A04-preview",
+        "GET",
+        "/files/{id}/medication-preview",
+        "file_medication_preview",
+        None,
+    ),
+    (
         "A05",
         "POST",
         "/patients/{p}/drafts",
@@ -249,7 +256,7 @@ def router(service, envelope):
                                     raise AppError(
                                         415,
                                         "UNSUPPORTED_MEDIA_TYPE",
-                                        "仅支持内容格式一致的PDF、PNG、JPEG；不做自动识别",
+                                        "仅支持内容格式一致的PDF、PNG、JPEG",
                                     )
                                 b = {
                                     "source_event_id": form["source_event_id"],

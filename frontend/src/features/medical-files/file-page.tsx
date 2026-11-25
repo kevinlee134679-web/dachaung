@@ -1,8 +1,9 @@
 import type { View } from '../../session/session'
+import type { SourceFile } from '../plan-drafts/drafts'
 import type { JSX } from '@solidjs/web'
 import { createSignal, For, onSettled, Show } from 'solid-js'
 import * as v from 'valibot'
-import { all, api, sha } from '../../api/api'
+import { all, api } from '../../api/api'
 import { dateText } from '../../date/date'
 import { actionError, notice } from '../../notice/notice'
 import { captureView, isCurrentView, patientPath, requireCurrentView, scope, ViewChanged } from '../../session/session'
@@ -11,6 +12,7 @@ import { Card } from '../../ui/card'
 import { Field, Input } from '../../ui/form'
 import { EmptyState, List } from '../../ui/list'
 import { Text } from '../../ui/typography'
+import { uploadMedicalFile } from './upload'
 
 const savedFileSchema = v.looseObject({
   file_id: v.string(),
@@ -20,7 +22,7 @@ const savedFileSchema = v.looseObject({
 })
 type SavedFile = v.InferOutput<typeof savedFileSchema>
 
-export function FilePage(): JSX.Element {
+export function FilePage(props: { onUploaded: (file: SourceFile) => void }): JSX.Element {
   let chooser!: HTMLInputElement
   const [files, setFiles] = createSignal<SavedFile[] | null>(null)
 
@@ -30,24 +32,14 @@ export function FilePage(): JSX.Element {
     setFiles(result)
   }
 
-  async function upload(view: View, patientId: string): Promise<void> {
+  async function upload(view: View): Promise<void> {
     const file = chooser.files?.[0]
     if (!file) throw new Error('请先选择文件。')
-    const target = `/patients/${encodeURIComponent(patientId)}/files`
-    const hash = await sha(await file.arrayBuffer())
-    requireCurrentView(view)
-    const ref = `upload:reference:${view.accountId}:${view.patientId}:file:${hash}:${file.name}`
-    let source = localStorage.getItem(ref)
-    if (source === null || source === '') {
-      source = crypto.randomUUID()
-      localStorage.setItem(ref, source)
+    const uploaded = await uploadMedicalFile(view, file)
+    if (scope('files:read')) {
+      props.onUploaded(uploaded)
+      await load(view)
     }
-    const form = new FormData()
-    form.append('file', file)
-    form.append('source_event_id', source)
-    await api(target, v.unknown(), 'POST', form, view)
-    localStorage.removeItem(ref)
-    if (scope('files:read')) await load(view)
     requireCurrentView(view)
     chooser.value = ''
     notice('原始资料已保存，尚未识别或确认计划。')
@@ -87,13 +79,9 @@ export function FilePage(): JSX.Element {
             <Field label="选择文件">
               <Input ref={chooser} type="file" accept=".pdf,.png,.jpg,.jpeg" aria-label="选择虚构病历文件" />
             </Field>
-            <Show when={captureView().patientId} keyed>
-              {patientId => (
-                <Button variant="primary" onAction={view => upload(view, patientId)}>
-                  上传资料
-                </Button>
-              )}
-            </Show>
+            <Button variant="primary" onAction={upload}>
+              上传资料
+            </Button>
           </div>
         </Card>
       </Show>

@@ -9,6 +9,7 @@ dependencies = [
     # TestClient behind the demo seeders
     "httpx2>=2.16.2",
     "pydantic-settings>=2.16.3",
+    "pypdf>=7.1.0,<8",
     "python-multipart>=0.0.34",
     # Windows has no system IANA time zone data
     "tzdata>=2026.6",

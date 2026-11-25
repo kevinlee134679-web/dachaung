@@ -114,7 +114,7 @@ it('home loads dose slots and plans only with plan access and displays slot text
 })
 
 it('home offers the medication list when today has no slots', async () => {
-  choose(['plan:read'])
+  choose(['plan:read', 'medication:read', 'drafts:read', 'drafts:write', 'drafts:submit'])
   vi.stubGlobal(
     'fetch',
     vi.fn(() => success(page([]))),
@@ -122,7 +122,7 @@ it('home offers the medication list when today has no slots', async () => {
   render(() => <HomePage />)
   await screen.findByText('今天没有服药安排。')
   fireEvent.click(screen.getByText('填写用药清单'))
-  await waitFor(() => expect([state.page, state.tab]).toEqual(['profile', 'medication-list']))
+  await waitFor(() => expect([state.page, state.tab]).toEqual(['medication', 'medication-list']))
 })
 
 it('home displays pending invitations with intervention access', async () => {

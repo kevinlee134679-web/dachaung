@@ -11,6 +11,7 @@ import { Checkbox, Fieldset } from '../../ui/form'
 import { Subheading } from '../../ui/typography'
 import { newEntry } from './drafts'
 import { EntryEditor } from './entry-editor'
+import { checkedSchedule } from './schedule-fields'
 
 export function DraftEditor(props: {
   editor: Editor
@@ -23,9 +24,10 @@ export function DraftEditor(props: {
   const selectedFiles = new Set(initialEditor.draft?.source_file_ids ?? [])
   async function save(view: View): Promise<void> {
     const draft = props.editor.draft
+    if (entries().some(entry => !entry.medication_id)) throw new Error('请为每个条目选择已有药品。')
     const body = {
       source_file_ids: props.files.filter(file => selectedFiles.has(file.file_id)).map(file => file.file_id),
-      entries: entries(),
+      entries: entries().map(entry => ({ ...entry, schedule: checkedSchedule(entry.schedule) })),
       ...(draft ? { expected_revision: draft.meta.revision } : {}),
     }
     await api(

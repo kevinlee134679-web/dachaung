@@ -8,7 +8,7 @@ export interface Draft {
   content_revision: number
   meta: { revision: number; updated_at: string }
   return_reason: string | null
-  formal_plan: { plan_version: number } | null
+  formal_plan: { plan_id: string; plan_version: number } | null
 }
 
 export interface DraftData {
@@ -46,6 +46,7 @@ export interface Medication {
 export interface SourceFile {
   file_id: string
   original_name: string
+  media_type: string
 }
 
 export interface Plan {
@@ -62,10 +63,10 @@ export const medicationSchema: v.GenericSchema<unknown, Medication> = v.looseObj
 export const sourceFileSchema: v.GenericSchema<unknown, SourceFile> = v.looseObject({
   file_id: v.string(),
   original_name: v.string(),
+  media_type: v.string(),
 })
 
-const entrySchema = v.looseObject({
-  draft_entry_id: v.string(),
+const entryFields = {
   medication_id: v.string(),
   dose_value: v.nullable(v.string()),
   dose_unit: v.nullable(v.string()),
@@ -79,7 +80,9 @@ const entrySchema = v.looseObject({
   strict_timing: v.nullable(v.boolean()),
   min_interval_minutes: v.nullable(v.number()),
   source_file_ids: v.array(v.string()),
-})
+}
+
+const entrySchema = v.looseObject({ draft_entry_id: v.string(), ...entryFields })
 
 export const draftSchema: v.GenericSchema<unknown, Draft> = v.looseObject({
   draft_id: v.string(),
@@ -89,13 +92,26 @@ export const draftSchema: v.GenericSchema<unknown, Draft> = v.looseObject({
   content_revision: v.number(),
   meta: v.looseObject({ revision: v.number(), updated_at: v.string() }),
   return_reason: v.nullable(v.string()),
-  formal_plan: v.nullable(v.looseObject({ plan_version: v.number() })),
+  formal_plan: v.nullable(v.looseObject({ plan_id: v.string(), plan_version: v.number() })),
 })
 
 export const planSchema: v.GenericSchema<unknown, Plan> = v.looseObject({
   plan_id: v.string(),
   plan_version: v.number(),
   effective_from: v.string(),
+})
+
+interface PlanVersion extends Plan {
+  source_draft_id: string
+  entries: Omit<Entry, 'draft_entry_id'>[]
+}
+
+export const planVersionSchema: v.GenericSchema<unknown, PlanVersion> = v.looseObject({
+  plan_id: v.string(),
+  plan_version: v.number(),
+  effective_from: v.string(),
+  source_draft_id: v.string(),
+  entries: v.array(v.object(entryFields)),
 })
 
 export function newEntry(medicationId: string): Entry {
