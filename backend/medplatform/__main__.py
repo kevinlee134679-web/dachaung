@@ -13,17 +13,20 @@ from .core.migrations import migrate, status
 
 
 def seed(db):
+    from .demo.story import seed_story
     from .identity.service import seed_demo
     from .identity.sharing import seed_support_recipients
     from .support.catalog.service import seed_catalog
     from .support.peer.fixtures import seed_peer_groups
 
-    return {
+    result = {
         "demo": seed_demo(db),
         "catalog": seed_catalog(db),
         "recipients": seed_support_recipients(db),
         "peer_groups": seed_peer_groups(db),
     }
+    seed_story(db)
+    return result
 
 
 def main():
